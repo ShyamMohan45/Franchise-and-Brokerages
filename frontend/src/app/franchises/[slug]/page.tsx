@@ -19,6 +19,13 @@ import {
   AlertCircle,
   FileText,
   Send,
+  Sparkles,
+  BadgeCheck,
+  ShieldCheck,
+  TrendingUp,
+  Percent,
+  Check,
+  Info,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
@@ -35,6 +42,7 @@ export default function FranchiseDetailPage() {
   const [isSaved, setIsSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activePhoto, setActivePhoto] = useState<string | null>(null);
 
   // Application Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -62,6 +70,9 @@ export default function FranchiseDetailPage() {
           const fetchedListing = res.data.listing;
           setListing(fetchedListing);
           setIsSaved(res.data.isSaved);
+          if (fetchedListing?.bannerUrl) {
+            setActivePhoto(fetchedListing.bannerUrl);
+          }
           setAppForm((prev) => ({
             ...prev,
             investmentBudget: fetchedListing?.totalInvestmentMin || 5000000,
@@ -103,7 +114,7 @@ export default function FranchiseDetailPage() {
       return;
     }
     if (!appForm.privacyConsentGiven) {
-      setSubmitError("You must accept the privacy and confidentiality disclosure.");
+      setSubmitError("You must accept the confidentiality disclosure.");
       return;
     }
 
@@ -130,9 +141,9 @@ export default function FranchiseDetailPage() {
 
   if (loading) {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-16 text-center space-y-4">
+      <div className="max-w-6xl mx-auto px-4 py-24 text-center space-y-4">
         <div className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm text-slate-500 font-medium">Loading franchise dossier...</p>
+        <p className="text-sm text-slate-500 font-medium">Loading verified franchise dossier...</p>
       </div>
     );
   }
@@ -141,7 +152,7 @@ export default function FranchiseDetailPage() {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center space-y-4">
         <AlertCircle className="w-12 h-12 text-rose-500 mx-auto" />
-        <h2 className="text-2xl font-bold text-navy-900">Franchise Listing Not Found</h2>
+        <h2 className="text-2xl font-bold text-navy-900">Franchise Opportunity Not Found</h2>
         <p className="text-sm text-slate-600">The franchise you requested is either unlisted or unavailable.</p>
         <Link href="/franchises" className="inline-block text-sm font-semibold text-blue-600 hover:underline">
           &larr; Return to Franchise Marketplace
@@ -150,8 +161,13 @@ export default function FranchiseDetailPage() {
     );
   }
 
+  const galleryList = [
+    listing.bannerUrl,
+    ...(listing.galleryImages || []),
+  ].filter(Boolean);
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Navigation Breadcrumb */}
       <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
         <Link href="/franchises" className="hover:text-blue-600 flex items-center gap-1">
@@ -161,107 +177,199 @@ export default function FranchiseDetailPage() {
         <span>/</span>
         <span className="text-slate-400">{listing.industry}</span>
         <span>/</span>
-        <span className="text-navy-900 font-semibold">{listing.brandName}</span>
+        <span className="text-navy-900 font-bold">{listing.brandName}</span>
       </div>
 
-      {/* Hero Header Card */}
-      <div className="bg-white rounded-3xl border border-slate-200 p-8 sm:p-10 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-3 max-w-2xl">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <span className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-md bg-blue-50 text-blue-700">
-              {listing.industry}
-            </span>
-            <StatusBadge status={listing.status} />
-            <span className="text-xs text-slate-400">Established {listing.business?.establishedYear || 2020}</span>
+      {/* Hero Showcase Banner */}
+      <div className="relative rounded-3xl overflow-hidden bg-slate-900 shadow-xl border border-slate-200/90">
+        <div className="relative h-72 sm:h-96 w-full">
+          <img
+            src={activePhoto || listing.bannerUrl || "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=1600&auto=format&fit=crop&q=80"}
+            alt={listing.brandName}
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/20" />
+        </div>
+
+        {/* Floating Brand Header */}
+        <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-10 text-white flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="flex items-start gap-4 sm:gap-6">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white p-1 shadow-2xl overflow-hidden shrink-0 border border-white/20">
+              <img
+                src={listing.logoUrl || "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=200&auto=format&fit=crop&q=80"}
+                alt={listing.brandName}
+                className="w-full h-full object-cover rounded-xl"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-md bg-blue-500/80 backdrop-blur-md text-[11px] font-bold text-white">
+                  {listing.industry}
+                </span>
+                <StatusBadge status={listing.status} />
+                <span className="text-xs text-slate-300">
+                  Established {listing.business?.establishedYear || 2020}
+                </span>
+              </div>
+              <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white flex items-center gap-2">
+                {listing.brandName}
+                <BadgeCheck className="w-5 h-5 text-blue-400" />
+              </h1>
+              <p className="text-sm text-amber-300 font-semibold">{listing.tagline}</p>
+            </div>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-navy-900 tracking-tight">{listing.brandName}</h1>
-          <p className="text-base text-amber-700 font-semibold">{listing.tagline}</p>
-          <p className="text-sm text-slate-600 leading-relaxed">{listing.summary}</p>
-        </div>
-
-        <div className="flex flex-col sm:flex-row md:flex-col gap-3 shrink-0">
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3.5 rounded-xl shadow-md transition-all text-sm flex items-center justify-center gap-2"
-          >
-            <Send className="w-4 h-4" />
-            Apply for Franchise
-          </button>
-
-          <button
-            onClick={handleToggleSave}
-            className={`border px-5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors ${
-              isSaved
-                ? "bg-amber-50 border-amber-300 text-amber-800"
-                : "border-slate-300 hover:bg-slate-50 text-slate-700"
-            }`}
-          >
-            <Bookmark className={`w-4 h-4 ${isSaved ? "fill-amber-500 text-amber-500" : ""}`} />
-            {isSaved ? "Saved in Portfolio" : "Save Opportunity"}
-          </button>
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold px-6 py-3.5 rounded-xl shadow-lg transition-all text-xs sm:text-sm flex items-center gap-2"
+            >
+              <Send className="w-4 h-4" />
+              Apply for Franchise
+            </button>
+            <button
+              onClick={handleToggleSave}
+              className={`p-3.5 rounded-xl text-xs font-semibold flex items-center justify-center transition-colors border ${
+                isSaved
+                  ? "bg-amber-400 text-slate-950 border-amber-300"
+                  : "bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-md"
+              }`}
+              title="Save Opportunity"
+            >
+              <Bookmark className={`w-4 h-4 ${isSaved ? "fill-slate-950" : ""}`} />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Grid: Financials & Operational Specifications */}
+      {/* Gallery Thumbnails Strip */}
+      {galleryList.length > 1 && (
+        <div className="flex items-center gap-3 overflow-x-auto pb-2">
+          {galleryList.map((photo, idx) => (
+            <button
+              key={idx}
+              onClick={() => setActivePhoto(photo)}
+              className={`h-20 w-32 rounded-xl overflow-hidden shrink-0 border-2 transition-all ${
+                activePhoto === photo ? "border-blue-600 scale-105 shadow-md" : "border-transparent opacity-70 hover:opacity-100"
+              }`}
+            >
+              <img src={photo} alt="" className="w-full h-full object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Executive Financial Highlights Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm space-y-1">
+          <span className="text-[10px] uppercase font-bold text-slate-400">Total Investment</span>
+          <p className="text-base sm:text-lg font-black text-navy-900">
+            {formatCurrency(listing.totalInvestmentMin)} - {formatCurrency(listing.totalInvestmentMax)}
+          </p>
+          <span className="text-[11px] text-slate-500">Turnkey store setup</span>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm space-y-1">
+          <span className="text-[10px] uppercase font-bold text-slate-400">Initial Franchise Fee</span>
+          <p className="text-base sm:text-lg font-black text-navy-900">
+            {formatCurrency(listing.initialFranchiseFee)}
+          </p>
+          <span className="text-[11px] text-slate-500">Per outlet license</span>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm space-y-1">
+          <span className="text-[10px] uppercase font-bold text-slate-400">Ongoing Royalty</span>
+          <p className="text-base sm:text-lg font-black text-navy-900">
+            {listing.royaltyPercentage}%
+          </p>
+          <span className="text-[11px] text-slate-500">On monthly gross sales</span>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm space-y-1">
+          <span className="text-[10px] uppercase font-bold text-slate-400">Est. Payback (ROI)</span>
+          <p className="text-base sm:text-lg font-black text-emerald-600">
+            ~{listing.estimatedRoiMonths} Months
+          </p>
+          <span className="text-[11px] text-slate-500">Based on historical stores</span>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm space-y-1 col-span-2 sm:col-span-1">
+          <span className="text-[10px] uppercase font-bold text-slate-400">Model Format</span>
+          <p className="text-base sm:text-lg font-black text-navy-900 capitalize">
+            {listing.franchiseModelType?.replace("_", " ")}
+          </p>
+          <span className="text-[11px] text-slate-500">Single & Multi-Unit Area</span>
+        </div>
+      </div>
+
+      {/* Main Grid: Details & Specifications */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Comprehensive Dossier */}
+        
+        {/* Left 2 Columns: Concept Story, Operations & Support */}
         <div className="lg:col-span-2 space-y-8">
-          {/* Brand Story */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-8 space-y-4 shadow-sm">
+          
+          {/* Brand Story & Concept */}
+          <div className="bg-white rounded-3xl border border-slate-200/90 p-8 space-y-4 shadow-sm">
             <h2 className="text-xl font-bold text-navy-900 flex items-center gap-2">
               <Building2 className="w-5 h-5 text-blue-600" />
               Brand Story & Core Concept
             </h2>
-            <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{listing.brandStory}</div>
+            <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">
+              {listing.brandStory}
+            </div>
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-xs text-slate-600 leading-relaxed mt-4">
+              <strong>Business Summary:</strong> {listing.summary}
+            </div>
           </div>
 
-          {/* Infrastructure & Operations */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-8 space-y-6 shadow-sm">
+          {/* Infrastructure & Facility Specifications */}
+          <div className="bg-white rounded-3xl border border-slate-200/90 p-8 space-y-6 shadow-sm">
             <h2 className="text-xl font-bold text-navy-900 flex items-center gap-2">
               <Layers className="w-5 h-5 text-amber-600" />
-              Operational & Facility Infrastructure
+              Store Infrastructure & Operational Specs
             </h2>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                <span className="text-slate-400 text-xs uppercase font-medium">Commercial Floor Space</span>
-                <p className="font-bold text-navy-900 text-base mt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1">
+                <span className="text-slate-400 uppercase font-semibold text-[10px]">Commercial Floor Space</span>
+                <p className="font-extrabold text-navy-900 text-base">
                   {listing.commercialSpaceMinSqFt} - {listing.commercialSpaceMaxSqFt} Sq Ft
                 </p>
-                <span className="text-xs text-slate-500">Retail High Street / Mall Corridor</span>
+                <span className="text-slate-500">Prime high street or commercial mall</span>
               </div>
 
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                <span className="text-slate-400 text-xs uppercase font-medium">Staffing Requirements</span>
-                <p className="font-bold text-navy-900 text-base mt-1">
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1">
+                <span className="text-slate-400 uppercase font-semibold text-[10px]">Store Headcount</span>
+                <p className="font-extrabold text-navy-900 text-base">
                   {listing.staffRequiredMin} - {listing.staffRequiredMax} Employees per Outlet
                 </p>
-                <span className="text-xs text-slate-500">Trained under certified SOPs</span>
+                <span className="text-slate-500">Certified through structured academy</span>
               </div>
 
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                <span className="text-slate-400 text-xs uppercase font-medium">Initial Training Duration</span>
-                <p className="font-bold text-navy-900 text-base mt-1">{listing.trainingDurationWeeks} Weeks</p>
-                <span className="text-xs text-slate-500">Classroom + On-site outlet shadowing</span>
-              </div>
-
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                <span className="text-slate-400 text-xs uppercase font-medium">Target Expansion Corridors</span>
-                <p className="font-bold text-navy-900 text-base mt-1">
-                  {listing.expansionLocations?.slice(0, 4).join(", ")}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1">
+                <span className="text-slate-400 uppercase font-semibold text-[10px]">Initial Training Duration</span>
+                <p className="font-extrabold text-navy-900 text-base">
+                  {listing.trainingDurationWeeks} Weeks
                 </p>
-                <span className="text-xs text-slate-500">Territory exclusivity options available</span>
+                <span className="text-slate-500">Classroom + on-site outlet shadowing</span>
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1">
+                <span className="text-slate-400 uppercase font-semibold text-[10px]">Marketing Fund Contribution</span>
+                <p className="font-extrabold text-navy-900 text-base">
+                  {listing.marketingFeePercentage}%
+                </p>
+                <span className="text-slate-500">National and regional advertising co-op</span>
               </div>
             </div>
 
-            {/* Support Provided */}
-            <div className="space-y-3 pt-2">
-              <h3 className="font-bold text-navy-900 text-sm">Ongoing Franchisor Support Package:</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-700">
+            {/* Franchisor Support Package */}
+            <div className="space-y-3 pt-4 border-t border-slate-100">
+              <h3 className="font-bold text-navy-900 text-sm">Full Franchisor Support Package:</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {listing.supportProvided?.map((item: string, idx: number) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                  <div key={idx} className="flex items-start gap-2.5 text-xs text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                     <span>{item}</span>
                   </div>
                 ))}
@@ -270,76 +378,101 @@ export default function FranchiseDetailPage() {
           </div>
 
           {/* Ideal Franchisee Profile */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-8 space-y-4 shadow-sm">
+          <div className="bg-white rounded-3xl border border-slate-200/90 p-8 space-y-4 shadow-sm">
             <h2 className="text-xl font-bold text-navy-900 flex items-center gap-2">
               <Users className="w-5 h-5 text-indigo-600" />
-              Ideal Franchisee Suitability Profile
+              Ideal Franchisee Profile
             </h2>
-            <p className="text-sm text-slate-700 leading-relaxed">{listing.idealFranchiseeProfile}</p>
+            <p className="text-sm text-slate-700 leading-relaxed">
+              {listing.idealFranchiseeProfile}
+            </p>
           </div>
+
         </div>
 
-        {/* Right Column: Financial Disclosures & Economics Card */}
+        {/* Right Column: Target Corridors, NDA Shield, & CTA */}
         <div className="space-y-6">
-          <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 space-y-6 shadow-sm sticky top-28">
-            <div className="border-b border-slate-100 pb-4">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Investment Economics
-              </span>
-              <div className="text-2xl sm:text-3xl font-extrabold text-navy-900 mt-1">
-                {formatCurrency(listing.totalInvestmentMin)} - {formatCurrency(listing.totalInvestmentMax)}
-              </div>
-              <p className="text-xs text-slate-500 mt-0.5">Estimated total capital required to open</p>
-            </div>
-
-            <div className="space-y-3.5 text-xs text-slate-600">
-              <div className="flex justify-between py-1.5 border-b border-slate-100">
-                <span className="font-medium text-slate-500">Initial Franchise Fee</span>
-                <span className="font-bold text-navy-900">{formatCurrency(listing.initialFranchiseFee)}</span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-slate-100">
-                <span className="font-medium text-slate-500">Royalty Fee</span>
-                <span className="font-bold text-navy-900">{listing.royaltyPercentage}% of Gross Sales</span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-slate-100">
-                <span className="font-medium text-slate-500">Marketing & Brand Fund</span>
-                <span className="font-bold text-navy-900">{listing.marketingFeePercentage}%</span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-slate-100">
-                <span className="font-medium text-slate-500">Estimated Payback Period</span>
-                <span className="font-bold text-emerald-700">~{listing.estimatedRoiMonths} Months</span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-slate-100">
-                <span className="font-medium text-slate-500">Franchise Model</span>
-                <span className="font-bold text-navy-900 capitalize">
-                  {listing.franchiseModelType.replace("_", " ")}
+          
+          {/* Target Expansion Corridors */}
+          <div className="bg-white rounded-3xl border border-slate-200/90 p-6 space-y-4 shadow-sm">
+            <h3 className="text-base font-bold text-navy-900 flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-blue-600" />
+              Target Expansion Cities
+            </h3>
+            <p className="text-xs text-slate-500">
+              The brand is actively allocating protected territories in these metropolitan areas:
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {listing.expansionLocations?.map((loc: string) => (
+                <span
+                  key={loc}
+                  className="px-3 py-1 rounded-xl bg-blue-50 text-blue-800 text-xs font-bold border border-blue-100"
+                >
+                  {loc}
                 </span>
-              </div>
+              ))}
             </div>
+          </div>
 
+          {/* Privacy & Confidentiality Shield Box */}
+          <div className="bg-[#0B1220] rounded-3xl p-6 text-white space-y-4 border border-slate-800 shadow-md">
+            <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold">
+              <ShieldCheck className="w-4 h-4" />
+              Institutional Privacy Protocol
+            </div>
+            <h4 className="text-sm font-bold text-white">
+              Protected Inquiry Process
+            </h4>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Your contact details and financial suitability are strictly encrypted until your application is reviewed and a mutual Non-Disclosure Agreement (NDA) is executed.
+            </p>
             <button
               onClick={() => setIsModalOpen(true)}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-md text-sm transition-all"
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs py-3 rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5"
             >
-              Submit Application & Request FDD
+              <Send className="w-3.5 h-3.5" />
+              Request Verified Dossier & NDA
             </button>
+          </div>
 
-            <div className="text-[11px] text-slate-400 text-center leading-relaxed">
-              Financial estimates are historical representations provided by the franchisor and vetted by FranchiseBridge
-              advisors. Actual returns vary by local territory management.
+          {/* Headquarters Info */}
+          <div className="bg-white rounded-3xl border border-slate-200/90 p-6 space-y-3 shadow-sm text-xs text-slate-600">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 font-bold text-navy-900">
+              <span>Corporate Headquarters</span>
+              <Building2 className="w-4 h-4 text-slate-400" />
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Location:</span>
+              <span className="font-semibold text-slate-800">
+                {listing.business?.headquarters?.city}, {listing.business?.headquarters?.state || "India"}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Total Operating Outlets:</span>
+              <span className="font-semibold text-slate-800">
+                {listing.business?.numberOfOutlets || 4} Outlets
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Annual Revenue Range:</span>
+              <span className="font-semibold text-emerald-700">
+                {listing.business?.annualRevenueRange || "Disclosed under NDA"}
+              </span>
             </div>
           </div>
+
         </div>
+
       </div>
 
-      {/* Application Modal */}
+      {/* APPLICATION MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-8 shadow-2xl border border-slate-200 my-8 space-y-6">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 space-y-6 shadow-2xl border border-slate-100 my-8">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <div>
-                <h3 className="text-xl font-bold text-navy-900">Franchise Application</h3>
-                <p className="text-xs text-slate-500">Applying for: {listing.brandName}</p>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Confidential Application</span>
+                <h3 className="text-lg font-bold text-navy-900">Apply for {listing.brandName}</h3>
               </div>
               <button
                 onClick={() => {
@@ -347,144 +480,160 @@ export default function FranchiseDetailPage() {
                   setSubmitSuccess(false);
                   setSubmitError(null);
                 }}
-                className="text-slate-400 hover:text-slate-600 font-bold text-lg p-1"
+                className="text-slate-400 hover:text-slate-600 text-lg font-bold p-1"
               >
-                &times;
+                ✕
               </button>
             </div>
 
             {submitSuccess ? (
-              <div className="text-center py-6 space-y-4">
-                <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto" />
-                <h4 className="text-lg font-bold text-navy-900">Application Submitted Successfully!</h4>
-                <p className="text-xs text-slate-600 max-w-sm mx-auto leading-relaxed">
-                  Your application has been registered in the Brokerage Deal Pipeline. Our team will verify your
-                  background and facilitate mutual introduction with {listing.brandName}.
-                </p>
-                <div className="pt-4 flex gap-3 justify-center">
-                  <Link
-                    href="/dashboard/investor/applications"
-                    className="bg-blue-600 text-white text-xs font-semibold px-5 py-2.5 rounded-xl"
-                  >
-                    Track in Dashboard
-                  </Link>
-                  <button
-                    onClick={() => setIsModalOpen(false)}
-                    className="bg-slate-100 text-slate-700 text-xs font-semibold px-5 py-2.5 rounded-xl"
-                  >
-                    Close
-                  </button>
+              <div className="text-center py-8 space-y-4">
+                <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                  <CheckCircle2 className="w-8 h-8" />
                 </div>
+                <h4 className="text-xl font-bold text-navy-900">Application Submitted!</h4>
+                <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed">
+                  Your confidential franchise application and NDA request have been logged with the brokerage team.
+                  We will review your territory parameters and reach out within 24 business hours.
+                </p>
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="bg-navy-900 text-white font-bold text-xs px-6 py-2.5 rounded-xl hover:bg-slate-800 transition-colors"
+                >
+                  Close Window
+                </button>
               </div>
             ) : (
               <form onSubmit={handleApplicationSubmit} className="space-y-4 text-xs">
                 {submitError && (
-                  <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs">
+                  <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl">
                     {submitError}
                   </div>
                 )}
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-slate-700 font-medium mb-1">Target City *</label>
+                    <label className="block text-slate-700 font-bold mb-1">Proposed City *</label>
                     <input
                       type="text"
                       required
                       value={appForm.proposedLocationCity}
                       onChange={(e) => setAppForm({ ...appForm, proposedLocationCity: e.target.value })}
                       placeholder="e.g. Bengaluru"
-                      className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500"
+                      className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-700 font-medium mb-1">Target Units *</label>
+                    <label className="block text-slate-700 font-bold mb-1">Proposed State *</label>
                     <input
-                      type="number"
-                      min={1}
-                      max={20}
+                      type="text"
                       required
-                      value={appForm.unitsInterested}
-                      onChange={(e) => setAppForm({ ...appForm, unitsInterested: parseInt(e.target.value) || 1 })}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500"
+                      value={appForm.proposedLocationState}
+                      onChange={(e) => setAppForm({ ...appForm, proposedLocationState: e.target.value })}
+                      placeholder="e.g. Karnataka"
+                      className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-slate-700 font-medium mb-1">Investment Budget (₹) *</label>
+                    <label className="block text-slate-700 font-bold mb-1">Units Interested *</label>
                     <input
                       type="number"
-                      required
-                      value={appForm.investmentBudget}
-                      onChange={(e) => setAppForm({ ...appForm, investmentBudget: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500"
+                      min={1}
+                      max={20}
+                      value={appForm.unitsInterested}
+                      onChange={(e) => setAppForm({ ...appForm, unitsInterested: parseInt(e.target.value) || 1 })}
+                      className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-700 font-medium mb-1">Available Liquid Capital (₹) *</label>
+                    <label className="block text-slate-700 font-bold mb-1">Timeline *</label>
+                    <select
+                      value={appForm.timeline}
+                      onChange={(e) => setAppForm({ ...appForm, timeline: e.target.value })}
+                      className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500 font-medium"
+                    >
+                      <option value="immediate">Immediate (&lt; 30 Days)</option>
+                      <option value="1_to_3_months">1 - 3 Months</option>
+                      <option value="3_to_6_months">3 - 6 Months</option>
+                      <option value="more_than_6_months">6+ Months</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1">Total Investment Budget (₹) *</label>
                     <input
                       type="number"
-                      required
+                      value={appForm.investmentBudget}
+                      onChange={(e) => setAppForm({ ...appForm, investmentBudget: parseInt(e.target.value) || 0 })}
+                      className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1">Available Liquid Capital (₹) *</label>
+                    <input
+                      type="number"
                       value={appForm.availableLiquidCapital}
-                      onChange={(e) =>
-                        setAppForm({ ...appForm, availableLiquidCapital: parseFloat(e.target.value) || 0 })
-                      }
-                      className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500"
+                      onChange={(e) => setAppForm({ ...appForm, availableLiquidCapital: parseInt(e.target.value) || 0 })}
+                      className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 font-medium mb-1">Investment Timeline *</label>
-                  <select
-                    value={appForm.timeline}
-                    onChange={(e) => setAppForm({ ...appForm, timeline: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500"
-                  >
-                    <option value="immediate">Immediate (&lt; 30 Days)</option>
-                    <option value="1_to_3_months">1 to 3 Months</option>
-                    <option value="3_to_6_months">3 to 6 Months</option>
-                    <option value="6_plus_months">6+ Months Planning</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Business Experience & Background *</label>
+                  <label className="block text-slate-700 font-bold mb-1">Business & Operator Background *</label>
                   <textarea
-                    rows={3}
+                    rows={2}
                     required
                     value={appForm.businessBackgroundSummary}
                     onChange={(e) => setAppForm({ ...appForm, businessBackgroundSummary: e.target.value })}
-                    placeholder="Briefly state your operating experience, past franchises, or investment goals..."
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500 text-xs"
+                    placeholder="Briefly describe your business, retail, or hospitality operating background..."
+                    className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500 text-xs"
                   />
-                  <span className="text-[10px] text-slate-400 mt-0.5 block">
-                    Share a brief note about your business experience or background.
-                  </span>
                 </div>
 
-                <div className="flex items-start gap-2 pt-2">
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">Additional Notes / Preferred Location</label>
+                  <textarea
+                    rows={2}
+                    value={appForm.additionalMessage}
+                    onChange={(e) => setAppForm({ ...appForm, additionalMessage: e.target.value })}
+                    placeholder="Specify target neighborhood, existing commercial property access, etc."
+                    className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500 text-xs"
+                  />
+                </div>
+
+                <div className="pt-2 flex items-start gap-2.5">
                   <input
                     type="checkbox"
                     id="consent"
                     checked={appForm.privacyConsentGiven}
                     onChange={(e) => setAppForm({ ...appForm, privacyConsentGiven: e.target.checked })}
-                    className="mt-0.5 rounded border-slate-300"
+                    className="mt-1 rounded text-blue-600 focus:ring-blue-500"
                   />
-                  <label htmlFor="consent" className="text-[11px] text-slate-500 leading-tight">
-                    I verify that all financial representations are accurate, and I consent to brokerage vetting and
-                    non-disclosure review before mutual brand introduction.
+                  <label htmlFor="consent" className="text-[11px] text-slate-500 leading-relaxed">
+                    I agree to keep all disclosed FDD financial statements, territory covenants, and operational recipes strictly confidential under mutual NDA.
                   </label>
                 </div>
 
-                <div className="pt-3">
+                <div className="pt-3 flex items-center justify-end gap-3 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow transition-all disabled:opacity-50 text-xs"
+                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold px-6 py-2.5 rounded-xl shadow-md transition-all disabled:opacity-50"
                   >
-                    {isSubmitting ? "Submitting Application..." : "Confirm & Submit Application"}
+                    {isSubmitting ? "Submitting..." : "Submit Confidential Application"}
                   </button>
                 </div>
               </form>

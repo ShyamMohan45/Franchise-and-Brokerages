@@ -99,6 +99,26 @@ export async function runSeed() {
     emailVerified: true,
   });
 
+  const owner4 = await User.create({
+    email: 'owner.codebloom@example.com',
+    passwordHash: defaultPasswordHash,
+    fullName: 'Dr. Tanvi Roy',
+    phone: '+91 98765 66666',
+    role: 'business_owner',
+    status: 'active',
+    emailVerified: true,
+  });
+
+  const owner5 = await User.create({
+    email: 'owner.auraluxe@example.com',
+    passwordHash: defaultPasswordHash,
+    fullName: 'Rohan Mehra',
+    phone: '+91 98765 77777',
+    role: 'business_owner',
+    status: 'active',
+    emailVerified: true,
+  });
+
   // 3. Create Investors
   const investor1 = await User.create({
     email: 'investor.arun@example.com',
@@ -143,6 +163,8 @@ export async function runSeed() {
     estimatedInvestmentMax: 5500000,
     existingFranchiseExperience: true,
     annualRevenueRange: '₹3 Cr - ₹5 Cr',
+    logoUrl: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=200&auto=format&fit=crop&q=80',
+    images: ['https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=1600&auto=format&fit=crop&q=80'],
     approvalStatus: 'approved',
     readinessScore: 88,
   });
@@ -169,6 +191,8 @@ export async function runSeed() {
     estimatedInvestmentMax: 9000000,
     existingFranchiseExperience: false,
     annualRevenueRange: '₹2.5 Cr - ₹4 Cr',
+    logoUrl: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=200&auto=format&fit=crop&q=80',
+    images: ['https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1600&auto=format&fit=crop&q=80'],
     approvalStatus: 'approved',
     readinessScore: 82,
   });
@@ -195,8 +219,66 @@ export async function runSeed() {
     estimatedInvestmentMax: 4000000,
     existingFranchiseExperience: true,
     annualRevenueRange: '₹4 Cr - ₹7 Cr',
+    logoUrl: 'https://images.unsplash.com/photo-1610057099443-fde8c4d50f91?w=200&auto=format&fit=crop&q=80',
+    images: ['https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=1600&auto=format&fit=crop&q=80'],
     approvalStatus: 'approved',
     readinessScore: 91,
+  });
+
+  const business4 = await BusinessProfile.create({
+    user: owner4._id,
+    businessName: 'CodeBloom AI & Robotics Labs',
+    slug: 'codebloom-ai-robotics-labs',
+    category: 'Education & EdTech',
+    founderName: 'Dr. Tanvi Roy',
+    contactEmail: 'franchise@codebloomlabs.com',
+    contactPhone: '+91 98765 66666',
+    websiteUrl: 'https://codebloomlabs.example.com',
+    establishedYear: 2022,
+    headquarters: { city: 'Hyderabad', state: 'Telangana', country: 'India' },
+    currentLocations: ['HITEC City', 'Gachibowli', 'Jubilee Hills'],
+    numberOfOutlets: 3,
+    description:
+      'Interactive STEAM learning academies empowering K-12 students with AI, Python, robotics kits, and patent-pending gamified curriculum.',
+    businessModel: 'B2C after-school academies paired with weekend cohort subscriptions and B2B school curriculum licensing.',
+    expansionGoals: 'Expansion into premier residential corridors and educational hubs across South & Western India.',
+    desiredExpansionCities: ['Bengaluru', 'Pune', 'Chennai', 'Mumbai'],
+    estimatedInvestmentMin: 2000000,
+    estimatedInvestmentMax: 3500000,
+    existingFranchiseExperience: true,
+    annualRevenueRange: '₹1.8 Cr - ₹3 Cr',
+    logoUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=200&auto=format&fit=crop&q=80',
+    images: ['https://images.unsplash.com/photo-1509062522246-3755977927d7?w=1600&auto=format&fit=crop&q=80'],
+    approvalStatus: 'approved',
+    readinessScore: 89,
+  });
+
+  const business5 = await BusinessProfile.create({
+    user: owner5._id,
+    businessName: 'Aura Luxe MedSpa & Wellness',
+    slug: 'aura-luxe-medspa-wellness',
+    category: 'Health & Beauty',
+    founderName: 'Rohan Mehra',
+    contactEmail: 'expansion@auraluxemedspa.com',
+    contactPhone: '+91 98765 77777',
+    websiteUrl: 'https://auraluxemedspa.example.com',
+    establishedYear: 2021,
+    headquarters: { city: 'New Delhi', state: 'Delhi NCR', country: 'India' },
+    currentLocations: ['Vasant Vihar', 'Greater Kailash', 'Cyber Hub Gurgaon'],
+    numberOfOutlets: 3,
+    description:
+      'Ultra-luxury medical aesthetics and non-invasive anti-aging clinics featuring FDA-approved laser technologies and licensed practitioners.',
+    businessModel: 'High average order value aesthetic treatments and luxury medical skincare product subscriptions.',
+    expansionGoals: 'Targeting upscale commercial and retail high-streets in metros.',
+    desiredExpansionCities: ['Mumbai', 'Bengaluru', 'Chandigarh', 'Kolkata'],
+    estimatedInvestmentMin: 7500000,
+    estimatedInvestmentMax: 12000000,
+    existingFranchiseExperience: true,
+    annualRevenueRange: '₹6 Cr - ₹10 Cr',
+    logoUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=200&auto=format&fit=crop&q=80',
+    images: ['https://images.unsplash.com/photo-1560750588-73207b1ef5b8?w=1600&auto=format&fit=crop&q=80'],
+    approvalStatus: 'approved',
+    readinessScore: 94,
   });
 
   // 5. Create Investor Profiles
@@ -253,6 +335,10 @@ export async function runSeed() {
   await owner2.save();
   owner3.businessProfile = business3._id as any;
   await owner3.save();
+  owner4.businessProfile = business4._id as any;
+  await owner4.save();
+  owner5.businessProfile = business5._id as any;
+  await owner5.save();
 
   investor1.investorProfile = invProfile1._id as any;
   await investor1.save();
@@ -272,6 +358,13 @@ export async function runSeed() {
       'High-margin specialty coffee franchise with standardized beans, precision espresso workflows, and comprehensive barista training.',
     brandStory:
       'Founded in 2019 in Bengaluru, RoastCraft disrupted traditional cafes by bringing direct-trade estate beans and micro-roasting directly to discerning urban professionals.',
+    logoUrl: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=200&auto=format&fit=crop&q=80',
+    bannerUrl: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=1600&auto=format&fit=crop&q=80',
+    galleryImages: [
+      'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1517256064527-09c73fc73e38?w=800&auto=format&fit=crop&q=80',
+    ],
     franchiseModelType: 'both',
     totalInvestmentMin: 3500000,
     totalInvestmentMax: 5500000,
@@ -296,8 +389,8 @@ export async function runSeed() {
     expansionLocations: ['Bengaluru', 'Mumbai', 'Delhi NCR', 'Hyderabad', 'Pune'],
     status: 'published',
     isFeatured: true,
-    viewsCount: 342,
-    enquiriesCount: 14,
+    viewsCount: 1420,
+    enquiriesCount: 38,
     publishedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
     approvedBy: brokerAdmin._id,
   });
@@ -314,6 +407,13 @@ export async function runSeed() {
       'Turnkey automated fitness center model powered by mobile app access, commercial biomechanical equipment, and lean operating costs.',
     brandStory:
       'FitPulse pioneered contactless 24-hour gym memberships in Mumbai, capturing working professionals with flexibility, immaculate cleanliness, and tech-enabled fitness tracking.',
+    logoUrl: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=200&auto=format&fit=crop&q=80',
+    bannerUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1600&auto=format&fit=crop&q=80',
+    galleryImages: [
+      'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&auto=format&fit=crop&q=80',
+    ],
     franchiseModelType: 'multi_unit',
     totalInvestmentMin: 6000000,
     totalInvestmentMax: 9000000,
@@ -337,8 +437,8 @@ export async function runSeed() {
     expansionLocations: ['Mumbai', 'Bengaluru', 'Pune', 'Ahmedabad'],
     status: 'published',
     isFeatured: true,
-    viewsCount: 289,
-    enquiriesCount: 9,
+    viewsCount: 1180,
+    enquiriesCount: 29,
     publishedAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
     approvedBy: brokerAdmin._id,
   });
@@ -355,6 +455,13 @@ export async function runSeed() {
       'Compact footprint QSR model generating high ticket turns, rapid counter service, and heavy delivery channel volume.',
     brandStory:
       'Born out of Chennai, Curry Leaf Express perfected standardized batter preservation, automated dosa plate robotics, and rapid recipe assembly lines.',
+    logoUrl: 'https://images.unsplash.com/photo-1610057099443-fde8c4d50f91?w=200&auto=format&fit=crop&q=80',
+    bannerUrl: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=1600&auto=format&fit=crop&q=80',
+    galleryImages: [
+      'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=800&auto=format&fit=crop&q=80',
+    ],
     franchiseModelType: 'both',
     totalInvestmentMin: 2500000,
     totalInvestmentMax: 4000000,
@@ -377,10 +484,104 @@ export async function runSeed() {
       'First-time franchise buyers or seasoned QSR operators wanting high ROI and speedy payback.',
     expansionLocations: ['Chennai', 'Bengaluru', 'Hyderabad', 'Kochi', 'Coimbatore'],
     status: 'published',
-    isFeatured: false,
-    viewsCount: 412,
-    enquiriesCount: 19,
+    isFeatured: true,
+    viewsCount: 1650,
+    enquiriesCount: 45,
     publishedAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
+    approvedBy: brokerAdmin._id,
+  });
+
+  const listing4 = await FranchiseListing.create({
+    business: business4._id,
+    ownerUser: owner4._id,
+    brandName: 'CodeBloom AI & Robotics Labs',
+    slug: 'codebloom-ai-robotics-labs',
+    tagline: 'Experiential Next-Gen Coding & AI Academy for Kids',
+    industry: 'Education & EdTech',
+    subCategory: 'AI, Robotics & Coding Labs',
+    summary:
+      'Award-winning hands-on STEM & Robotics franchise with gamified Python curriculum, proprietary robotics hardware kits, and zero royalty first 6 months.',
+    brandStory:
+      'Started by IIT & Carnegie Mellon alumni, CodeBloom transforms local learning into an experiential playground where students build real-world AI projects.',
+    logoUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=200&auto=format&fit=crop&q=80',
+    bannerUrl: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?w=1600&auto=format&fit=crop&q=80',
+    galleryImages: [
+      'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1531482615713-2afd69097998?w=800&auto=format&fit=crop&q=80',
+    ],
+    franchiseModelType: 'both',
+    totalInvestmentMin: 2000000,
+    totalInvestmentMax: 3500000,
+    initialFranchiseFee: 500000,
+    royaltyPercentage: 8,
+    marketingFeePercentage: 2,
+    estimatedRoiMonths: 12,
+    commercialSpaceMinSqFt: 600,
+    commercialSpaceMaxSqFt: 1200,
+    staffRequiredMin: 2,
+    staffRequiredMax: 4,
+    trainingDurationWeeks: 3,
+    supportProvided: [
+      'Full LMS & Gamified Coding Platform Licenses',
+      'STEM Instructor Training & Monthly Recertification',
+      'School Tie-Up Outreach Playbook & Competitions',
+      'Hardware Lab Setup & Annual Upgrades',
+    ],
+    idealFranchiseeProfile:
+      'Educators, engineers, or parent-entrepreneurs passionate about modern digital literacy with high neighborhood reputation.',
+    expansionLocations: ['Bengaluru', 'Pune', 'Hyderabad', 'Chennai', 'Mumbai'],
+    status: 'published',
+    isFeatured: true,
+    viewsCount: 890,
+    enquiriesCount: 22,
+    publishedAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
+    approvedBy: brokerAdmin._id,
+  });
+
+  const listing5 = await FranchiseListing.create({
+    business: business5._id,
+    ownerUser: owner5._id,
+    brandName: 'Aura Luxe MedSpa & Wellness',
+    slug: 'aura-luxe-medspa-wellness',
+    tagline: 'High-Margin Medical Aesthetics & Non-Invasive Wellness',
+    industry: 'Health & Beauty',
+    subCategory: 'Aesthetic Dermatology & Wellness',
+    summary:
+      'Premier luxury aesthetic clinic franchise combining FDA-cleared laser workstations, board-certified clinical protocols, and private clientele memberships.',
+    brandStory:
+      'Aura Luxe redefined modern aesthetics by pairing medical clinical excellence with luxury hospitality ambiance, boasting 74% client re-booking rates.',
+    logoUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=200&auto=format&fit=crop&q=80',
+    bannerUrl: 'https://images.unsplash.com/photo-1560750588-73207b1ef5b8?w=1600&auto=format&fit=crop&q=80',
+    galleryImages: [
+      'https://images.unsplash.com/photo-1519415510236-718bdfcd89c8?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=800&auto=format&fit=crop&q=80',
+    ],
+    franchiseModelType: 'multi_unit',
+    totalInvestmentMin: 7500000,
+    totalInvestmentMax: 12000000,
+    initialFranchiseFee: 1500000,
+    royaltyPercentage: 6,
+    marketingFeePercentage: 3,
+    estimatedRoiMonths: 20,
+    commercialSpaceMinSqFt: 1500,
+    commercialSpaceMaxSqFt: 3000,
+    staffRequiredMin: 5,
+    staffRequiredMax: 9,
+    trainingDurationWeeks: 4,
+    supportProvided: [
+      'Direct OEM Medical Equipment Leasing Rates',
+      'Clinical Dermatologist Onboarding & Medical SOPs',
+      'VIP Loyalty App with Automated Client Re-Booking',
+      'Exclusive German Cosmeceutical Skincare Distributorship',
+    ],
+    idealFranchiseeProfile:
+      'Dermatologists, healthcare executives, or luxury franchise syndicates with prime commercial retail locations.',
+    expansionLocations: ['New Delhi', 'Mumbai', 'Bengaluru', 'Chandigarh', 'Kolkata'],
+    status: 'published',
+    isFeatured: true,
+    viewsCount: 1350,
+    enquiriesCount: 31,
+    publishedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
     approvedBy: brokerAdmin._id,
   });
 
