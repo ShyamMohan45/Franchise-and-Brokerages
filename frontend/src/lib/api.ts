@@ -113,6 +113,32 @@ class ApiClient {
     return this.request<T>(endpoint, { method: "DELETE" });
   }
 
+  async upload<T>(endpoint: string, formData: FormData): Promise<ApiResponse<T>> {
+    const url = `${this.baseUrl}${endpoint}`;
+    const token = this.getToken();
+
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const config: RequestInit = {
+      method: "POST",
+      body: formData,
+      headers,
+      credentials: "include",
+    };
+
+    const response = await fetch(url, config);
+    const data: ApiResponse<T> = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || `Upload failed with status ${response.status}`);
+    }
+
+    return data;
+  }
+
   saveAuth(token: string) {
     this.setToken(token);
   }

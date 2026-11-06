@@ -192,3 +192,43 @@ export async function updateLegalDocStatus(req: Request, res: Response): Promise
 
   return sendSuccess(res, doc, 'Legal document review status updated');
 }
+
+// Upload endpoint for SOP PDFs and Legal Documents
+export async function uploadDocumentFile(req: Request, res: Response): Promise<any> {
+  if (!req.file) {
+    return sendError(res, 'No file was uploaded or file type is not supported.', 400);
+  }
+
+  const fileUrl = `/uploads/${req.file.filename}`;
+  const responseData = {
+    fileUrl,
+    fileName: req.file.originalname,
+    fileSizeBytes: req.file.size,
+    mimeType: req.file.mimetype,
+    storageKey: req.file.filename,
+  };
+
+  return sendSuccess(res, responseData, 'File uploaded successfully', 201);
+}
+
+// Investor FDD Facility: Get all available FDD disclosure packages
+export async function getInvestorFddPackages(req: Request, res: Response): Promise<any> {
+  const { businessId, jurisdiction } = req.query;
+
+  const filter: any = {
+    status: { $in: ['approved', 'legal_review'] },
+  };
+
+  if (businessId) {
+    filter.business = businessId;
+  }
+  if (jurisdiction) {
+    filter.jurisdiction = jurisdiction;
+  }
+
+  const legalDocs = await LegalDocument.find(filter)
+    .populate('business', 'businessName slug category headquarters logoUrl estimatedInvestmentMin estimatedInvestmentMax')
+    .sort({ fddItemNumber: 1, createdAt: -1 });
+
+  return sendSuccess(res, legalDocs, 'Investor FDD packages retrieved successfully');
+}

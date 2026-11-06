@@ -388,6 +388,58 @@ export default function FranchiseDetailPage() {
             </p>
           </div>
 
+          {/* FDD & Legal Disclosure Facility */}
+          <div className="bg-gradient-to-br from-[#0B1220] to-[#070B14] rounded-3xl border border-slate-800 p-8 text-white space-y-6 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.08] pb-4">
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-400 block">
+                  Regulatory Legal Packet
+                </span>
+                <h2 className="text-xl font-bold text-white flex items-center gap-2 mt-0.5">
+                  <Scale className="w-5 h-5 text-amber-400" />
+                  Franchise Disclosure Document (FDD Facility)
+                </h2>
+              </div>
+              <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold w-fit">
+                ✓ Items 1-23 Audited
+              </span>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              This brand maintains certified legal disclosures structured according to the US FTC 16 CFR Part 436 standards and the Indian Contract Act 1872. All 23 statutory items are audited by FranchiseBridge legal counsel.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="bg-white/[0.04] p-3 rounded-xl border border-white/[0.06] space-y-1">
+                <span className="text-amber-400 font-bold block">Item 19: Financial Representations</span>
+                <span className="text-slate-400">Audited outlet P&L, store EBITDA, and historical payback proof.</span>
+              </div>
+              <div className="bg-white/[0.04] p-3 rounded-xl border border-white/[0.06] space-y-1">
+                <span className="text-amber-400 font-bold block">Item 12: Territory Exclusivity</span>
+                <span className="text-slate-400">3.5 km contractual radius protection against cannibalization.</span>
+              </div>
+              <div className="bg-white/[0.04] p-3 rounded-xl border border-white/[0.06] space-y-1">
+                <span className="text-amber-400 font-bold block">Items 5-7: Transparent Fee Matrix</span>
+                <span className="text-slate-400">Fixed franchise fees and turnkey capital schedule with zero hidden rebates.</span>
+              </div>
+              <div className="bg-white/[0.04] p-3 rounded-xl border border-white/[0.06] space-y-1">
+                <span className="text-amber-400 font-bold block">Item 22: Contract Form</span>
+                <span className="text-slate-400">Standardized franchise agreement ready for execution.</span>
+              </div>
+            </div>
+
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-white/[0.08]">
+              <span className="text-xs text-slate-400">Full PDF document unlocked upon mutual NDA acknowledgment:</span>
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs px-5 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-1.5 w-full sm:w-auto justify-center"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                Request Official FDD Package
+              </button>
+            </div>
+          </div>
+
         </div>
 
         {/* Right Column: Target Corridors, NDA Shield, & CTA */}

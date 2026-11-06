@@ -18,6 +18,8 @@ export const createSopDocumentSchema = z.object({
   contentMarkdown: z.string().optional(),
   fileUrl: z.string().optional(),
   fileName: z.string().optional(),
+  fileSizeBytes: z.number().optional(),
+  mimeType: z.string().optional(),
   checklists: z
     .array(
       z.object({

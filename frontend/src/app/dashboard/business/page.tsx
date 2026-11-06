@@ -18,6 +18,9 @@ import {
   Sparkles,
   ChevronRight,
   ShieldCheck,
+  Upload,
+  ExternalLink,
+  Download,
 } from "lucide-react";
 import { useAuth } from "@/providers/AuthProvider";
 import { api } from "@/lib/api";
@@ -37,8 +40,10 @@ export default function BusinessDashboardPage() {
   const [meetings, setMeetings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // New SOP Modal state
+  // New SOP Modal state & PDF file upload
   const [isSopModalOpen, setIsSopModalOpen] = useState(false);
+  const [selectedPdf, setSelectedPdf] = useState<File | null>(null);
+  const [isUploadingSop, setIsUploadingSop] = useState(false);
   const [sopForm, setSopForm] = useState({
     title: "",
     category: "daily_operations",
@@ -143,24 +148,48 @@ export default function BusinessDashboardPage() {
       return;
     }
 
-    const checklists = [
-      { item: sopForm.checklist1, isMandatory: true, completed: true },
-      { item: sopForm.checklist2, isMandatory: true, completed: true },
-      { item: sopForm.checklist3, isMandatory: false, completed: false },
-    ].filter((c) => c.item.trim() !== "");
-
+    setIsUploadingSop(true);
     try {
+      let fileUrl = "";
+      let fileName = "";
+      let fileSizeBytes = 0;
+      let mimeType = "application/pdf";
+
+      // 1. Upload PDF file if selected
+      if (selectedPdf) {
+        const formData = new FormData();
+        formData.append("file", selectedPdf);
+        const uploadRes = await api.upload<any>("/documents/upload", formData);
+        if (uploadRes.success && uploadRes.data) {
+          fileUrl = uploadRes.data.fileUrl;
+          fileName = uploadRes.data.fileName;
+          fileSizeBytes = uploadRes.data.fileSizeBytes;
+          mimeType = uploadRes.data.mimeType;
+        }
+      }
+
+      const checklists = [
+        { item: sopForm.checklist1, isMandatory: true, completed: true },
+        { item: sopForm.checklist2, isMandatory: true, completed: true },
+        { item: sopForm.checklist3, isMandatory: false, completed: false },
+      ].filter((c) => c.item.trim() !== "");
+
       const res = await api.post("/documents/sop", {
         businessId: businessData._id,
         title: sopForm.title,
         category: sopForm.category,
         summary: sopForm.summary,
         checklists,
+        fileUrl: fileUrl || undefined,
+        fileName: fileName || undefined,
+        fileSizeBytes: fileSizeBytes || undefined,
+        mimeType: mimeType || undefined,
       });
 
       if (res.success && res.data) {
         setSops([res.data, ...sops]);
         setIsSopModalOpen(false);
+        setSelectedPdf(null);
         setSopForm({
           title: "",
           category: "daily_operations",
@@ -169,9 +198,12 @@ export default function BusinessDashboardPage() {
           checklist2: "",
           checklist3: "",
         });
+        alert("SOP document and PDF uploaded successfully!");
       }
     } catch (err: any) {
       alert(err.message || "Failed to save SOP");
+    } finally {
+      setIsUploadingSop(false);
     }
   };
 
@@ -570,6 +602,31 @@ export default function BusinessDashboardPage() {
                   </div>
                 )}
 
+                {sop.fileUrl && (
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-rose-500 shrink-0" />
+                      <div>
+                        <span className="text-xs font-bold text-slate-800 block truncate max-w-[170px]">
+                          {sop.fileName || "SOP_Procedure_Manual.pdf"}
+                        </span>
+                        <span className="text-[10px] text-slate-400">
+                          {sop.fileSizeBytes ? `${(sop.fileSizeBytes / 1024).toFixed(0)} KB` : "PDF Document"}
+                        </span>
+                      </div>
+                    </div>
+                    <a
+                      href={`http://localhost:5000${sop.fileUrl}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-xs transition-colors"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      View / Download PDF
+                    </a>
+                  </div>
+                )}
+
                 <div className="text-[11px] text-slate-400 pt-2 flex justify-between border-t border-slate-100">
                   <span>Version {sop.version}.0</span>
                   <span>Jurisdiction: {sop.jurisdiction}</span>
@@ -819,19 +876,66 @@ export default function BusinessDashboardPage() {
                 />
               </div>
 
-              <div className="pt-2 flex justify-end gap-2">
+              {/* Upload PDF Section */}
+              <div className="pt-2">
+                <label className="block text-slate-700 font-bold mb-1">
+                  Upload SOP Manual (PDF Document)
+                </label>
+                <div className="border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-xl p-4 text-center cursor-pointer transition-colors bg-slate-50/80">
+                  <input
+                    type="file"
+                    id="sopPdfInput"
+                    accept=".pdf,.doc,.docx"
+                    onChange={(e) => setSelectedPdf(e.target.files?.[0] || null)}
+                    className="hidden"
+                  />
+                  <label htmlFor="sopPdfInput" className="cursor-pointer block space-y-1.5">
+                    <Upload className="w-6 h-6 text-slate-400 mx-auto" />
+                    {selectedPdf ? (
+                      <div>
+                        <span className="font-bold text-emerald-600 text-xs block">{selectedPdf.name}</span>
+                        <span className="text-[10px] text-slate-400">
+                          ({(selectedPdf.size / 1024).toFixed(1)} KB) • Click to change document
+                        </span>
+                      </div>
+                    ) : (
+                      <div>
+                        <span className="text-xs font-bold text-blue-600 hover:underline">
+                          Click to select PDF Manual from computer
+                        </span>
+                        <span className="text-[10px] text-slate-400 block mt-0.5">
+                          Standard operating procedure manuals (.PDF, .DOC, .DOCX up to 25MB)
+                        </span>
+                      </div>
+                    )}
+                  </label>
+                </div>
+              </div>
+
+              <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setIsSopModalOpen(false)}
+                  onClick={() => {
+                    setIsSopModalOpen(false);
+                    setSelectedPdf(null);
+                  }}
                   className="px-4 py-2 rounded-lg bg-slate-100 text-slate-600 font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                  disabled={isUploadingSop}
+                  className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-all disabled:opacity-50 flex items-center gap-1.5"
                 >
-                  Save SOP Manual
+                  {isUploadingSop ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Uploading PDF & Saving...
+                    </>
+                  ) : (
+                    "Save & Codify SOP Manual"
+                  )}
                 </button>
               </div>
             </form>

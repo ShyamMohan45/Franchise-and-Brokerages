@@ -16,6 +16,14 @@ import {
   Sparkles,
   ArrowRight,
   UserCheck,
+  Scale,
+  FileText,
+  Download,
+  ExternalLink,
+  Shield,
+  FileCheck,
+  BadgeCheck,
+  Lock,
 } from "lucide-react";
 import { useAuth } from "@/providers/AuthProvider";
 import { api } from "@/lib/api";
@@ -26,10 +34,12 @@ export default function InvestorDashboardPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<"recommendations" | "applications" | "saved" | "profile" | "meetings">("recommendations");
+  const [activeTab, setActiveTab] = useState<"recommendations" | "applications" | "fdd_facility" | "saved" | "profile" | "meetings">("recommendations");
   const [profile, setProfile] = useState<any | null>(null);
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [applications, setApplications] = useState<any[]>([]);
+  const [fddPackages, setFddPackages] = useState<any[]>([]);
+  const [selectedJurisdiction, setSelectedJurisdiction] = useState<string>("ALL");
   const [savedFranchises, setSavedFranchises] = useState<any[]>([]);
   const [meetings, setMeetings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,10 +67,11 @@ export default function InvestorDashboardPage() {
     async function loadData() {
       try {
         setLoading(true);
-        const [profRes, recRes, appRes, savedRes, meetRes] = await Promise.all([
+        const [profRes, recRes, appRes, fddRes, savedRes, meetRes] = await Promise.all([
           api.get<any>("/investors/profile"),
           api.get<any[]>("/investors/recommendations"),
           api.get<any[]>("/applications/my"),
+          api.get<any[]>("/documents/fdd-packages"),
           api.get<any[]>("/franchises/saved"),
           api.get<any[]>("/meetings/my"),
         ]);
@@ -81,6 +92,7 @@ export default function InvestorDashboardPage() {
         }
         if (recRes.success && recRes.data) setRecommendations(recRes.data);
         if (appRes.success && appRes.data) setApplications(appRes.data);
+        if (fddRes.success && fddRes.data) setFddPackages(fddRes.data);
         if (savedRes.success && savedRes.data) setSavedFranchises(savedRes.data);
         if (meetRes.success && meetRes.data) setMeetings(meetRes.data);
       } catch (err) {
@@ -168,6 +180,7 @@ export default function InvestorDashboardPage() {
         {[
           { id: "recommendations", label: `Recommended Matches (${recommendations.length})`, icon: Sparkles },
           { id: "applications", label: `My Applications (${applications.length})`, icon: Send },
+          { id: "fdd_facility", label: `FDD Legal Facility (${fddPackages.length})`, icon: Scale },
           { id: "saved", label: `Saved Portfolio (${savedFranchises.length})`, icon: Bookmark },
           { id: "profile", label: "Investment Criteria", icon: UserCheck },
           { id: "meetings", label: `Meetings (${meetings.length})`, icon: Calendar },
@@ -347,6 +360,159 @@ export default function InvestorDashboardPage() {
               ))
             )}
           </div>
+        </div>
+      )}
+
+      {/* TAB: FDD LEGAL DISCLOSURE FACILITY */}
+      {activeTab === "fdd_facility" && (
+        <div className="space-y-6">
+          {/* Header Banner */}
+          <div className="bg-gradient-to-r from-[#070B14] to-blue-950 p-6 sm:p-8 rounded-3xl border border-slate-800 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-2 max-w-2xl">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30 text-[11px] font-bold">
+                <Shield className="w-3.5 h-3.5 text-blue-400" />
+                Institutional Regulatory Compliance
+              </div>
+              <h2 className="text-2xl font-extrabold tracking-tight text-white">
+                Franchise Disclosure Document (FDD & FIM) Facility
+              </h2>
+              <p className="text-xs text-slate-300 leading-relaxed font-normal">
+                Access statutory US FTC 23-Item disclosure packages, audited Item 19 Financial Performance Representations (FPR),
+                territorial exclusivity covenants, and formal franchise agreements verified by platform legal counsel.
+              </p>
+            </div>
+
+            {/* Jurisdiction Filter */}
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              {["ALL", "GLOBAL", "US", "IN"].map((jur) => (
+                <button
+                  key={jur}
+                  onClick={() => setSelectedJurisdiction(jur)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                    selectedJurisdiction === jur
+                      ? "bg-amber-400 text-slate-950 border-amber-300 shadow-md"
+                      : "bg-white/10 text-slate-300 border-white/10 hover:bg-white/20"
+                  }`}
+                >
+                  {jur === "ALL" ? "All Standards" : jur === "US" ? "US FTC (23 Items)" : jur === "IN" ? "India FIM" : jur}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* FDD Documents Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {fddPackages
+              .filter((doc) => selectedJurisdiction === "ALL" || doc.jurisdiction === selectedJurisdiction)
+              .map((doc) => (
+                <div
+                  key={doc._id}
+                  className="bg-white rounded-3xl border border-slate-200/90 p-6 space-y-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                >
+                  <div className="space-y-4">
+                    {/* Brand & Document Type Header */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-100 shadow-sm overflow-hidden shrink-0">
+                          <img
+                            src={doc.business?.logoUrl || "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=200&auto=format&fit=crop&q=80"}
+                            alt={doc.business?.businessName}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <h4 className="text-base font-bold text-navy-900">{doc.business?.businessName}</h4>
+                            <BadgeCheck className="w-4 h-4 text-blue-500" />
+                          </div>
+                          <span className="text-xs text-amber-700 font-semibold">{doc.business?.category}</span>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md bg-blue-50 text-blue-800 border border-blue-200 block">
+                          {doc.jurisdiction === "US" ? "FTC 23 Items" : doc.jurisdiction === "IN" ? "India FIM" : "Global Master FDD"}
+                        </span>
+                        <span className="text-[10px] text-slate-400 mt-0.5 block">Version {doc.version}.0</span>
+                      </div>
+                    </div>
+
+                    {/* Document Title */}
+                    <div>
+                      <h5 className="text-sm font-bold text-navy-900 flex items-center gap-1.5">
+                        <FileText className="w-4 h-4 text-rose-500" />
+                        {doc.title}
+                      </h5>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Original Document: {doc.originalFileName || "franchise_disclosure_document.pdf"}
+                      </p>
+                    </div>
+
+                    {/* Statutory Disclosures Checked */}
+                    {doc.complianceChecklist?.length > 0 && (
+                      <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100 space-y-2 text-xs">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                          Verified Legal Covenants:
+                        </span>
+                        <div className="space-y-1.5">
+                          {doc.complianceChecklist.map((c: any, idx: number) => (
+                            <div key={idx} className="flex items-start gap-2 text-slate-700 text-xs">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                              <span>{c.clause}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Legal Review Notes */}
+                    {doc.legalReviewNotes && (
+                      <div className="bg-emerald-50/70 p-3 rounded-xl border border-emerald-200 text-xs text-emerald-800 flex items-start gap-2">
+                        <Shield className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <span>
+                          <strong>Legal Counsel Audit:</strong> {doc.legalReviewNotes}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions & Download */}
+                  <div className="pt-4 border-t border-slate-100 space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5 text-emerald-600 font-semibold text-[11px]">
+                        <Lock className="w-3.5 h-3.5" /> Mutual NDA On File
+                      </div>
+                      <Link
+                        href={`/franchises/${doc.business?.slug}`}
+                        className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                      >
+                        View Brand Dossier &rarr;
+                      </Link>
+                    </div>
+
+                    <a
+                      href={doc.storageKey?.startsWith("http") ? doc.storageKey : `http://localhost:5000${doc.storageKey}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs py-2.5 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+                    >
+                      <Download className="w-4 h-4" />
+                      Download Official FDD Document (PDF)
+                    </a>
+                  </div>
+                </div>
+              ))}
+          </div>
+
+          {fddPackages.length === 0 && (
+            <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center space-y-3">
+              <Scale className="w-10 h-10 text-slate-300 mx-auto" />
+              <h4 className="text-base font-bold text-navy-900">No FDD Packages Found</h4>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                No legal disclosure packets are currently published under the selected jurisdiction filter.
+              </p>
+            </div>
+          )}
         </div>
       )}
 
