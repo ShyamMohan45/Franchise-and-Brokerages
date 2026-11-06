@@ -5,15 +5,18 @@ import Link from "next/link";
 import { useAuth } from "@/providers/AuthProvider";
 import {
   Building2,
-  Briefcase,
   Search,
   Menu,
   X,
-  User,
   LogOut,
   ChevronDown,
-  ShieldCheck,
   TrendingUp,
+  Sparkles,
+  ArrowRight,
+  Shield,
+  FileCheck2,
+  Scale,
+  Users2,
 } from "lucide-react";
 
 export function Navbar() {
@@ -29,117 +32,151 @@ export function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-[#0B1220]/95 backdrop-blur-md border-b border-slate-800 text-white">
-      {/* Top Announcement Bar */}
-      <div className="bg-gradient-to-r from-blue-900 via-navy-900 to-amber-900/60 text-xs py-1.5 px-4 text-center font-medium border-b border-slate-800/80">
-        <span className="inline-flex items-center gap-1.5">
-          <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span>Spring 2026 Multi-Unit Franchise Cohort Now Open for Verified Investors & Brands</span>
-          <Link href="/franchises" className="underline font-semibold ml-2 text-amber-300 hover:text-amber-200">
-            Explore Opportunities &rarr;
+    <header className="sticky top-0 z-50 bg-[#070B14]/90 backdrop-blur-xl border-b border-white/[0.08] text-white">
+      {/* Top Ambient Announcement Bar */}
+      <div className="bg-gradient-to-r from-blue-950/90 via-[#0B1220] to-amber-950/70 border-b border-white/[0.06] text-[11px] py-1.5 px-4 text-center font-medium">
+        <div className="max-w-7xl mx-auto flex items-center justify-center gap-2">
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-semibold text-[10px] border border-emerald-500/20">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            2026 Cohort
+          </span>
+          <span className="text-slate-300">
+            Multi-Unit Franchise Investor Applications & Brand SOP Review Now Live
+          </span>
+          <Link
+            href="/franchises"
+            className="inline-flex items-center gap-1 font-semibold text-amber-400 hover:text-amber-300 ml-1 transition-colors"
+          >
+            Explore Portfolio <ArrowRight className="w-3 h-3" />
           </Link>
-        </span>
+        </div>
       </div>
 
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
         {/* Brand Logo */}
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-amber-500 p-0.5 shadow-lg group-hover:scale-105 transition-transform">
-            <div className="w-full h-full bg-[#0B1220] rounded-[10px] flex items-center justify-center">
-              <Building2 className="w-5 h-5 text-amber-400" />
+        <Link href="/" className="flex items-center gap-3.5 group">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 via-blue-600 to-amber-400 p-[1.5px] shadow-[0_0_20px_rgba(37,99,235,0.3)] group-hover:shadow-[0_0_25px_rgba(212,175,55,0.4)] transition-all">
+            <div className="w-full h-full bg-[#070B14] rounded-[10px] flex items-center justify-center">
+              <Building2 className="w-5 h-5 text-amber-400 group-hover:scale-110 transition-transform" />
             </div>
           </div>
-          <div>
-            <span className="text-xl font-bold tracking-tight text-white flex items-center gap-1">
-              Franchise<span className="text-amber-400">Bridge</span>
+          <div className="flex flex-col">
+            <span className="text-xl font-extrabold tracking-tight text-white flex items-center gap-0.5">
+              Franchise<span className="gold-gradient-text">Bridge</span>
             </span>
-            <span className="block text-[10px] uppercase tracking-widest text-slate-400 font-medium">
+            <span className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold -mt-0.5">
               Development & Brokerage
             </span>
           </div>
         </Link>
 
-        {/* Desktop Navigation Links */}
-        <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
-          <Link href="/franchises" className="hover:text-amber-400 transition-colors flex items-center gap-1.5">
-            <Search className="w-4 h-4 text-blue-400" />
+        {/* Desktop Navigation */}
+        <div className="hidden lg:flex items-center gap-8 text-[13px] font-semibold text-slate-300">
+          <Link
+            href="/franchises"
+            className="hover:text-white transition-colors flex items-center gap-1.5 py-1 px-2.5 rounded-lg hover:bg-white/[0.04]"
+          >
+            <Search className="w-3.5 h-3.5 text-blue-400" />
             Marketplace
           </Link>
 
-          {/* Services Dropdown */}
+          {/* Services Mega Dropdown */}
           <div
             className="relative"
             onMouseEnter={() => setServicesOpen(true)}
             onMouseLeave={() => setServicesOpen(false)}
           >
-            <button className="flex items-center gap-1 hover:text-amber-400 transition-colors py-2">
-              Services
-              <ChevronDown className="w-4 h-4" />
+            <button className="flex items-center gap-1 hover:text-white transition-colors py-2 px-2.5 rounded-lg hover:bg-white/[0.04]">
+              Solutions
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${servicesOpen ? "rotate-180" : ""}`} />
             </button>
 
             {servicesOpen && (
-              <div className="absolute top-full left-0 w-64 bg-[#0B1220] border border-slate-800 rounded-xl shadow-2xl p-2 py-3 space-y-1">
+              <div className="absolute top-full left-0 w-80 bg-[#0B1220]/95 backdrop-blur-2xl border border-white/[0.1] rounded-2xl shadow-2xl p-3 space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
                 <Link
                   href="/services/franchise-development"
-                  className="block px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800/80 hover:text-white"
+                  className="flex items-start gap-3 p-2.5 rounded-xl text-slate-300 hover:bg-white/[0.06] hover:text-white transition-all group"
                 >
-                  <div className="font-semibold text-white">Franchise Development</div>
-                  <div className="text-xs text-slate-400">Readiness & brand packaging</div>
+                  <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400 group-hover:bg-blue-500/20">
+                    <TrendingUp className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-white text-xs">Franchise Readiness</div>
+                    <div className="text-[11px] text-slate-400 mt-0.5">8-Pillar diagnostic & economic packaging</div>
+                  </div>
                 </Link>
+
                 <Link
                   href="/services/sop-development"
-                  className="block px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800/80 hover:text-white"
+                  className="flex items-start gap-3 p-2.5 rounded-xl text-slate-300 hover:bg-white/[0.06] hover:text-white transition-all group"
                 >
-                  <div className="font-semibold text-white">SOP Codification</div>
-                  <div className="text-xs text-slate-400">Standard operating procedures</div>
+                  <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400 group-hover:bg-amber-500/20">
+                    <FileCheck2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-white text-xs">SOP Codification</div>
+                    <div className="text-[11px] text-slate-400 mt-0.5">Operational manuals & quality checklists</div>
+                  </div>
                 </Link>
+
                 <Link
                   href="/services/legal-documentation"
-                  className="block px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800/80 hover:text-white"
+                  className="flex items-start gap-3 p-2.5 rounded-xl text-slate-300 hover:bg-white/[0.06] hover:text-white transition-all group"
                 >
-                  <div className="font-semibold text-white">FDD & Legal Structuring</div>
-                  <div className="text-xs text-slate-400">Disclosure & franchise agreements</div>
+                  <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 group-hover:bg-indigo-500/20">
+                    <Scale className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-white text-xs">FDD & Legal Structuring</div>
+                    <div className="text-[11px] text-slate-400 mt-0.5">FTC 23-Item disclosure & agreements</div>
+                  </div>
                 </Link>
+
                 <Link
                   href="/services/investor-recruitment"
-                  className="block px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800/80 hover:text-white"
+                  className="flex items-start gap-3 p-2.5 rounded-xl text-slate-300 hover:bg-white/[0.06] hover:text-white transition-all group"
                 >
-                  <div className="font-semibold text-white">Investor Recruitment</div>
-                  <div className="text-xs text-slate-400">Multi-unit operator matching</div>
+                  <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500/20">
+                    <Users2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-white text-xs">Investor Recruitment</div>
+                    <div className="text-[11px] text-slate-400 mt-0.5">Multi-unit operator matching & CRM</div>
+                  </div>
                 </Link>
               </div>
             )}
           </div>
 
-          <Link href="/for-businesses" className="hover:text-amber-400 transition-colors">
+          <Link href="/for-businesses" className="hover:text-white transition-colors py-1 px-2.5 rounded-lg hover:bg-white/[0.04]">
             For Businesses
           </Link>
-          <Link href="/for-investors" className="hover:text-amber-400 transition-colors">
+          <Link href="/for-investors" className="hover:text-white transition-colors py-1 px-2.5 rounded-lg hover:bg-white/[0.04]">
             For Investors
           </Link>
-          <Link href="/how-it-works" className="hover:text-amber-400 transition-colors">
-            How It Works
+          <Link href="/how-it-works" className="hover:text-white transition-colors py-1 px-2.5 rounded-lg hover:bg-white/[0.04]">
+            Methodology
           </Link>
-          <Link href="/blog" className="hover:text-amber-400 transition-colors">
+          <Link href="/blog" className="hover:text-white transition-colors py-1 px-2.5 rounded-lg hover:bg-white/[0.04]">
             Insights
           </Link>
         </div>
 
-        {/* Right CTA / Auth Buttons */}
-        <div className="hidden md:flex items-center gap-4">
+        {/* User CTA Actions */}
+        <div className="hidden lg:flex items-center gap-3">
           {user ? (
             <div className="flex items-center gap-3">
               <Link
                 href={getDashboardUrl()}
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-md transition-all"
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-[0_4px_14px_rgba(37,99,235,0.3)] transition-all hover:scale-[1.02]"
               >
-                <TrendingUp className="w-4 h-4 text-amber-300" />
-                Dashboard
+                <TrendingUp className="w-3.5 h-3.5 text-amber-300" />
+                Go to Dashboard
               </Link>
               <button
                 onClick={() => logout()}
-                title="Logout"
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                title="Log out"
+                className="p-2 text-slate-400 hover:text-white hover:bg-white/[0.08] rounded-xl transition-colors"
               >
                 <LogOut className="w-4 h-4" />
               </button>
@@ -148,109 +185,100 @@ export function Navbar() {
             <div className="flex items-center gap-3">
               <Link
                 href="/login"
-                className="text-sm font-semibold text-slate-300 hover:text-white px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors"
+                className="text-xs font-bold text-slate-300 hover:text-white px-3.5 py-2 rounded-xl hover:bg-white/[0.06] transition-colors"
               >
-                Log In
+                Sign In
               </Link>
               <Link
                 href="/register"
-                className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold px-4 py-2 rounded-lg text-sm shadow-md transition-all hover:scale-105"
+                className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-slate-950 font-extrabold px-4.5 py-2 rounded-xl text-xs shadow-[0_4px_16px_rgba(212,175,55,0.25)] transition-all hover:scale-[1.03]"
               >
+                <Sparkles className="w-3.5 h-3.5 text-slate-950" />
                 Get Started
               </Link>
             </div>
           )}
         </div>
 
-        {/* Mobile menu button */}
-        <div className="md:hidden flex items-center">
+        {/* Mobile menu toggle */}
+        <div className="lg:hidden flex items-center">
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 text-slate-400 hover:text-white focus:outline-none"
+            className="p-2 text-slate-300 hover:text-white"
           >
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
       </nav>
 
-      {/* Mobile Menu */}
+      {/* Mobile dropdown */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-[#0B1220] border-b border-slate-800 px-4 pt-2 pb-6 space-y-3">
+        <div className="lg:hidden bg-[#070B14] border-b border-white/[0.1] px-5 py-6 space-y-3.5">
           <Link
             href="/franchises"
             onClick={() => setMobileMenuOpen(false)}
-            className="block py-2 text-slate-200 hover:text-amber-400 font-medium"
+            className="block text-sm font-semibold text-slate-200 hover:text-amber-400"
           >
             Franchise Marketplace
           </Link>
           <Link
             href="/services"
             onClick={() => setMobileMenuOpen(false)}
-            className="block py-2 text-slate-200 hover:text-amber-400 font-medium"
+            className="block text-sm font-semibold text-slate-200 hover:text-amber-400"
           >
-            Services & Solutions
+            Solutions & Services
           </Link>
           <Link
             href="/for-businesses"
             onClick={() => setMobileMenuOpen(false)}
-            className="block py-2 text-slate-200 hover:text-amber-400 font-medium"
+            className="block text-sm font-semibold text-slate-200 hover:text-amber-400"
           >
             For Business Owners
           </Link>
           <Link
             href="/for-investors"
             onClick={() => setMobileMenuOpen(false)}
-            className="block py-2 text-slate-200 hover:text-amber-400 font-medium"
+            className="block text-sm font-semibold text-slate-200 hover:text-amber-400"
           >
-            For Investors
+            For Franchise Investors
           </Link>
           <Link
             href="/how-it-works"
             onClick={() => setMobileMenuOpen(false)}
-            className="block py-2 text-slate-200 hover:text-amber-400 font-medium"
+            className="block text-sm font-semibold text-slate-200 hover:text-amber-400"
           >
             How It Works
           </Link>
           <Link
             href="/blog"
             onClick={() => setMobileMenuOpen(false)}
-            className="block py-2 text-slate-200 hover:text-amber-400 font-medium"
+            className="block text-sm font-semibold text-slate-200 hover:text-amber-400"
           >
             Insights & Guides
           </Link>
-          <div className="pt-4 border-t border-slate-800 space-y-2">
+
+          <div className="pt-4 border-t border-white/[0.08] space-y-2.5">
             {user ? (
-              <>
-                <Link
-                  href={getDashboardUrl()}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block w-full text-center bg-blue-600 text-white py-2.5 rounded-lg font-semibold"
-                >
-                  My Dashboard
-                </Link>
-                <button
-                  onClick={() => {
-                    logout();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="block w-full text-center bg-slate-800 text-slate-300 py-2.5 rounded-lg font-semibold"
-                >
-                  Sign Out
-                </button>
-              </>
+              <Link
+                href={getDashboardUrl()}
+                onClick={() => setMobileMenuOpen(false)}
+                className="block text-center bg-blue-600 text-white py-2.5 rounded-xl font-bold text-xs"
+              >
+                Go to Dashboard
+              </Link>
             ) : (
               <div className="grid grid-cols-2 gap-2">
                 <Link
                   href="/login"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="text-center bg-slate-800 text-white py-2.5 rounded-lg font-semibold"
+                  className="text-center bg-white/[0.08] text-white py-2.5 rounded-xl font-semibold text-xs"
                 >
-                  Log In
+                  Sign In
                 </Link>
                 <Link
                   href="/register"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="text-center bg-amber-500 text-slate-950 py-2.5 rounded-lg font-semibold"
+                  className="text-center bg-amber-400 text-slate-950 py-2.5 rounded-xl font-bold text-xs"
                 >
                   Get Started
                 </Link>
