@@ -8,7 +8,7 @@ export const createApplicationSchema = z.object({
   investmentBudget: z.number().min(1000, 'Investment budget is required'),
   availableLiquidCapital: z.number().min(0, 'Available liquid capital is required'),
   timeline: z.string().min(1, 'Expected timeline is required'),
-  businessBackgroundSummary: z.string().min(20, 'Background summary is required (min 20 chars)'),
+  businessBackgroundSummary: z.string().min(2, 'Background summary is required').default('Investor Profile'),
   additionalMessage: z.string().optional(),
   privacyConsentGiven: z.boolean().refine((val) => val === true, {
     message: 'You must consent to privacy terms to submit your application',

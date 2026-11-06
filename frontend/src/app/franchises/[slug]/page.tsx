@@ -450,15 +450,18 @@ export default function FranchiseDetailPage() {
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 font-medium mb-1">Business Experience & Background *</label>
+                  <label className="block text-slate-700 font-semibold mb-1">Business Experience & Background *</label>
                   <textarea
                     rows={3}
                     required
                     value={appForm.businessBackgroundSummary}
                     onChange={(e) => setAppForm({ ...appForm, businessBackgroundSummary: e.target.value })}
-                    placeholder="Briefly state your operating experience, past franchises, or real-estate access..."
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500"
+                    placeholder="Briefly state your operating experience, past franchises, or investment goals..."
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500 text-xs"
                   />
+                  <span className="text-[10px] text-slate-400 mt-0.5 block">
+                    Share a brief note about your business experience or background.
+                  </span>
                 </div>
 
                 <div className="flex items-start gap-2 pt-2">

@@ -13,7 +13,8 @@ export function validate(schema: AnyZodObject) {
           field: err.path.join('.'),
           message: err.message,
         }));
-        return sendError(res, 'Validation error', 422, formattedErrors);
+        const primaryMessage = error.errors[0]?.message || 'Validation error';
+        return sendError(res, primaryMessage, 422, formattedErrors);
       }
       return sendError(res, 'Invalid request payload', 400);
     }
