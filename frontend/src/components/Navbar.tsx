@@ -154,11 +154,17 @@ export function Navbar() {
           <Link href="/for-investors" className="hover:text-white transition-colors py-1 px-2.5 rounded-lg hover:bg-white/[0.04]">
             For Investors
           </Link>
-          <Link href="/how-it-works" className="hover:text-white transition-colors py-1 px-2.5 rounded-lg hover:bg-white/[0.04]">
-            Methodology
+          <Link href="/calculator" className="hover:text-white transition-colors py-1 px-2.5 rounded-lg hover:bg-white/[0.04] text-emerald-400">
+            Cost Calculator
           </Link>
-          <Link href="/blog" className="hover:text-white transition-colors py-1 px-2.5 rounded-lg hover:bg-white/[0.04]">
-            Insights
+          <Link href="/compare" className="hover:text-white transition-colors py-1 px-2.5 rounded-lg hover:bg-white/[0.04]">
+            Compare
+          </Link>
+          <Link href="/location-intelligence" className="hover:text-white transition-colors py-1 px-2.5 rounded-lg hover:bg-white/[0.04]">
+            Location Intel
+          </Link>
+          <Link href="/deal-room" className="hover:text-white transition-colors py-1 px-2.5 rounded-lg hover:bg-white/[0.04] text-purple-300">
+            Deal Rooms
           </Link>
         </div>
 
@@ -243,18 +249,32 @@ export function Navbar() {
             For Franchise Investors
           </Link>
           <Link
-            href="/how-it-works"
+            href="/calculator"
             onClick={() => setMobileMenuOpen(false)}
-            className="block text-sm font-semibold text-slate-200 hover:text-amber-400"
+            className="block text-sm font-semibold text-emerald-400 hover:text-emerald-300"
           >
-            How It Works
+            Cost Estimator Calculator
           </Link>
           <Link
-            href="/blog"
+            href="/compare"
             onClick={() => setMobileMenuOpen(false)}
             className="block text-sm font-semibold text-slate-200 hover:text-amber-400"
           >
-            Insights & Guides
+            Compare Franchises
+          </Link>
+          <Link
+            href="/location-intelligence"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block text-sm font-semibold text-slate-200 hover:text-amber-400"
+          >
+            Location Intelligence
+          </Link>
+          <Link
+            href="/deal-room"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block text-sm font-semibold text-purple-400 hover:text-purple-300"
+          >
+            Digital Deal Rooms
           </Link>
 
           <div className="pt-4 border-t border-white/[0.08] space-y-2.5">

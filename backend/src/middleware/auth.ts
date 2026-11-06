@@ -12,6 +12,10 @@ declare global {
   }
 }
 
+export type AuthRequest = Request;
+
+export const protect = requireAuth;
+
 export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<any> {
   try {
     let token: string | undefined;

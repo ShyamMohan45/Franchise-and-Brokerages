@@ -4,6 +4,7 @@ import { QueryProvider } from "@/providers/QueryProvider";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import AiChatbot from "@/components/AiChatbot";
 
 export const metadata: Metadata = {
   title: "FranchiseBridge | Franchise Development & Expansion Brokerage Platform",
@@ -24,6 +25,7 @@ export default function RootLayout({
             <Navbar />
             <main className="flex-1">{children}</main>
             <Footer />
+            <AiChatbot />
           </AuthProvider>
         </QueryProvider>
       </body>

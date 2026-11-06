@@ -8,6 +8,12 @@ import documentRoutes from './documentRoutes';
 import adminRoutes from './adminRoutes';
 import meetingRoutes from './meetingRoutes';
 import publicRoutes from './publicRoutes';
+import aiRoutes from './aiRoutes';
+import expansionRoutes from './expansionRoutes';
+import costEstimatorRoutes from './costEstimatorRoutes';
+import dueDiligenceRoutes from './dueDiligenceRoutes';
+import dealRoomRoutes from './dealRoomRoutes';
+import matchingRoutes from './matchingRoutes';
 
 const router = Router();
 
@@ -20,5 +26,11 @@ router.use('/documents', documentRoutes);
 router.use('/admin', adminRoutes);
 router.use('/meetings', meetingRoutes);
 router.use('/public', publicRoutes);
+router.use('/ai', aiRoutes);
+router.use('/expansion', expansionRoutes);
+router.use('/cost-estimator', costEstimatorRoutes);
+router.use('/due-diligence', dueDiligenceRoutes);
+router.use('/deal-rooms', dealRoomRoutes);
+router.use('/matching', matchingRoutes);
 
 export default router;

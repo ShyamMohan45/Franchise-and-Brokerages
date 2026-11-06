@@ -21,6 +21,10 @@ import {
   Upload,
   ExternalLink,
   Download,
+  Store,
+  Compass,
+  MapPin,
+  Check,
 } from "lucide-react";
 import { useAuth } from "@/providers/AuthProvider";
 import { api } from "@/lib/api";
@@ -31,13 +35,32 @@ export default function BusinessDashboardPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<"overview" | "readiness" | "sops" | "legal" | "applications" | "meetings">("overview");
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "readiness" | "outlets" | "roadmap" | "sops" | "legal" | "applications" | "meetings"
+  >("overview");
   const [businessData, setBusinessData] = useState<any | null>(null);
   const [assessment, setAssessment] = useState<any | null>(null);
   const [applications, setApplications] = useState<any[]>([]);
   const [sops, setSops] = useState<any[]>([]);
   const [legalDocs, setLegalDocs] = useState<any[]>([]);
   const [meetings, setMeetings] = useState<any[]>([]);
+  const [outlets, setOutlets] = useState<any[]>([]);
+  const [expansionPlan, setExpansionPlan] = useState<any | null>(null);
+  const [isAddOutletOpen, setIsAddOutletOpen] = useState(false);
+  const [newOutlet, setNewOutlet] = useState({
+    outletName: "",
+    unitCode: "",
+    storeType: "standard",
+    city: "",
+    state: "",
+    address: "",
+    sizeSqFt: 1200,
+    managerName: "",
+    managerPhone: "",
+    monthlyRevenue: 0,
+    status: "operating",
+    fitoutProgressPercent: 100,
+  });
   const [loading, setLoading] = useState(true);
 
   // New SOP Modal state & PDF file upload
@@ -80,12 +103,14 @@ export default function BusinessDashboardPage() {
     async function loadDashboardData() {
       try {
         setLoading(true);
-        const [bizRes, appRes, sopRes, legalRes, meetRes] = await Promise.all([
+        const [bizRes, appRes, sopRes, legalRes, meetRes, outletRes, planRes] = await Promise.all([
           api.get<{ business: any; assessment: any }>("/businesses/my"),
           api.get<any[]>("/applications/business"),
           api.get<any[]>("/documents/sop"),
           api.get<any[]>("/documents/legal"),
           api.get<any[]>("/meetings/my"),
+          api.get<any[]>("/expansion/outlets"),
+          api.get<any>("/expansion/plan"),
         ]);
 
         if (bizRes.success && bizRes.data) {
@@ -113,6 +138,8 @@ export default function BusinessDashboardPage() {
         if (sopRes.success && sopRes.data) setSops(sopRes.data);
         if (legalRes.success && legalRes.data) setLegalDocs(legalRes.data);
         if (meetRes.success && meetRes.data) setMeetings(meetRes.data);
+        if (outletRes.success && outletRes.data) setOutlets(outletRes.data);
+        if (planRes.success && planRes.data) setExpansionPlan(planRes.data);
       } catch (err) {
         console.error("Dashboard fetch error:", err);
       } finally {
@@ -240,6 +267,45 @@ export default function BusinessDashboardPage() {
     }
   };
 
+  const handleCreateOutlet = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await api.post<any>("/expansion/outlets", newOutlet);
+      if (res.success && res.data) {
+        setOutlets([res.data, ...outlets]);
+        setIsAddOutletOpen(false);
+        setNewOutlet({
+          outletName: "",
+          unitCode: "",
+          storeType: "standard",
+          city: "",
+          state: "",
+          address: "",
+          sizeSqFt: 1200,
+          managerName: "",
+          managerPhone: "",
+          monthlyRevenue: 0,
+          status: "operating",
+          fitoutProgressPercent: 100,
+        });
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to create outlet");
+    }
+  };
+
+  const handleToggleMilestone = async (stageKey: string, currentStatus: string) => {
+    const nextStatus = currentStatus === "completed" ? "in_progress" : "completed";
+    try {
+      const res = await api.put<any>("/expansion/milestone", { stageKey, status: nextStatus });
+      if (res.success && res.data) {
+        setExpansionPlan(res.data);
+      }
+    } catch (err: any) {
+      console.error("Failed to update milestone", err);
+    }
+  };
+
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-16 text-center space-y-3">
@@ -290,6 +356,8 @@ export default function BusinessDashboardPage() {
         {[
           { id: "overview", label: "Executive Overview", icon: TrendingUp },
           { id: "readiness", label: "Franchise Readiness Index", icon: Sparkles },
+          { id: "outlets", label: `Outlets (${outlets.length})`, icon: Store },
+          { id: "roadmap", label: "Expansion Roadmap", icon: Compass },
           { id: "sops", label: `SOP Manuals (${sops.length})`, icon: FileText },
           { id: "legal", label: `Legal FDD (${legalDocs.length})`, icon: Scale },
           { id: "applications", label: `Investor Enquiries (${applications.length})`, icon: Users },
@@ -544,8 +612,391 @@ export default function BusinessDashboardPage() {
                 {assessment?.summaryRecommendation ||
                   "Your business demonstrates strong unit economics, high brand equity, and repeatable operational systems. Approved for multi-unit franchisee investor recruitment."}
               </p>
-              <div className="text-[11px] text-slate-500 italic pt-2">
-                Notice: {assessment?.disclaimerNotice}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: MULTI-LOCATION OUTLETS MANAGEMENT */}
+      {activeTab === "outlets" && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-bold text-navy-900">Multi-Location Outlets Directory</h3>
+              <p className="text-xs text-slate-500">
+                Track live store operations, regional store managers, fitout milestones, and unit-level revenues.
+              </p>
+            </div>
+            <button
+              onClick={() => setIsAddOutletOpen(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow transition flex items-center gap-1.5 self-start sm:self-auto"
+            >
+              <Plus className="w-4 h-4" /> Add New Outlet
+            </button>
+          </div>
+
+          {/* Outlets Grid */}
+          {outlets.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-400">
+              No outlets registered yet. Click &quot;Add New Outlet&quot; to register your first unit.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {outlets.map((outlet) => (
+                <div
+                  key={outlet._id}
+                  className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4 shadow-sm hover:shadow-md transition flex flex-col justify-between"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                        {outlet.unitCode}
+                      </span>
+                      <span
+                        className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                          outlet.status === "operating"
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            : "bg-amber-50 text-amber-700 border border-amber-200"
+                        }`}
+                      >
+                        {outlet.status.replace("_", " ")}
+                      </span>
+                    </div>
+
+                    <div>
+                      <h4 className="font-bold text-navy-900 text-base">{outlet.outletName}</h4>
+                      <div className="flex items-center gap-1 text-xs text-slate-500 mt-1">
+                        <MapPin className="w-3.5 h-3.5 text-blue-500" />
+                        <span>{outlet.city}, {outlet.state}</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">{outlet.address}</p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">Carpet Area</span>
+                        <span className="font-semibold text-slate-700">{outlet.sizeSqFt} sq.ft</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">Unit Type</span>
+                        <span className="font-semibold text-slate-700 capitalize">{outlet.storeType}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">Manager</span>
+                        <span className="font-semibold text-slate-700 truncate block">{outlet.managerName || "Assigned"}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">Monthly Run Rate</span>
+                        <span className="font-semibold text-emerald-600 font-mono">
+                          {outlet.monthlyRevenue > 0 ? formatCurrency(outlet.monthlyRevenue) : "Pre-Launch"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {outlet.status !== "operating" && (
+                      <div className="space-y-1 pt-1">
+                        <div className="flex justify-between text-[11px] text-slate-500 font-medium">
+                          <span>Fitout Completion</span>
+                          <span>{outlet.fitoutProgressPercent || 60}%</span>
+                        </div>
+                        <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                          <div
+                            className="bg-amber-500 h-full rounded-full"
+                            style={{ width: `${outlet.fitoutProgressPercent || 60}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add Outlet Modal */}
+          {isAddOutletOpen && (
+            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-5 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <h3 className="font-bold text-lg text-navy-900">Add New Franchise Outlet</h3>
+                  <button
+                    onClick={() => setIsAddOutletOpen(false)}
+                    className="text-slate-400 hover:text-slate-600 text-sm font-bold"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <form onSubmit={handleCreateOutlet} className="space-y-3.5 text-xs">
+                  <div>
+                    <label className="block text-slate-700 font-medium mb-1">Outlet Display Name *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g., RoastCraft - Koramangala Hub"
+                      value={newOutlet.outletName}
+                      onChange={(e) => setNewOutlet({ ...newOutlet, outletName: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-xl"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-700 font-medium mb-1">Unit Code *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g., KOR-004"
+                        value={newOutlet.unitCode}
+                        onChange={(e) => setNewOutlet({ ...newOutlet, unitCode: e.target.value.toUpperCase() })}
+                        className="w-full px-3 py-2 border rounded-xl uppercase font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 font-medium mb-1">Store Format</label>
+                      <select
+                        value={newOutlet.storeType}
+                        onChange={(e) => setNewOutlet({ ...newOutlet, storeType: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-xl"
+                      >
+                        <option value="standard">Standard Inline</option>
+                        <option value="flagship">Flagship Lounge</option>
+                        <option value="kiosk">Express Kiosk</option>
+                        <option value="cloud_kitchen">Cloud Kitchen</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-700 font-medium mb-1">City *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Bangalore"
+                        value={newOutlet.city}
+                        onChange={(e) => setNewOutlet({ ...newOutlet, city: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-xl"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 font-medium mb-1">State *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Karnataka"
+                        value={newOutlet.state}
+                        onChange={(e) => setNewOutlet({ ...newOutlet, state: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-xl"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 font-medium mb-1">Street Address *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="100ft Road, 4th Block"
+                      value={newOutlet.address}
+                      onChange={(e) => setNewOutlet({ ...newOutlet, address: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-xl"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-700 font-medium mb-1">Carpet Area (Sq.Ft) *</label>
+                      <input
+                        type="number"
+                        required
+                        min={100}
+                        value={newOutlet.sizeSqFt}
+                        onChange={(e) => setNewOutlet({ ...newOutlet, sizeSqFt: Number(e.target.value) })}
+                        className="w-full px-3 py-2 border rounded-xl"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 font-medium mb-1">Status</label>
+                      <select
+                        value={newOutlet.status}
+                        onChange={(e) => setNewOutlet({ ...newOutlet, status: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-xl"
+                      >
+                        <option value="operating">Operating</option>
+                        <option value="under_fitout">Under Fitout</option>
+                        <option value="permitting">Permitting</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-700 font-medium mb-1">Store Manager Name</label>
+                      <input
+                        type="text"
+                        placeholder="Rahul Verma"
+                        value={newOutlet.managerName}
+                        onChange={(e) => setNewOutlet({ ...newOutlet, managerName: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-xl"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 font-medium mb-1">Manager Phone</label>
+                      <input
+                        type="text"
+                        placeholder="+91 98765 43210"
+                        value={newOutlet.managerPhone}
+                        onChange={(e) => setNewOutlet({ ...newOutlet, managerPhone: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-xl"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddOutletOpen(false)}
+                      className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 font-semibold"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold transition"
+                    >
+                      Save Outlet
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB: FRANCHISE EXPANSION ROADMAP */}
+      {activeTab === "roadmap" && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-6">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-blue-600">
+                  National Rollout Roadmap
+                </span>
+                <h2 className="text-2xl font-bold text-navy-900 mt-1">
+                  {expansionPlan?.planName || "National Franchise Expansion Plan"}
+                </h2>
+                <p className="text-xs text-slate-500 mt-1">
+                  Target: {expansionPlan?.targetTotalOutlets || 25} total units across Tier 1 & 2 clusters.
+                </p>
+              </div>
+              <div className="text-right">
+                <span className="text-xs text-slate-400 block font-medium">Overall Rollout Progress</span>
+                <div className="text-3xl font-extrabold text-blue-600 font-mono">
+                  {expansionPlan?.overallProgressPercent || 38}%
+                </div>
+              </div>
+            </div>
+
+            {/* 8 Milestone Stages Cards */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                8-Stage Franchise Rollout Milestones
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {(expansionPlan?.milestones || []).map((m: any, idx: number) => (
+                  <div
+                    key={idx}
+                    className={`p-4 rounded-2xl border transition flex items-start justify-between gap-3 ${
+                      m.status === "completed"
+                        ? "bg-emerald-50/60 border-emerald-200"
+                        : "bg-slate-50 border-slate-200"
+                    }`}
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                            m.status === "completed"
+                              ? "bg-emerald-600 text-white"
+                              : "bg-slate-300 text-slate-700"
+                          }`}
+                        >
+                          {m.status === "completed" ? "✓" : idx + 1}
+                        </span>
+                        <h4 className="font-bold text-navy-900 text-xs sm:text-sm">{m.title}</h4>
+                      </div>
+                      <p className="text-[11px] text-slate-500 pl-7">{m.description}</p>
+                      {m.deliverables && m.deliverables.length > 0 && (
+                        <div className="pl-7 pt-1 flex flex-wrap gap-1">
+                          {m.deliverables.map((d: string, dIdx: number) => (
+                            <span
+                              key={dIdx}
+                              className="text-[10px] px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-600 font-medium"
+                            >
+                              {d}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={() => handleToggleMilestone(m.stageKey, m.status)}
+                      className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border whitespace-nowrap transition ${
+                        m.status === "completed"
+                          ? "bg-emerald-600 text-white border-emerald-500"
+                          : "bg-white text-slate-600 border-slate-300 hover:bg-slate-100"
+                      }`}
+                    >
+                      {m.status === "completed" ? "Completed" : "Mark Done"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Target Cities Expansion Matrix */}
+            <div className="pt-4 border-t border-slate-100 space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Target Cities & Territory Priority Matrix
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-slate-400 uppercase font-semibold">
+                      <th className="py-2.5">City & State</th>
+                      <th className="py-2.5">Cluster Tier</th>
+                      <th className="py-2.5">Planned Units</th>
+                      <th className="py-2.5">Priority</th>
+                      <th className="py-2.5">Current Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {(expansionPlan?.targetCities || []).map((city: any, cIdx: number) => (
+                      <tr key={cIdx} className="hover:bg-slate-50 transition">
+                        <td className="py-2.5 font-bold text-navy-900">{city.cityName}, {city.state}</td>
+                        <td className="py-2.5">{city.tier}</td>
+                        <td className="py-2.5 font-mono">{city.plannedOutlets} Outlets</td>
+                        <td className="py-2.5">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              city.priority === "High"
+                                ? "bg-rose-100 text-rose-700"
+                                : "bg-blue-100 text-blue-700"
+                            }`}
+                          >
+                            {city.priority}
+                          </span>
+                        </td>
+                        <td className="py-2.5">
+                          <span className="font-semibold text-slate-700">{city.status}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
