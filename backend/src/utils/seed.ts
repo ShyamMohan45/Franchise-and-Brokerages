@@ -140,6 +140,27 @@ export async function runSeed() {
     emailVerified: true,
   });
 
+  // 4. Create Broker and Brand Owner Accounts
+  const brokerUser = await User.create({
+    email: 'broker@franchisebridge.com',
+    passwordHash: defaultPasswordHash,
+    fullName: 'Marcus Vance',
+    phone: '+91 98765 88888',
+    role: 'broker',
+    status: 'active',
+    emailVerified: true,
+  });
+
+  const brandOwnerUser = await User.create({
+    email: 'brandowner@franchisebridge.com',
+    passwordHash: defaultPasswordHash,
+    fullName: 'Vikram Singhania',
+    phone: '+91 98765 99999',
+    role: 'brand_owner',
+    status: 'active',
+    emailVerified: true,
+  });
+
   // 4. Create Business Profiles
   const business1 = await BusinessProfile.create({
     user: owner1._id,

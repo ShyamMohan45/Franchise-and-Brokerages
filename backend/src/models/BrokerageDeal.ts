@@ -87,6 +87,7 @@ const brokerageDealSchema = new Schema<IBrokerageDeal>(
         'OPPORTUNITY_PRESENTED',
         'DUE_DILIGENCE',
         'NEGOTIATION',
+        'negotiation',
         'CLOSED_WON',
         'CLOSED_LOST',
         'lead_received',

@@ -9,7 +9,7 @@ export interface User {
   email: string;
   fullName: string;
   phone?: string;
-  role: "guest" | "business_owner" | "investor" | "admin" | "super_admin";
+  role: "guest" | "business_owner" | "brand_owner" | "investor" | "broker" | "admin" | "super_admin";
   status: string;
 }
 
@@ -65,6 +65,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         router.push("/dashboard/admin");
       } else if (res.data.user.role === "investor") {
         router.push("/dashboard/investor");
+      } else if (res.data.user.role === "broker") {
+        router.push("/dashboard/brokerage");
       } else {
         router.push("/dashboard/business");
       }

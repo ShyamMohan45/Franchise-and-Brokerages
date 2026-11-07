@@ -23,6 +23,7 @@ router.post('/refresh', refreshSession);
 router.get('/me', requireAuth, getMe);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
+router.get('/verify-email', verifyEmail);
 router.get('/verify-email/:token', verifyEmail);
 router.post('/change-password', requireAuth, changePassword);
 

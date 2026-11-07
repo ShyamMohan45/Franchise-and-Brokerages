@@ -308,7 +308,7 @@ export async function resetPassword(req: Request, res: Response): Promise<any> {
 }
 
 export async function verifyEmail(req: Request, res: Response): Promise<any> {
-  const { token } = req.params;
+  const token = req.params.token || (req.query.token as string);
   if (!token) {
     return sendError(res, 'Verification token is required', 400);
   }
