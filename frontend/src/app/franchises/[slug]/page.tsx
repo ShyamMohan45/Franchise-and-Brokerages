@@ -26,6 +26,10 @@ import {
   Percent,
   Check,
   Info,
+  Lock,
+  ArrowRight,
+  ChevronRight,
+  X,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
@@ -141,416 +145,404 @@ export default function FranchiseDetailPage() {
 
   if (loading) {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-24 text-center space-y-4">
-        <div className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm text-slate-500 font-medium">Loading verified franchise dossier...</p>
+      <div className="bg-[#F8FAFC] min-h-screen py-24 text-center space-y-4">
+        <div className="inline-block w-8 h-8 border-4 border-[#315EFB] border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm text-[#64748B] font-medium">Loading franchise profile & audit records...</p>
       </div>
     );
   }
 
   if (error || !listing) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-16 text-center space-y-4">
-        <AlertCircle className="w-12 h-12 text-rose-500 mx-auto" />
-        <h2 className="text-2xl font-bold text-navy-900">Franchise Opportunity Not Found</h2>
-        <p className="text-sm text-slate-600">The franchise you requested is either unlisted or unavailable.</p>
-        <Link href="/franchises" className="inline-block text-sm font-semibold text-blue-600 hover:underline">
-          &larr; Return to Franchise Marketplace
-        </Link>
+      <div className="bg-[#F8FAFC] min-h-screen py-20">
+        <div className="max-w-xl mx-auto px-4 surface-card p-10 text-center space-y-4">
+          <AlertCircle className="w-12 h-12 text-rose-500 mx-auto" />
+          <h2 className="text-2xl font-bold text-[#14243A]">Franchise Not Found</h2>
+          <p className="text-sm text-[#64748B]">
+            The franchise listing requested is unlisted or currently undergoing audit review.
+          </p>
+          <Link href="/franchises" className="btn-primary py-2.5 px-6 text-sm inline-flex">
+            Return to Marketplace
+          </Link>
+        </div>
       </div>
     );
   }
 
-  const galleryList = [
-    listing.bannerUrl,
-    ...(listing.galleryImages || []),
-  ].filter(Boolean);
+  const galleryList = [listing.bannerUrl, ...(listing.galleryImages || [])].filter(Boolean);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Navigation Breadcrumb */}
-      <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-        <Link href="/franchises" className="hover:text-blue-600 flex items-center gap-1">
-          <ArrowLeft className="w-3.5 h-3.5" />
-          Marketplace
-        </Link>
-        <span>/</span>
-        <span className="text-slate-400">{listing.industry}</span>
-        <span>/</span>
-        <span className="text-navy-900 font-bold">{listing.brandName}</span>
-      </div>
-
-      {/* Hero Showcase Banner */}
-      <div className="relative rounded-3xl overflow-hidden bg-slate-900 shadow-xl border border-slate-200/90">
-        <div className="relative h-72 sm:h-96 w-full">
-          <img
-            src={activePhoto || listing.bannerUrl || "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=1600&auto=format&fit=crop&q=80"}
-            alt={listing.brandName}
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/20" />
+    <div className="bg-[#F8FAFC] min-h-screen py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        {/* Breadcrumb Navigation */}
+        <div className="flex items-center gap-2 text-xs font-medium text-[#64748B]">
+          <Link href="/franchises" className="hover:text-[#315EFB] flex items-center gap-1 transition-colors">
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Marketplace
+          </Link>
+          <span>/</span>
+          <span className="text-[#64748B]">{listing.industry}</span>
+          <span>/</span>
+          <span className="text-[#14243A] font-semibold">{listing.brandName}</span>
         </div>
 
-        {/* Floating Brand Header */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-10 text-white flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div className="flex items-start gap-4 sm:gap-6">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white p-1 shadow-2xl overflow-hidden shrink-0 border border-white/20">
-              <img
-                src={listing.logoUrl || "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=200&auto=format&fit=crop&q=80"}
-                alt={listing.brandName}
-                className="w-full h-full object-cover rounded-xl"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-md bg-blue-500/80 backdrop-blur-md text-[11px] font-bold text-white">
-                  {listing.industry}
-                </span>
-                <StatusBadge status={listing.status} />
-                <span className="text-xs text-slate-300">
-                  Established {listing.business?.establishedYear || 2020}
-                </span>
-              </div>
-              <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white flex items-center gap-2">
-                {listing.brandName}
-                <BadgeCheck className="w-5 h-5 text-blue-400" />
-              </h1>
-              <p className="text-sm text-amber-300 font-semibold">{listing.tagline}</p>
-            </div>
-          </div>
+        {/* Hero Showcase Header Card */}
+        <div className="surface-card overflow-hidden">
+          <div className="relative h-64 sm:h-80 w-full bg-[#14243A]">
+            <img
+              src={
+                activePhoto ||
+                listing.bannerUrl ||
+                "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=1600&auto=format&fit=crop&q=80"
+              }
+              alt={listing.brandName}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#14243A]/90 via-[#14243A]/40 to-transparent" />
 
-          <div className="flex items-center gap-3 shrink-0">
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold px-6 py-3.5 rounded-xl shadow-lg transition-all text-xs sm:text-sm flex items-center gap-2"
-            >
-              <Send className="w-4 h-4" />
-              Apply for Franchise
-            </button>
-            <button
-              onClick={handleToggleSave}
-              className={`p-3.5 rounded-xl text-xs font-semibold flex items-center justify-center transition-colors border ${
-                isSaved
-                  ? "bg-amber-400 text-slate-950 border-amber-300"
-                  : "bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-md"
-              }`}
-              title="Save Opportunity"
-            >
-              <Bookmark className={`w-4 h-4 ${isSaved ? "fill-slate-950" : ""}`} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Gallery Thumbnails Strip */}
-      {galleryList.length > 1 && (
-        <div className="flex items-center gap-3 overflow-x-auto pb-2">
-          {galleryList.map((photo, idx) => (
-            <button
-              key={idx}
-              onClick={() => setActivePhoto(photo)}
-              className={`h-20 w-32 rounded-xl overflow-hidden shrink-0 border-2 transition-all ${
-                activePhoto === photo ? "border-blue-600 scale-105 shadow-md" : "border-transparent opacity-70 hover:opacity-100"
-              }`}
-            >
-              <img src={photo} alt="" className="w-full h-full object-cover" />
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Executive Financial Highlights Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm space-y-1">
-          <span className="text-[10px] uppercase font-bold text-slate-400">Total Investment</span>
-          <p className="text-base sm:text-lg font-black text-navy-900">
-            {formatCurrency(listing.totalInvestmentMin)} - {formatCurrency(listing.totalInvestmentMax)}
-          </p>
-          <span className="text-[11px] text-slate-500">Turnkey store setup</span>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm space-y-1">
-          <span className="text-[10px] uppercase font-bold text-slate-400">Initial Franchise Fee</span>
-          <p className="text-base sm:text-lg font-black text-navy-900">
-            {formatCurrency(listing.initialFranchiseFee)}
-          </p>
-          <span className="text-[11px] text-slate-500">Per outlet license</span>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm space-y-1">
-          <span className="text-[10px] uppercase font-bold text-slate-400">Ongoing Royalty</span>
-          <p className="text-base sm:text-lg font-black text-navy-900">
-            {listing.royaltyPercentage}%
-          </p>
-          <span className="text-[11px] text-slate-500">On monthly gross sales</span>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm space-y-1">
-          <span className="text-[10px] uppercase font-bold text-slate-400">Est. Payback (ROI)</span>
-          <p className="text-base sm:text-lg font-black text-emerald-600">
-            ~{listing.estimatedRoiMonths} Months
-          </p>
-          <span className="text-[11px] text-slate-500">Based on historical stores</span>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm space-y-1 col-span-2 sm:col-span-1">
-          <span className="text-[10px] uppercase font-bold text-slate-400">Model Format</span>
-          <p className="text-base sm:text-lg font-black text-navy-900 capitalize">
-            {listing.franchiseModelType?.replace("_", " ")}
-          </p>
-          <span className="text-[11px] text-slate-500">Single & Multi-Unit Area</span>
-        </div>
-      </div>
-
-      {/* Main Grid: Details & Specifications */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Left 2 Columns: Concept Story, Operations & Support */}
-        <div className="lg:col-span-2 space-y-8">
-          
-          {/* Brand Story & Concept */}
-          <div className="bg-white rounded-3xl border border-slate-200/90 p-8 space-y-4 shadow-sm">
-            <h2 className="text-xl font-bold text-navy-900 flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-blue-600" />
-              Brand Story & Core Concept
-            </h2>
-            <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">
-              {listing.brandStory}
-            </div>
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-xs text-slate-600 leading-relaxed mt-4">
-              <strong>Business Summary:</strong> {listing.summary}
-            </div>
-          </div>
-
-          {/* Infrastructure & Facility Specifications */}
-          <div className="bg-white rounded-3xl border border-slate-200/90 p-8 space-y-6 shadow-sm">
-            <h2 className="text-xl font-bold text-navy-900 flex items-center gap-2">
-              <Layers className="w-5 h-5 text-amber-600" />
-              Store Infrastructure & Operational Specs
-            </h2>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1">
-                <span className="text-slate-400 uppercase font-semibold text-[10px]">Commercial Floor Space</span>
-                <p className="font-extrabold text-navy-900 text-base">
-                  {listing.commercialSpaceMinSqFt} - {listing.commercialSpaceMaxSqFt} Sq Ft
-                </p>
-                <span className="text-slate-500">Prime high street or commercial mall</span>
-              </div>
-
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1">
-                <span className="text-slate-400 uppercase font-semibold text-[10px]">Store Headcount</span>
-                <p className="font-extrabold text-navy-900 text-base">
-                  {listing.staffRequiredMin} - {listing.staffRequiredMax} Employees per Outlet
-                </p>
-                <span className="text-slate-500">Certified through structured academy</span>
-              </div>
-
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1">
-                <span className="text-slate-400 uppercase font-semibold text-[10px]">Initial Training Duration</span>
-                <p className="font-extrabold text-navy-900 text-base">
-                  {listing.trainingDurationWeeks} Weeks
-                </p>
-                <span className="text-slate-500">Classroom + on-site outlet shadowing</span>
-              </div>
-
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1">
-                <span className="text-slate-400 uppercase font-semibold text-[10px]">Marketing Fund Contribution</span>
-                <p className="font-extrabold text-navy-900 text-base">
-                  {listing.marketingFeePercentage}%
-                </p>
-                <span className="text-slate-500">National and regional advertising co-op</span>
-              </div>
-            </div>
-
-            {/* Franchisor Support Package */}
-            <div className="space-y-3 pt-4 border-t border-slate-100">
-              <h3 className="font-bold text-navy-900 text-sm">Full Franchisor Support Package:</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {listing.supportProvided?.map((item: string, idx: number) => (
-                  <div key={idx} className="flex items-start gap-2.5 text-xs text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                    <span>{item}</span>
+            {/* Floating Brand Header */}
+            <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 text-white flex flex-col md:flex-row md:items-end justify-between gap-6">
+              <div className="flex items-start gap-4 sm:gap-5">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-white p-1 shadow-lg overflow-hidden shrink-0 border border-white/20">
+                  <img
+                    src={
+                      listing.logoUrl ||
+                      "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=200&auto=format&fit=crop&q=80"
+                    }
+                    alt={listing.brandName}
+                    className="w-full h-full object-cover rounded-lg"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-md bg-[#315EFB] text-[11px] font-bold text-white">
+                      {listing.industry}
+                    </span>
+                    <StatusBadge status={listing.status} />
+                    <span className="text-xs text-slate-300">
+                      Est. {listing.business?.establishedYear || 2020}
+                    </span>
                   </div>
+                  <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-center gap-2">
+                    {listing.brandName}
+                    <BadgeCheck className="w-5 h-5 text-[#6092FB]" />
+                  </h1>
+                  <p className="text-xs sm:text-sm text-slate-200">{listing.tagline}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0">
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  className="btn-primary py-3 px-6 text-sm font-semibold shadow-md"
+                >
+                  <Send className="w-4 h-4 mr-1" />
+                  Apply for Franchise
+                </button>
+                <button
+                  onClick={handleToggleSave}
+                  className={`p-3 rounded-xl text-xs font-semibold flex items-center justify-center transition-colors border ${
+                    isSaved
+                      ? "bg-amber-400 text-[#14243A] border-amber-300"
+                      : "bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-sm"
+                  }`}
+                  title="Save Opportunity"
+                >
+                  <Bookmark className={`w-4 h-4 ${isSaved ? "fill-[#14243A]" : ""}`} />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Gallery Thumbnails Strip */}
+          {galleryList.length > 1 && (
+            <div className="p-4 bg-white border-t border-[#E7ECF2] flex items-center gap-3 overflow-x-auto">
+              {galleryList.map((photo, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setActivePhoto(photo)}
+                  className={`h-16 w-24 rounded-lg overflow-hidden shrink-0 border-2 transition-all ${
+                    activePhoto === photo
+                      ? "border-[#315EFB] shadow-sm"
+                      : "border-transparent opacity-60 hover:opacity-100"
+                  }`}
+                >
+                  <img src={photo} alt="" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Executive Financial Highlights Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="surface-card p-5 space-y-1">
+            <span className="text-[10px] uppercase font-bold text-[#64748B]">Total Investment</span>
+            <p className="text-base sm:text-lg font-bold text-[#14243A]">
+              {formatCurrency(listing.totalInvestmentMin)} - {formatCurrency(listing.totalInvestmentMax)}
+            </p>
+            <span className="text-[11px] text-[#64748B]">Turnkey store setup</span>
+          </div>
+
+          <div className="surface-card p-5 space-y-1">
+            <span className="text-[10px] uppercase font-bold text-[#64748B]">Initial Franchise Fee</span>
+            <p className="text-base sm:text-lg font-bold text-[#14243A]">
+              {formatCurrency(listing.initialFranchiseFee)}
+            </p>
+            <span className="text-[11px] text-[#64748B]">Per outlet license</span>
+          </div>
+
+          <div className="surface-card p-5 space-y-1">
+            <span className="text-[10px] uppercase font-bold text-[#64748B]">Ongoing Royalty</span>
+            <p className="text-base sm:text-lg font-bold text-[#14243A]">
+              {listing.royaltyPercentage}%
+            </p>
+            <span className="text-[11px] text-[#64748B]">On monthly gross sales</span>
+          </div>
+
+          <div className="surface-card p-5 space-y-1">
+            <span className="text-[10px] uppercase font-bold text-[#64748B]">Est. Payback (ROI)</span>
+            <p className="text-base sm:text-lg font-bold text-[#159D8B]">
+              ~{listing.estimatedRoiMonths} Months
+            </p>
+            <span className="text-[11px] text-[#64748B]">Historical store average</span>
+          </div>
+
+          <div className="surface-card p-5 space-y-1 col-span-2 sm:col-span-1">
+            <span className="text-[10px] uppercase font-bold text-[#64748B]">Model Format</span>
+            <p className="text-base sm:text-lg font-bold text-[#14243A] capitalize">
+              {listing.franchiseModelType?.replace("_", " ")}
+            </p>
+            <span className="text-[11px] text-[#64748B]">Single & Multi-Unit Area</span>
+          </div>
+        </div>
+
+        {/* Main Grid: Details & Specifications */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left 2 Columns: Concept Story, Operations, FDD */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Brand Concept & Story */}
+            <div className="surface-card p-7 space-y-4">
+              <h2 className="text-lg font-bold text-[#14243A] flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-[#315EFB]" />
+                Brand Story & Business Model
+              </h2>
+              <div className="text-sm text-[#14243A] leading-relaxed whitespace-pre-line">
+                {listing.brandStory}
+              </div>
+              <div className="bg-[#F8FAFC] p-4 rounded-xl border border-[#E7ECF2] text-xs text-[#64748B] leading-relaxed mt-4">
+                <strong className="text-[#14243A]">Executive Summary:</strong> {listing.summary}
+              </div>
+            </div>
+
+            {/* Infrastructure & Facility Specs */}
+            <div className="surface-card p-7 space-y-6">
+              <h2 className="text-lg font-bold text-[#14243A] flex items-center gap-2">
+                <Layers className="w-5 h-5 text-[#315EFB]" />
+                Store Infrastructure & Operations
+              </h2>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div className="bg-[#F8FAFC] p-4 rounded-xl border border-[#E7ECF2] space-y-1">
+                  <span className="text-[#64748B] uppercase font-semibold text-[10px]">
+                    Commercial Floor Space
+                  </span>
+                  <p className="font-bold text-[#14243A] text-base">
+                    {listing.commercialSpaceMinSqFt} - {listing.commercialSpaceMaxSqFt} Sq Ft
+                  </p>
+                  <span className="text-[#64748B]">Prime high street or commercial mall</span>
+                </div>
+
+                <div className="bg-[#F8FAFC] p-4 rounded-xl border border-[#E7ECF2] space-y-1">
+                  <span className="text-[#64748B] uppercase font-semibold text-[10px]">
+                    Store Headcount
+                  </span>
+                  <p className="font-bold text-[#14243A] text-base">
+                    {listing.staffRequiredMin} - {listing.staffRequiredMax} Employees per Outlet
+                  </p>
+                  <span className="text-[#64748B]">Trained via standardized SOP manual</span>
+                </div>
+
+                <div className="bg-[#F8FAFC] p-4 rounded-xl border border-[#E7ECF2] space-y-1">
+                  <span className="text-[#64748B] uppercase font-semibold text-[10px]">
+                    Initial Training Duration
+                  </span>
+                  <p className="font-bold text-[#14243A] text-base">
+                    {listing.trainingDurationWeeks} Weeks
+                  </p>
+                  <span className="text-[#64748B]">Classroom + on-site outlet shadowing</span>
+                </div>
+
+                <div className="bg-[#F8FAFC] p-4 rounded-xl border border-[#E7ECF2] space-y-1">
+                  <span className="text-[#64748B] uppercase font-semibold text-[10px]">
+                    Marketing Co-Op Fund
+                  </span>
+                  <p className="font-bold text-[#14243A] text-base">
+                    {listing.marketingFeePercentage}%
+                  </p>
+                  <span className="text-[#64748B]">National & regional brand campaigns</span>
+                </div>
+              </div>
+
+              {/* Support Package */}
+              <div className="space-y-3 pt-4 border-t border-[#E7ECF2]">
+                <h3 className="font-bold text-[#14243A] text-xs uppercase tracking-wide">
+                  Franchisor Support Included:
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {listing.supportProvided?.map((item: string, idx: number) => (
+                    <div
+                      key={idx}
+                      className="flex items-start gap-2.5 text-xs text-[#14243A] bg-[#F8FAFC] p-3 rounded-lg border border-[#E7ECF2]"
+                    >
+                      <CheckCircle2 className="w-4 h-4 text-[#159D8B] shrink-0 mt-0.5" />
+                      <span>{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Ideal Partner Profile */}
+            <div className="surface-card p-7 space-y-3">
+              <h2 className="text-lg font-bold text-[#14243A] flex items-center gap-2">
+                <Users className="w-5 h-5 text-[#315EFB]" />
+                Ideal Franchisee Profile
+              </h2>
+              <p className="text-sm text-[#64748B] leading-relaxed">
+                {listing.idealFranchiseeProfile}
+              </p>
+            </div>
+
+            {/* FDD & Legal Disclosure Chamber */}
+            <div className="surface-card p-7 space-y-5 bg-white border border-[#BFD3FE]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E7ECF2] pb-4">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#315EFB] block">
+                    Statutory Legal Packet
+                  </span>
+                  <h2 className="text-lg font-bold text-[#14243A] flex items-center gap-2 mt-0.5">
+                    <Scale className="w-5 h-5 text-[#315EFB]" />
+                    Franchise Disclosure Document (FDD Facility)
+                  </h2>
+                </div>
+                <span className="px-3 py-1 rounded-full bg-[#E6F7F5] text-[#159D8B] text-xs font-bold w-fit">
+                  ✓ Items 1-23 Audited
+                </span>
+              </div>
+
+              <p className="text-xs text-[#64748B] leading-relaxed">
+                Structured in compliance with international franchise disclosure standards and the Indian Contract Act 1872. All 23 statutory items are audited by FranchiseBridge legal counsel.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="bg-[#F8FAFC] p-3.5 rounded-xl border border-[#E7ECF2] space-y-1">
+                  <span className="text-[#14243A] font-bold block">Item 19: Financial Representations</span>
+                  <span className="text-[#64748B]">Audited outlet P&L, store EBITDA, and historical payback proof.</span>
+                </div>
+                <div className="bg-[#F8FAFC] p-3.5 rounded-xl border border-[#E7ECF2] space-y-1">
+                  <span className="text-[#14243A] font-bold block">Item 12: Territory Exclusivity</span>
+                  <span className="text-[#64748B]">3.5 km contractual radius protection against cannibalization.</span>
+                </div>
+              </div>
+
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-[#E7ECF2]">
+                <div className="text-xs text-[#64748B] flex items-center gap-1.5">
+                  <Lock className="w-4 h-4 text-[#315EFB]" />
+                  <span>Full PDF unlocked upon mutual NDA acknowledgment</span>
+                </div>
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  className="btn-primary py-2.5 px-5 text-xs font-semibold w-full sm:w-auto"
+                >
+                  <FileText className="w-3.5 h-3.5 mr-1" />
+                  Request Official FDD Package
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Territories & Actions */}
+          <div className="space-y-6">
+            {/* Expansion Territories */}
+            <div className="surface-card p-6 space-y-4">
+              <h3 className="text-sm font-bold text-[#14243A] flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-[#315EFB]" />
+                Target Expansion Cities
+              </h3>
+              <p className="text-xs text-[#64748B]">
+                Active territories open for multi-unit and single-unit franchise agreements:
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {listing.expansionLocations?.map((loc: string, idx: number) => (
+                  <span
+                    key={idx}
+                    className="px-2.5 py-1 rounded-md bg-[#EFF4FF] text-[#315EFB] text-xs font-medium border border-[#BFD3FE]"
+                  >
+                    {loc}
+                  </span>
                 ))}
               </div>
             </div>
-          </div>
 
-          {/* Ideal Franchisee Profile */}
-          <div className="bg-white rounded-3xl border border-slate-200/90 p-8 space-y-4 shadow-sm">
-            <h2 className="text-xl font-bold text-navy-900 flex items-center gap-2">
-              <Users className="w-5 h-5 text-indigo-600" />
-              Ideal Franchisee Profile
-            </h2>
-            <p className="text-sm text-slate-700 leading-relaxed">
-              {listing.idealFranchiseeProfile}
-            </p>
-          </div>
-
-          {/* FDD & Legal Disclosure Facility */}
-          <div className="bg-gradient-to-br from-[#0B1220] to-[#070B14] rounded-3xl border border-slate-800 p-8 text-white space-y-6 shadow-xl">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.08] pb-4">
-              <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-400 block">
-                  Regulatory Legal Packet
-                </span>
-                <h2 className="text-xl font-bold text-white flex items-center gap-2 mt-0.5">
-                  <Scale className="w-5 h-5 text-amber-400" />
-                  Franchise Disclosure Document (FDD Facility)
-                </h2>
-              </div>
-              <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold w-fit">
-                ✓ Items 1-23 Audited
+            {/* Capex Estimator Callout */}
+            <div className="surface-card p-6 space-y-3 bg-[#EFF4FF] border-[#BFD3FE]">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#315EFB]">
+                Financial Simulation
               </span>
+              <h4 className="text-sm font-bold text-[#14243A]">Calculate Your Territory Capex</h4>
+              <p className="text-xs text-[#64748B] leading-relaxed">
+                Estimate setup expenses, interior fitouts, working capital, and break-even timeline for this brand.
+              </p>
+              <Link href="/calculator" className="btn-primary w-full py-2 text-xs font-semibold">
+                Open Cost Estimator
+              </Link>
             </div>
 
-            <p className="text-xs text-slate-300 leading-relaxed">
-              This brand maintains certified legal disclosures structured according to the US FTC 16 CFR Part 436 standards and the Indian Contract Act 1872. All 23 statutory items are audited by FranchiseBridge legal counsel.
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div className="bg-white/[0.04] p-3 rounded-xl border border-white/[0.06] space-y-1">
-                <span className="text-amber-400 font-bold block">Item 19: Financial Representations</span>
-                <span className="text-slate-400">Audited outlet P&L, store EBITDA, and historical payback proof.</span>
-              </div>
-              <div className="bg-white/[0.04] p-3 rounded-xl border border-white/[0.06] space-y-1">
-                <span className="text-amber-400 font-bold block">Item 12: Territory Exclusivity</span>
-                <span className="text-slate-400">3.5 km contractual radius protection against cannibalization.</span>
-              </div>
-              <div className="bg-white/[0.04] p-3 rounded-xl border border-white/[0.06] space-y-1">
-                <span className="text-amber-400 font-bold block">Items 5-7: Transparent Fee Matrix</span>
-                <span className="text-slate-400">Fixed franchise fees and turnkey capital schedule with zero hidden rebates.</span>
-              </div>
-              <div className="bg-white/[0.04] p-3 rounded-xl border border-white/[0.06] space-y-1">
-                <span className="text-amber-400 font-bold block">Item 22: Contract Form</span>
-                <span className="text-slate-400">Standardized franchise agreement ready for execution.</span>
-              </div>
-            </div>
-
-            <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-white/[0.08]">
-              <span className="text-xs text-slate-400">Full PDF document unlocked upon mutual NDA acknowledgment:</span>
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs px-5 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-1.5 w-full sm:w-auto justify-center"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                Request Official FDD Package
-              </button>
+            {/* Direct Advisor Assistance */}
+            <div className="surface-card p-6 space-y-3">
+              <h4 className="text-sm font-bold text-[#14243A]">Need Advisory Support?</h4>
+              <p className="text-xs text-[#64748B] leading-relaxed">
+                Our brokerage team assists with lease negotiations, franchise agreement reviews, and territory mapping.
+              </p>
+              <Link href="/contact" className="btn-secondary w-full py-2 text-xs font-semibold">
+                Speak with Broker
+              </Link>
             </div>
           </div>
-
         </div>
-
-        {/* Right Column: Target Corridors, NDA Shield, & CTA */}
-        <div className="space-y-6">
-          
-          {/* Target Expansion Corridors */}
-          <div className="bg-white rounded-3xl border border-slate-200/90 p-6 space-y-4 shadow-sm">
-            <h3 className="text-base font-bold text-navy-900 flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-blue-600" />
-              Target Expansion Cities
-            </h3>
-            <p className="text-xs text-slate-500">
-              The brand is actively allocating protected territories in these metropolitan areas:
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {listing.expansionLocations?.map((loc: string) => (
-                <span
-                  key={loc}
-                  className="px-3 py-1 rounded-xl bg-blue-50 text-blue-800 text-xs font-bold border border-blue-100"
-                >
-                  {loc}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Privacy & Confidentiality Shield Box */}
-          <div className="bg-[#0B1220] rounded-3xl p-6 text-white space-y-4 border border-slate-800 shadow-md">
-            <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold">
-              <ShieldCheck className="w-4 h-4" />
-              Institutional Privacy Protocol
-            </div>
-            <h4 className="text-sm font-bold text-white">
-              Protected Inquiry Process
-            </h4>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Your contact details and financial suitability are strictly encrypted until your application is reviewed and a mutual Non-Disclosure Agreement (NDA) is executed.
-            </p>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs py-3 rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5"
-            >
-              <Send className="w-3.5 h-3.5" />
-              Request Verified Dossier & NDA
-            </button>
-          </div>
-
-          {/* Headquarters Info */}
-          <div className="bg-white rounded-3xl border border-slate-200/90 p-6 space-y-3 shadow-sm text-xs text-slate-600">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 font-bold text-navy-900">
-              <span>Corporate Headquarters</span>
-              <Building2 className="w-4 h-4 text-slate-400" />
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Location:</span>
-              <span className="font-semibold text-slate-800">
-                {listing.business?.headquarters?.city}, {listing.business?.headquarters?.state || "India"}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Total Operating Outlets:</span>
-              <span className="font-semibold text-slate-800">
-                {listing.business?.numberOfOutlets || 4} Outlets
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Annual Revenue Range:</span>
-              <span className="font-semibold text-emerald-700">
-                {listing.business?.annualRevenueRange || "Disclosed under NDA"}
-              </span>
-            </div>
-          </div>
-
-        </div>
-
       </div>
 
-      {/* APPLICATION MODAL */}
+      {/* Application / Due Diligence Request Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 space-y-6 shadow-2xl border border-slate-100 my-8">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-2xl border border-[#E7ECF2] shadow-elevated max-w-lg w-full p-6 space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E7ECF2]">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Confidential Application</span>
-                <h3 className="text-lg font-bold text-navy-900">Apply for {listing.brandName}</h3>
+                <h3 className="text-lg font-bold text-[#14243A]">Apply for {listing.brandName}</h3>
+                <p className="text-xs text-[#64748B]">Direct inquiry to Franchisor and Brokerage desk</p>
               </div>
               <button
-                onClick={() => {
-                  setIsModalOpen(false);
-                  setSubmitSuccess(false);
-                  setSubmitError(null);
-                }}
-                className="text-slate-400 hover:text-slate-600 text-lg font-bold p-1"
+                onClick={() => setIsModalOpen(false)}
+                className="p-1 rounded-lg text-[#64748B] hover:bg-[#F8FAFC]"
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
             </div>
 
             {submitSuccess ? (
-              <div className="text-center py-8 space-y-4">
-                <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
-                  <CheckCircle2 className="w-8 h-8" />
-                </div>
-                <h4 className="text-xl font-bold text-navy-900">Application Submitted!</h4>
-                <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed">
-                  Your confidential franchise application and NDA request have been logged with the brokerage team.
-                  We will review your territory parameters and reach out within 24 business hours.
+              <div className="text-center py-6 space-y-3">
+                <CheckCircle2 className="w-12 h-12 text-[#159D8B] mx-auto" />
+                <h4 className="text-lg font-bold text-[#14243A]">Application Submitted Successfully</h4>
+                <p className="text-xs text-[#64748B] max-w-sm mx-auto">
+                  Your application and due diligence request have been logged. The brand manager will contact you within 24 hours.
                 </p>
                 <button
-                  onClick={() => setIsModalOpen(false)}
-                  className="bg-navy-900 text-white font-bold text-xs px-6 py-2.5 rounded-xl hover:bg-slate-800 transition-colors"
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setSubmitSuccess(false);
+                  }}
+                  className="btn-primary py-2 px-6 text-xs mt-3"
                 >
                   Close Window
                 </button>
@@ -558,134 +550,97 @@ export default function FranchiseDetailPage() {
             ) : (
               <form onSubmit={handleApplicationSubmit} className="space-y-4 text-xs">
                 {submitError && (
-                  <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl">
+                  <div className="p-3 rounded-lg bg-rose-50 text-rose-700 text-xs border border-rose-200">
                     {submitError}
                   </div>
                 )}
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-slate-700 font-bold mb-1">Proposed City *</label>
+                    <label className="font-semibold text-[#14243A] block mb-1">Target City</label>
                     <input
                       type="text"
                       required
                       value={appForm.proposedLocationCity}
                       onChange={(e) => setAppForm({ ...appForm, proposedLocationCity: e.target.value })}
-                      placeholder="e.g. Bengaluru"
-                      className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500"
+                      placeholder="e.g. Mumbai"
+                      className="w-full p-2.5 rounded-lg border border-[#E7ECF2] focus:outline-none focus:border-[#315EFB]"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-700 font-bold mb-1">Proposed State *</label>
+                    <label className="font-semibold text-[#14243A] block mb-1">State / Province</label>
                     <input
                       type="text"
                       required
                       value={appForm.proposedLocationState}
                       onChange={(e) => setAppForm({ ...appForm, proposedLocationState: e.target.value })}
-                      placeholder="e.g. Karnataka"
-                      className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500"
+                      placeholder="e.g. Maharashtra"
+                      className="w-full p-2.5 rounded-lg border border-[#E7ECF2] focus:outline-none focus:border-[#315EFB]"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-slate-700 font-bold mb-1">Units Interested *</label>
+                    <label className="font-semibold text-[#14243A] block mb-1">Units Interested</label>
                     <input
                       type="number"
                       min={1}
                       max={20}
                       value={appForm.unitsInterested}
                       onChange={(e) => setAppForm({ ...appForm, unitsInterested: parseInt(e.target.value) || 1 })}
-                      className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500"
+                      className="w-full p-2.5 rounded-lg border border-[#E7ECF2] focus:outline-none focus:border-[#315EFB]"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-700 font-bold mb-1">Timeline *</label>
-                    <select
-                      value={appForm.timeline}
-                      onChange={(e) => setAppForm({ ...appForm, timeline: e.target.value })}
-                      className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500 font-medium"
-                    >
-                      <option value="immediate">Immediate (&lt; 30 Days)</option>
-                      <option value="1_to_3_months">1 - 3 Months</option>
-                      <option value="3_to_6_months">3 - 6 Months</option>
-                      <option value="more_than_6_months">6+ Months</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-700 font-bold mb-1">Total Investment Budget (₹) *</label>
-                    <input
-                      type="number"
-                      value={appForm.investmentBudget}
-                      onChange={(e) => setAppForm({ ...appForm, investmentBudget: parseInt(e.target.value) || 0 })}
-                      className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-700 font-bold mb-1">Available Liquid Capital (₹) *</label>
+                    <label className="font-semibold text-[#14243A] block mb-1">Available Liquid Capital (₹)</label>
                     <input
                       type="number"
                       value={appForm.availableLiquidCapital}
                       onChange={(e) => setAppForm({ ...appForm, availableLiquidCapital: parseInt(e.target.value) || 0 })}
-                      className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500"
+                      className="w-full p-2.5 rounded-lg border border-[#E7ECF2] focus:outline-none focus:border-[#315EFB]"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1">Business & Operator Background *</label>
+                  <label className="font-semibold text-[#14243A] block mb-1">Your Business Background</label>
                   <textarea
-                    rows={2}
-                    required
+                    rows={3}
+                    placeholder="Briefly describe your prior retail, business, or operational management experience..."
                     value={appForm.businessBackgroundSummary}
                     onChange={(e) => setAppForm({ ...appForm, businessBackgroundSummary: e.target.value })}
-                    placeholder="Briefly describe your business, retail, or hospitality operating background..."
-                    className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500 text-xs"
+                    className="w-full p-2.5 rounded-lg border border-[#E7ECF2] focus:outline-none focus:border-[#315EFB]"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1">Additional Notes / Preferred Location</label>
-                  <textarea
-                    rows={2}
-                    value={appForm.additionalMessage}
-                    onChange={(e) => setAppForm({ ...appForm, additionalMessage: e.target.value })}
-                    placeholder="Specify target neighborhood, existing commercial property access, etc."
-                    className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500 text-xs"
-                  />
-                </div>
-
-                <div className="pt-2 flex items-start gap-2.5">
+                <div className="flex items-start gap-2 pt-2">
                   <input
                     type="checkbox"
                     id="consent"
                     checked={appForm.privacyConsentGiven}
                     onChange={(e) => setAppForm({ ...appForm, privacyConsentGiven: e.target.checked })}
-                    className="mt-1 rounded text-blue-600 focus:ring-blue-500"
+                    className="mt-1"
                   />
-                  <label htmlFor="consent" className="text-[11px] text-slate-500 leading-relaxed">
-                    I agree to keep all disclosed FDD financial statements, territory covenants, and operational recipes strictly confidential under mutual NDA.
+                  <label htmlFor="consent" className="text-[#64748B]">
+                    I consent to share my verified investment profile and agree to mutual non-disclosure (NDA) terms for confidential FDD access.
                   </label>
                 </div>
 
-                <div className="pt-3 flex items-center justify-end gap-3 border-t border-slate-100">
+                <div className="pt-3 border-t border-[#E7ECF2] flex justify-end gap-2">
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50"
+                    className="btn-secondary py-2 px-4 text-xs"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold px-6 py-2.5 rounded-xl shadow-md transition-all disabled:opacity-50"
+                    className="btn-primary py-2 px-6 text-xs"
                   >
-                    {isSubmitting ? "Submitting..." : "Submit Confidential Application"}
+                    {isSubmitting ? "Submitting..." : "Submit Application"}
                   </button>
                 </div>
               </form>

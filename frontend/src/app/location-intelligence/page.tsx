@@ -22,9 +22,9 @@ interface CityIntelligence {
   state: string;
   tier: 'Tier 1' | 'Tier 2';
   population: string;
-  affluenceIndex: number; // 0-100
-  highStreetRentPerSqFt: number; // INR
-  mallRentPerSqFt: number; // INR
+  affluenceIndex: number;
+  highStreetRentPerSqFt: number;
+  mallRentPerSqFt: number;
   footfallDensity: 'Very High' | 'High' | 'Moderate';
   topMicroMarkets: string[];
   whiteSpaceCategories: string[];
@@ -136,44 +136,44 @@ export default function LocationIntelligencePage() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 py-12 px-4 sm:px-6 lg:px-8 selection:bg-emerald-500 selection:text-white">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#14243A] py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto space-y-10">
         {/* Header */}
         <div className="text-center space-y-4 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-teal-500/10 border border-teal-500/30 text-teal-400 text-xs font-semibold uppercase tracking-wider">
-            <Compass className="w-4 h-4" />
-            Macro-Demographic Expansion Suite
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#E6F7F5] border border-[#C2EDE7] text-[#159D8B] text-xs font-semibold">
+            <Compass className="w-3.5 h-3.5" />
+            Catchment Demographic Suite
           </div>
-          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-[#14243A]">
             Franchise Location Intelligence
           </h1>
-          <p className="text-slate-400 text-base sm:text-lg">
-            Empowering franchisors and multi-unit investors with granular retail rental benchmarks, consumer spending indexes, and category whitespace analysis.
+          <p className="text-[#64748B] text-base sm:text-lg">
+            Empowering franchisors and multi-unit investors with granular retail rental benchmarks, consumer affluence indexes, and category whitespace analysis.
           </p>
         </div>
 
         {/* City Filter Pills */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="relative w-full sm:w-72">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+            <Search className="w-4 h-4 text-[#64748B] absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Filter city or state..."
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
+              className="w-full bg-white border border-[#E7ECF2] rounded-xl pl-9 pr-4 py-2 text-xs text-[#14243A] placeholder-[#64748B] focus:outline-none focus:border-[#315EFB]"
             />
           </div>
 
-          <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-2 sm:pb-0 scrollbar-none">
+          <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-2 sm:pb-0">
             {filteredCities.map((city) => (
               <button
                 key={city.id}
                 onClick={() => setSelectedCity(city)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border whitespace-nowrap transition ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold border whitespace-nowrap transition ${
                   selectedCity.id === city.id
-                    ? 'bg-teal-600 text-white border-teal-500 shadow-md shadow-teal-700/30'
-                    : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
+                    ? 'bg-[#14243A] text-white border-[#14243A] shadow-sm'
+                    : 'bg-white text-[#64748B] border-[#E7ECF2] hover:bg-[#F8FAFC]'
                 }`}
               >
                 {city.cityName}
@@ -185,177 +185,131 @@ export default function LocationIntelligencePage() {
         {/* Selected City Intelligence Dashboard */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Left Column: City Macro Scorecard (5 cols) */}
-          <div className="lg:col-span-5 bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl">
-            <div className="flex justify-between items-start">
+          <div className="lg:col-span-5 surface-card p-6 sm:p-8 space-y-6">
+            <div className="flex justify-between items-start pb-4 border-b border-[#E7ECF2]">
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-teal-400 bg-teal-500/10 px-2.5 py-1 rounded-full border border-teal-500/20">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#159D8B] bg-[#E6F7F5] px-2.5 py-0.5 rounded-md">
                   {selectedCity.tier} Market
                 </span>
-                <h2 className="text-3xl font-extrabold text-white mt-2">{selectedCity.cityName}</h2>
-                <p className="text-sm text-slate-400">{selectedCity.state} • Population {selectedCity.population}</p>
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-[#14243A] mt-2">
+                  {selectedCity.cityName}
+                </h2>
+                <p className="text-xs text-[#64748B] mt-0.5">
+                  {selectedCity.state} • Population {selectedCity.population}
+                </p>
               </div>
               <div className="text-right">
-                <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Affluence Index</span>
-                <span className="text-3xl font-black text-amber-300 font-mono">
+                <span className="text-[10px] text-[#64748B] uppercase tracking-wider block">Affluence Index</span>
+                <span className="text-2xl sm:text-3xl font-bold text-[#315EFB]">
                   {selectedCity.affluenceIndex}/100
                 </span>
               </div>
             </div>
 
             {/* Rental Rates Gauge */}
-            <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+            <div className="p-4 rounded-xl bg-[#F8FAFC] border border-[#E7ECF2] space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#64748B] flex items-center justify-between">
                 <span>Average Retail Real Estate Rentals</span>
-                <DollarSign className="w-3.5 h-3.5 text-teal-400" />
+                <DollarSign className="w-3.5 h-3.5 text-[#315EFB]" />
               </h3>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
-                  <span className="text-[11px] text-slate-400 block">High-Street Ground Floor</span>
-                  <span className="text-lg font-extrabold text-white font-mono">
+                <div className="bg-white p-3 rounded-lg border border-[#E7ECF2]">
+                  <span className="text-[11px] text-[#64748B] block">High-Street Ground</span>
+                  <span className="text-base font-bold text-[#14243A]">
                     ₹{selectedCity.highStreetRentPerSqFt}
                   </span>
-                  <span className="text-[10px] text-slate-500 block">/sq.ft /month</span>
+                  <span className="text-[10px] text-[#64748B] block">/sq.ft /month</span>
                 </div>
-                <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
-                  <span className="text-[11px] text-slate-400 block">Grade A Mall / Food Court</span>
-                  <span className="text-lg font-extrabold text-white font-mono">
+                <div className="bg-white p-3 rounded-lg border border-[#E7ECF2]">
+                  <span className="text-[11px] text-[#64748B] block">Grade-A Mall Retail</span>
+                  <span className="text-base font-bold text-[#14243A]">
                     ₹{selectedCity.mallRentPerSqFt}
                   </span>
-                  <span className="text-[10px] text-slate-500 block">/sq.ft /month</span>
+                  <span className="text-[10px] text-[#64748B] block">/sq.ft /month</span>
                 </div>
               </div>
             </div>
 
             {/* Top Micro-Markets */}
             <div className="space-y-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-teal-400" />
-                Prime High-Footfall Micro-Markets
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#64748B]">
+                Prime High-Street Micro-Markets
               </h3>
-              <div className="flex flex-wrap gap-2">
-                {selectedCity.topMicroMarkets.map((loc, idx) => (
-                  <span
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {selectedCity.topMicroMarkets.map((mm, idx) => (
+                  <div
                     key={idx}
-                    className="px-3 py-1.5 rounded-xl bg-slate-800 text-xs font-medium text-slate-200 border border-slate-700/80"
+                    className="p-2.5 rounded-lg bg-[#F8FAFC] border border-[#E7ECF2] text-xs font-medium text-[#14243A] flex items-center gap-2"
                   >
-                    {loc}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Recommended Store Formats */}
-            <div className="space-y-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Recommended Unit Formats
-              </h3>
-              <div className="space-y-1.5">
-                {selectedCity.recommendedFormats.map((fmt, idx) => (
-                  <div key={idx} className="flex items-center gap-2 text-xs text-slate-300">
-                    <Zap className="w-3.5 h-3.5 text-teal-400 flex-shrink-0" />
-                    <span>{fmt}</span>
+                    <MapPin className="w-3.5 h-3.5 text-[#315EFB] shrink-0" />
+                    <span className="truncate">{mm}</span>
                   </div>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Right Column: Market Whitespace & Saturation Notes (7 cols) */}
+          {/* Right Column: Whitespace & Expansion Strategy (7 cols) */}
           <div className="lg:col-span-7 space-y-6">
             {/* Whitespace Opportunities Card */}
-            <div className="bg-gradient-to-br from-teal-950/60 via-slate-900 to-slate-900 border border-teal-500/40 rounded-3xl p-6 sm:p-8 space-y-5 shadow-2xl">
-              <div className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-teal-400" />
-                <h3 className="text-lg font-bold text-white">
-                  Identified White Space Sectors in {selectedCity.cityName}
-                </h3>
-              </div>
+            <div className="surface-card p-6 sm:p-8 space-y-4">
+              <h3 className="text-base font-bold text-[#14243A] flex items-center gap-2">
+                <Zap className="w-4 h-4 text-[#315EFB]" />
+                Under-Served Whitespace Categories
+              </h3>
+              <p className="text-xs text-[#64748B] leading-relaxed">
+                Categories with high consumer demand and insufficient branded outlet density in {selectedCity.cityName}:
+              </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {selectedCity.whiteSpaceCategories.map((cat, idx) => (
+                {selectedCity.whiteSpaceCategories.map((ws, idx) => (
                   <div
                     key={idx}
-                    className="p-4 rounded-2xl bg-slate-800/80 border border-slate-700/80 space-y-1"
+                    className="p-3.5 rounded-xl bg-[#EFF4FF] border border-[#BFD3FE] text-xs font-bold text-[#315EFB]"
                   >
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-teal-400">
-                      High Growth
-                    </span>
-                    <div className="text-sm font-bold text-white leading-snug">{cat}</div>
+                    {ws}
                   </div>
                 ))}
               </div>
 
               {/* Saturation Notes */}
-              <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4" /> Brokerage Expansion Note
-                </span>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  {selectedCity.saturationNotes}
-                </p>
+              <div className="pt-3 border-t border-[#E7ECF2] text-xs text-[#64748B] leading-relaxed">
+                <strong className="text-[#14243A]">Market Saturation Intelligence:</strong>{' '}
+                {selectedCity.saturationNotes}
               </div>
             </div>
 
-            {/* Target Cities Comparison Table */}
-            <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-4 shadow-xl">
-              <h3 className="text-base font-bold text-white">Cross-Market Benchmark Snapshot</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider font-semibold">
-                      <th className="py-2.5">City</th>
-                      <th className="py-2.5">Tier</th>
-                      <th className="py-2.5">Affluence</th>
-                      <th className="py-2.5">High-Street Rent</th>
-                      <th className="py-2.5">Footfall</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/60 font-mono">
-                    {CITY_DATA.map((c) => (
-                      <tr
-                        key={c.id}
-                        onClick={() => setSelectedCity(c)}
-                        className={`cursor-pointer hover:bg-slate-800/60 transition ${
-                          c.id === selectedCity.id ? 'bg-teal-950/30 font-bold text-teal-300' : 'text-slate-300'
-                        }`}
-                      >
-                        <td className="py-3 font-sans font-medium">{c.cityName}</td>
-                        <td className="py-3">{c.tier}</td>
-                        <td className="py-3 text-amber-300">{c.affluenceIndex}/100</td>
-                        <td className="py-3">₹{c.highStreetRentPerSqFt}/sq.ft</td>
-                        <td className="py-3 font-sans">
-                          <span className="text-emerald-400 font-semibold">{c.footfallDensity}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            {/* Recommended Formats */}
+            <div className="surface-card p-6 sm:p-8 space-y-4">
+              <h3 className="text-base font-bold text-[#14243A] flex items-center gap-2">
+                <Building className="w-4 h-4 text-[#159D8B]" />
+                Optimal Unit Formats for {selectedCity.cityName}
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {selectedCity.recommendedFormats.map((fmt, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3.5 rounded-xl bg-[#E6F7F5] border border-[#C2EDE7] text-xs font-bold text-[#159D8B]"
+                  >
+                    {fmt}
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* Call to action */}
-            <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="space-y-0.5 text-center sm:text-left">
-                <div className="text-sm font-bold text-white">Planning your territory rollout?</div>
-                <div className="text-xs text-slate-400">
-                  Model your capex scenarios or initiate partner screening inside our Digital Deal Room.
-                </div>
+            {/* CTA */}
+            <div className="surface-card p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div>
+                <span className="text-xs font-bold text-[#14243A] block">Looking to Expand in {selectedCity.cityName}?</span>
+                <span className="text-[11px] text-[#64748B]">Explore verified franchise opportunities targeting this territory.</span>
               </div>
-              <div className="flex items-center gap-3">
-                <Link
-                  href="/calculator"
-                  className="px-4 py-2 text-xs font-semibold rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700 transition"
-                >
-                  Calculate Capex
-                </Link>
-                <Link
-                  href="/franchises"
-                  className="px-5 py-2 text-xs font-bold rounded-xl bg-teal-600 text-white hover:bg-teal-500 transition shadow-lg shadow-teal-700/20 flex items-center gap-1.5"
-                >
-                  Explore Brands <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
+              <Link
+                href={`/franchises?search=${selectedCity.cityName}`}
+                className="btn-primary py-2 px-5 text-xs font-semibold"
+              >
+                View Opportunities <ArrowRight className="w-3.5 h-3.5 ml-1" />
+              </Link>
             </div>
           </div>
         </div>

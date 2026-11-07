@@ -21,15 +21,24 @@ interface Franchise {
   brandName: string;
   slug: string;
   industry: string;
-  investmentRange: { min: number; max: number };
-  franchiseFee: number;
-  royaltyFee: number; // percentage
-  spaceRequiredSqFt: { min: number; max: number };
-  currentOutlets: number;
-  paybackPeriodMonths: number;
-  expansionTargetCities: string[];
-  heroImageUrl: string;
-  rating?: number;
+  totalInvestmentMin?: number;
+  totalInvestmentMax?: number;
+  investmentRange?: { min: number; max: number };
+  initialFranchiseFee?: number;
+  franchiseFee?: number;
+  royaltyPercentage?: number;
+  royaltyFee?: number;
+  commercialSpaceMinSqFt?: number;
+  commercialSpaceMaxSqFt?: number;
+  spaceRequiredSqFt?: { min: number; max: number };
+  unitsCount?: number;
+  currentOutlets?: number;
+  estimatedRoiMonths?: number;
+  paybackPeriodMonths?: number;
+  expansionLocations?: string[];
+  bannerUrl?: string;
+  logoUrl?: string;
+  heroImageUrl?: string;
 }
 
 export default function ComparePage() {
@@ -43,7 +52,6 @@ export default function ComparePage() {
       .then((data) => {
         if (data.success && data.data.length > 0) {
           setAllListings(data.data);
-          // Pick the first 2 by default
           setSelectedIds(data.data.slice(0, 2).map((item: any) => item._id));
         }
       })
@@ -68,18 +76,18 @@ export default function ComparePage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 py-12 px-4 sm:px-6 lg:px-8 selection:bg-emerald-500 selection:text-white">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#14243A] py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto space-y-10">
         {/* Header */}
         <div className="text-center space-y-4 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-xs font-semibold uppercase tracking-wider">
-            <GitCompare className="w-4 h-4" />
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#EFF4FF] border border-[#BFD3FE] text-[#315EFB] text-xs font-semibold">
+            <GitCompare className="w-3.5 h-3.5" />
             Brand Due Diligence Comparison
           </div>
-          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-[#14243A]">
             Side-by-Side Franchise Comparison
           </h1>
-          <p className="text-slate-400 text-base sm:text-lg">
+          <p className="text-[#64748B] text-base sm:text-lg">
             Evaluate unit economics, capital requirements, FDD compliance disclosures, and operational criteria across verified brands.
           </p>
         </div>
@@ -87,16 +95,16 @@ export default function ComparePage() {
         {/* Selection Bar */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[0, 1, 2].map((slot) => (
-            <div key={slot} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+            <div key={slot} className="surface-card p-4 space-y-2">
+              <label className="text-xs font-bold text-[#64748B] uppercase tracking-wider block">
                 Brand Slot {slot + 1}
               </label>
               <select
                 value={selectedIds[slot] || ''}
                 onChange={(e) => handleSelectSlot(slot, e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-white border border-[#E7ECF2] rounded-xl px-3 py-2 text-xs text-[#14243A] focus:outline-none focus:border-[#315EFB]"
               >
-                <option value="">-- Choose Brand --</option>
+                <option value="">-- Choose Brand to Compare --</option>
                 {allListings.map((listing) => (
                   <option key={listing._id} value={listing._id}>
                     {listing.brandName} ({listing.industry})
@@ -107,120 +115,117 @@ export default function ComparePage() {
           ))}
         </div>
 
-        {/* Comparison Table / Grid */}
-        {selectedFranchises.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 bg-slate-900 rounded-3xl border border-slate-800">
-            Please select at least 1 brand above to begin comparison.
+        {/* Comparison Matrix Table */}
+        {loading ? (
+          <div className="surface-card p-12 text-center text-[#64748B]">
+            Loading comparison data...
+          </div>
+        ) : selectedFranchises.length === 0 ? (
+          <div className="surface-card p-12 text-center text-[#64748B]">
+            Select at least one brand above to view comparison specifications.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <div className="min-w-[700px] bg-slate-900/90 border border-slate-800 rounded-3xl shadow-2xl divide-y divide-slate-800">
-              {/* Row 1: Brand Hero */}
-              <div className="grid grid-cols-4 p-6 items-center">
-                <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Brand Overview</div>
-                {selectedFranchises.map((f) => (
-                  <div key={f._id} className="px-4 space-y-2 text-center">
-                    <img
-                      src={f.heroImageUrl || 'https://images.unsplash.com/photo-1554118811-1e0d58224f24'}
-                      alt={f.brandName}
-                      className="w-full h-32 object-cover rounded-xl border border-slate-700 shadow-md"
-                    />
-                    <h3 className="font-bold text-lg text-white">{f.brandName}</h3>
-                    <span className="inline-block text-xs text-indigo-400 font-semibold bg-indigo-500/10 px-2.5 py-0.5 rounded-full border border-indigo-500/20">
-                      {f.industry}
-                    </span>
-                  </div>
-                ))}
-              </div>
+          <div className="surface-card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-[#F8FAFC] border-b border-[#E7ECF2]">
+                    <th className="p-4 text-xs font-bold text-[#64748B] uppercase tracking-wider w-1/4">
+                      Evaluation Metric
+                    </th>
+                    {selectedFranchises.map((f) => (
+                      <th key={f._id} className="p-4 text-sm font-bold text-[#14243A]">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-[#315EFB]" />
+                          {f.brandName}
+                        </div>
+                        <span className="text-[11px] font-normal text-[#64748B]">{f.industry}</span>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E7ECF2]">
+                  <tr>
+                    <td className="p-4 font-semibold text-[#64748B]">Total Est. Capital Required</td>
+                    {selectedFranchises.map((f) => (
+                      <td key={f._id} className="p-4 font-bold text-[#14243A] text-sm">
+                        {formatLakhs(f.totalInvestmentMin || f.investmentRange?.min)} -{' '}
+                        {formatLakhs(f.totalInvestmentMax || f.investmentRange?.max)}
+                      </td>
+                    ))}
+                  </tr>
 
-              {/* Row 2: Investment Capex */}
-              <div className="grid grid-cols-4 p-5 items-center bg-slate-950/40">
-                <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Capex Range</div>
-                {selectedFranchises.map((f) => (
-                  <div key={f._id} className="px-4 text-center">
-                    <span className="font-mono text-base font-extrabold text-emerald-400">
-                      {formatLakhs(f.investmentRange?.min)} - {formatLakhs(f.investmentRange?.max)}
-                    </span>
-                  </div>
-                ))}
-              </div>
+                  <tr className="bg-[#F8FAFC]/50">
+                    <td className="p-4 font-semibold text-[#64748B]">Initial Franchise Fee</td>
+                    {selectedFranchises.map((f) => (
+                      <td key={f._id} className="p-4 font-medium text-[#14243A]">
+                        {formatLakhs(f.initialFranchiseFee || f.franchiseFee)}
+                      </td>
+                    ))}
+                  </tr>
 
-              {/* Row 3: Franchise Fee */}
-              <div className="grid grid-cols-4 p-5 items-center">
-                <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Upfront Franchise Fee</div>
-                {selectedFranchises.map((f) => (
-                  <div key={f._id} className="px-4 text-center font-mono text-slate-200">
-                    {formatLakhs(f.franchiseFee)}
-                  </div>
-                ))}
-              </div>
+                  <tr>
+                    <td className="p-4 font-semibold text-[#64748B]">Monthly Royalty Rate</td>
+                    {selectedFranchises.map((f) => (
+                      <td key={f._id} className="p-4 font-medium text-[#14243A]">
+                        {f.royaltyPercentage || f.royaltyFee || 6}% of Gross Sales
+                      </td>
+                    ))}
+                  </tr>
 
-              {/* Row 4: Royalty Rate */}
-              <div className="grid grid-cols-4 p-5 items-center bg-slate-950/40">
-                <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Monthly Royalty Fee</div>
-                {selectedFranchises.map((f) => (
-                  <div key={f._id} className="px-4 text-center font-mono font-bold text-amber-300">
-                    {f.royaltyFee ? `${f.royaltyFee}% of Gross Sales` : '5% of Gross Sales'}
-                  </div>
-                ))}
-              </div>
+                  <tr className="bg-[#F8FAFC]/50">
+                    <td className="p-4 font-semibold text-[#64748B]">Est. Payback Horizon</td>
+                    {selectedFranchises.map((f) => (
+                      <td key={f._id} className="p-4 font-bold text-[#159D8B]">
+                        ~{f.estimatedRoiMonths || f.paybackPeriodMonths || 18} Months
+                      </td>
+                    ))}
+                  </tr>
 
-              {/* Row 5: Space Requirements */}
-              <div className="grid grid-cols-4 p-5 items-center">
-                <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Space (Carpet Area)</div>
-                {selectedFranchises.map((f) => (
-                  <div key={f._id} className="px-4 text-center font-mono text-slate-300">
-                    {f.spaceRequiredSqFt?.min || 800} - {f.spaceRequiredSqFt?.max || 1800} sq. ft
-                  </div>
-                ))}
-              </div>
+                  <tr>
+                    <td className="p-4 font-semibold text-[#64748B]">Required Carpet Space</td>
+                    {selectedFranchises.map((f) => (
+                      <td key={f._id} className="p-4 text-[#14243A]">
+                        {f.commercialSpaceMinSqFt || f.spaceRequiredSqFt?.min || 800} -{' '}
+                        {f.commercialSpaceMaxSqFt || f.spaceRequiredSqFt?.max || 1500} sq.ft
+                      </td>
+                    ))}
+                  </tr>
 
-              {/* Row 6: Existing Outlets */}
-              <div className="grid grid-cols-4 p-5 items-center bg-slate-950/40">
-                <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Operating Outlets</div>
-                {selectedFranchises.map((f) => (
-                  <div key={f._id} className="px-4 text-center font-bold text-white">
-                    {f.currentOutlets || 12} Outlets Active
-                  </div>
-                ))}
-              </div>
+                  <tr className="bg-[#F8FAFC]/50">
+                    <td className="p-4 font-semibold text-[#64748B]">Operational Outlets</td>
+                    {selectedFranchises.map((f) => (
+                      <td key={f._id} className="p-4 font-bold text-[#14243A]">
+                        {f.unitsCount || f.currentOutlets || 5}+ Active Locations
+                      </td>
+                    ))}
+                  </tr>
 
-              {/* Row 7: Estimated Payback */}
-              <div className="grid grid-cols-4 p-5 items-center">
-                <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Est. Payback Horizon</div>
-                {selectedFranchises.map((f) => (
-                  <div key={f._id} className="px-4 text-center font-mono text-indigo-300 font-bold">
-                    {f.paybackPeriodMonths || 18} - {(f.paybackPeriodMonths || 18) + 6} Months
-                  </div>
-                ))}
-              </div>
+                  <tr>
+                    <td className="p-4 font-semibold text-[#64748B]">Territory Exclusivity Protection</td>
+                    {selectedFranchises.map((f) => (
+                      <td key={f._id} className="p-4 text-[#159D8B] font-semibold flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4" />
+                        Contractual 3.5 km Radius
+                      </td>
+                    ))}
+                  </tr>
 
-              {/* Row 8: FDD & Legal Disclosure */}
-              <div className="grid grid-cols-4 p-5 items-center bg-slate-950/40">
-                <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Certified FDD Vault</div>
-                {selectedFranchises.map((f) => (
-                  <div key={f._id} className="px-4 text-center">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold border border-emerald-500/30">
-                      <ShieldCheck className="w-3.5 h-3.5" /> 23 FTC Items Verified
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Row 9: Actions */}
-              <div className="grid grid-cols-4 p-6 items-center">
-                <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Next Step</div>
-                {selectedFranchises.map((f) => (
-                  <div key={f._id} className="px-4 text-center">
-                    <Link
-                      href={`/franchises/${f.slug}`}
-                      className="inline-flex items-center justify-center gap-1.5 w-full py-2.5 px-4 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-lg shadow-indigo-700/20"
-                    >
-                      View Dossier <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
-                  </div>
-                ))}
-              </div>
+                  <tr className="bg-[#F8FAFC]/50">
+                    <td className="p-4 font-semibold text-[#64748B]">Action & Dossier</td>
+                    {selectedFranchises.map((f) => (
+                      <td key={f._id} className="p-4">
+                        <Link
+                          href={`/franchises/${f.slug}`}
+                          className="btn-primary py-1.5 px-4 text-xs font-semibold"
+                        >
+                          View Full Dossier <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                        </Link>
+                      </td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         )}

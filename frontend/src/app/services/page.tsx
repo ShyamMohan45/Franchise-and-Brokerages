@@ -1,6 +1,8 @@
+"use client";
+
 import React from "react";
 import Link from "next/link";
-import { TrendingUp, FileCheck2, Scale, Users2, Compass, ArrowRight, CheckCircle2 } from "lucide-react";
+import { TrendingUp, FileCheck2, Scale, Users2, Compass, ArrowRight, CheckCircle2, ShieldCheck } from "lucide-react";
 
 export default function ServicesPage() {
   const services = [
@@ -42,54 +44,62 @@ export default function ServicesPage() {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-16">
-      <div className="text-center max-w-3xl mx-auto space-y-4">
-        <span className="text-blue-600 font-semibold text-xs uppercase tracking-wider">End-to-End Solutions</span>
-        <h1 className="text-4xl font-extrabold text-navy-900 tracking-tight">Franchise Development & Advisory Services</h1>
-        <p className="text-slate-600 text-base">
-          From independent concept to certified national chain. We provide the operational, legal, and brokerage
-          scaffolding ambitious brands need to scale responsibly.
-        </p>
-      </div>
+    <div className="bg-[#F8FAFC] min-h-screen py-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
+        <div className="text-center max-w-3xl mx-auto space-y-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#EFF4FF] border border-[#BFD3FE] text-[#315EFB] text-xs font-semibold">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            End-to-End Expansion Solutions
+          </div>
+          <h1 className="text-4xl sm:text-5xl font-extrabold text-[#14243A] tracking-tight">
+            Franchise Development & Advisory Solutions
+          </h1>
+          <p className="text-sm sm:text-base text-[#64748B] leading-relaxed">
+            From single-outlet concept to certified national chain. We provide the operational, legal, and brokerage scaffolding ambitious brands require to expand responsibly.
+          </p>
+        </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {services.map((s, idx) => {
-          const Icon = s.icon;
-          return (
-            <div
-              key={idx}
-              className="bg-white rounded-3xl border border-slate-200 p-8 space-y-6 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
-            >
-              <div className="space-y-4">
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-                  <Icon className="w-6 h-6" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {services.map((s, idx) => {
+            const Icon = s.icon;
+            return (
+              <div
+                key={idx}
+                className="surface-card p-8 space-y-6 flex flex-col justify-between"
+              >
+                <div className="space-y-4">
+                  <div className="w-12 h-12 rounded-xl bg-[#EFF4FF] text-[#315EFB] flex items-center justify-center font-bold">
+                    <Icon className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-xl font-bold text-[#14243A]">{s.title}</h3>
+                  <p className="text-xs text-[#64748B] leading-relaxed">{s.desc}</p>
+                  <div className="space-y-2 pt-3 border-t border-[#E7ECF2]">
+                    <span className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider">
+                      Key Deliverables:
+                    </span>
+                    <ul className="space-y-1.5 text-xs text-[#14243A]">
+                      {s.deliverables.map((d, i) => (
+                        <li key={i} className="flex items-center gap-2">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-[#159D8B] shrink-0" />
+                          <span>{d}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
-                <h3 className="text-xl font-bold text-navy-900">{s.title}</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">{s.desc}</p>
-                <div className="space-y-2 pt-2 border-t border-slate-100">
-                  <span className="text-xs font-semibold text-slate-400 uppercase">Key Deliverables:</span>
-                  <ul className="space-y-1.5 text-xs text-slate-700">
-                    {s.deliverables.map((d, i) => (
-                      <li key={i} className="flex items-center gap-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                        <span>{d}</span>
-                      </li>
-                    ))}
-                  </ul>
+
+                <div className="pt-4 border-t border-[#E7ECF2]">
+                  <Link
+                    href={`/services/${s.slug}`}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[#315EFB] hover:text-[#2144EB]"
+                  >
+                    Explore Detailed Methodology <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
                 </div>
               </div>
-
-              <div className="pt-4 border-t border-slate-100">
-                <Link
-                  href={`/services/${s.slug}`}
-                  className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1.5"
-                >
-                  Explore Detailed Methodology <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );

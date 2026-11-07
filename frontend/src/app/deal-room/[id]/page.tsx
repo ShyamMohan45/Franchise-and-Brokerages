@@ -90,13 +90,13 @@ export default function DealRoomDetailPage({ params }: { params: Promise<{ id: s
   const [signSuccess, setSignSuccess] = useState(false);
 
   const fetchRoom = async () => {
-    const token = localStorage.getItem('fb_auth_token');
+    const token = typeof window !== 'undefined' ? localStorage.getItem('fb_auth_token') : null;
     try {
       const response = await fetch(`http://localhost:5000/api/deal-rooms/${roomId}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const data = await response.json();
-      if (data.success) {
+      if (data.success && data.data) {
         setRoom(data.data);
       }
     } catch (err) {
@@ -114,7 +114,7 @@ export default function DealRoomDetailPage({ params }: { params: Promise<{ id: s
     e.preventDefault();
     if (!chatInput.trim()) return;
 
-    const token = localStorage.getItem('fb_auth_token');
+    const token = typeof window !== 'undefined' ? localStorage.getItem('fb_auth_token') : null;
     try {
       const response = await fetch(`http://localhost:5000/api/deal-rooms/${roomId}/messages`, {
         method: 'POST',
@@ -125,18 +125,18 @@ export default function DealRoomDetailPage({ params }: { params: Promise<{ id: s
         body: JSON.stringify({ text: chatInput }),
       });
       const data = await response.json();
-      if (data.success) {
+      if (data.success && data.data) {
         setRoom(data.data);
         setChatInput('');
       }
     } catch (err) {
-      console.error('Failed to post message', err);
+      console.error(err);
     }
   };
 
   const handleSignDocument = async () => {
     setSigning(true);
-    const token = localStorage.getItem('fb_auth_token');
+    const token = typeof window !== 'undefined' ? localStorage.getItem('fb_auth_token') : null;
     try {
       const response = await fetch(`http://localhost:5000/api/deal-rooms/${roomId}/sign`, {
         method: 'POST',
@@ -147,11 +147,11 @@ export default function DealRoomDetailPage({ params }: { params: Promise<{ id: s
       });
       const data = await response.json();
       if (data.success) {
-        setRoom(data.data);
         setSignSuccess(true);
+        fetchRoom();
       }
     } catch (err) {
-      console.error('Failed to sign document', err);
+      console.error(err);
     } finally {
       setSigning(false);
     }
@@ -159,274 +159,274 @@ export default function DealRoomDetailPage({ params }: { params: Promise<{ id: s
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
-        <div className="text-center space-y-3">
-          <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-slate-400">Loading secure digital deal room...</p>
-        </div>
+      <div className="bg-[#F8FAFC] min-h-screen py-24 text-center space-y-4">
+        <div className="w-8 h-8 border-4 border-[#315EFB] border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-xs text-[#64748B] font-medium">Decrypting Deal Room Environment...</p>
       </div>
     );
   }
 
   if (!room) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <h2 className="text-2xl font-bold">Deal Room Not Found</h2>
-          <Link href="/deal-room" className="text-emerald-400 text-sm hover:underline">
-            ← Back to Deal Rooms
-          </Link>
-        </div>
+      <div className="bg-[#F8FAFC] min-h-screen py-24 text-center space-y-4">
+        <AlertCircle className="w-12 h-12 text-rose-500 mx-auto" />
+        <h2 className="text-xl font-bold text-[#14243A]">Deal Room Not Found</h2>
+        <Link href="/deal-room" className="btn-primary py-2 px-6 text-xs inline-flex">
+          Return to Deal Rooms
+        </Link>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 py-8 px-4 sm:px-6 lg:px-8 selection:bg-emerald-500 selection:text-white">
-      <div className="max-w-7xl mx-auto space-y-8">
-        {/* Navigation & Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
-          <div className="space-y-1">
-            <Link
-              href="/deal-room"
-              className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white mb-2 transition"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" /> Back to Deal Rooms
-            </Link>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-white">{room.roomName}</h1>
-              <span className="px-3 py-1 text-xs font-bold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 uppercase tracking-wider">
-                {room.stage.replace('_', ' ')}
+    <div className="bg-[#F8FAFC] min-h-screen py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        {/* Navigation Breadcrumb */}
+        <div className="flex items-center gap-2 text-xs text-[#64748B]">
+          <Link href="/deal-room" className="hover:text-[#315EFB] flex items-center gap-1 transition-colors">
+            <ArrowLeft className="w-3.5 h-3.5" />
+            All Deal Rooms
+          </Link>
+          <span>/</span>
+          <span className="text-[#14243A] font-semibold">{room.roomName}</span>
+        </div>
+
+        {/* Room Header Card */}
+        <div className="surface-card p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full bg-[#EFF4FF] border border-[#BFD3FE] text-[#315EFB] text-[11px] font-semibold flex items-center gap-1">
+                <Lock className="w-3 h-3" />
+                256-Bit Encrypted Data Room
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full bg-[#E6F7F5] border border-[#C2EDE7] text-[#159D8B] text-[11px] font-semibold">
+                Territory: {room.targetTerritory}
               </span>
             </div>
-            <p className="text-xs text-slate-400">
-              Territory: <span className="text-white font-medium">{room.targetTerritory}</span> • Brand: <span className="text-white font-medium">{room.franchiseListing?.brandName}</span>
+            <h1 className="text-2xl font-bold text-[#14243A]">{room.roomName}</h1>
+            <p className="text-xs text-[#64748B]">
+              Brand:{' '}
+              <strong className="text-[#14243A]">{room.franchiseListing?.brandName || 'Brand'}</strong> |
+              Franchisor: {room.franchisor?.name || 'Franchisor'} | Investor:{' '}
+              {room.investor?.name || 'Investor'}
             </p>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs flex items-center gap-2">
-              <Lock className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="text-slate-300">256-Bit Encrypted Data Room</span>
+            <div className="bg-[#F8FAFC] p-3 rounded-xl border border-[#E7ECF2] text-xs">
+              <span className="text-[#64748B] block text-[10px] uppercase font-semibold">Deal Stage</span>
+              <span className="font-bold text-[#315EFB] capitalize mt-0.5 block">
+                {room.stage.replace('_', ' ')}
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Milestone Tracker Bar */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-xl">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">
-            Deal Closing Milestones
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
-            {room.dealMilestones.map((m, idx) => (
-              <div
-                key={idx}
-                className={`p-3 rounded-2xl border transition ${
-                  m.completed
-                    ? 'bg-emerald-950/40 border-emerald-500/50 text-emerald-300'
-                    : 'bg-slate-950/60 border-slate-800 text-slate-400'
-                }`}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  {m.completed ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                  ) : (
-                    <Clock className="w-4 h-4 text-slate-500 flex-shrink-0" />
-                  )}
-                  <span className="text-xs font-bold leading-tight line-clamp-1">{m.title}</span>
-                </div>
-                <span className="text-[10px] text-slate-400">
-                  {m.completed ? 'Completed' : 'Pending'}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Main 2-Column Split: Shared Documents + E-Sign VS Negotiation Chat */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Left Column (7 cols): Document Vault & E-Signature */}
+        {/* Main Grid: 2 Columns */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Left Column: Documents & E-Signatures (7 cols) */}
           <div className="lg:col-span-7 space-y-6">
-            {/* E-Signature Box */}
-            <div className="bg-gradient-to-br from-indigo-950/50 via-slate-900 to-slate-900 border border-indigo-500/40 rounded-3xl p-6 sm:p-7 space-y-5 shadow-2xl">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <PenTool className="w-5 h-5 text-indigo-400" />
-                  <h3 className="text-lg font-bold text-white">E-Signature Center</h3>
-                </div>
-                <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 uppercase tracking-wider">
-                  {room.signatureRequest.status.replace('_', ' ')}
+            {/* E-Signature & Agreement Execution */}
+            <div className="surface-card p-6 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-[#E7ECF2]">
+                <h3 className="text-sm font-bold text-[#14243A] flex items-center gap-2">
+                  <PenTool className="w-4 h-4 text-[#315EFB]" />
+                  Franchise Legal Agreement & E-Sign
+                </h3>
+                <span className="text-[11px] font-semibold text-[#159D8B] bg-[#E6F7F5] px-2 py-0.5 rounded">
+                  Legal Binding Status
                 </span>
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-2">
-                <div className="text-xs font-semibold text-slate-400">Document Out for Execution:</div>
-                <div className="text-sm font-bold text-white flex items-center justify-between">
-                  <span>{room.signatureRequest.documentTitle}</span>
-                  <a
-                    href="http://localhost:5000/uploads/roastcraft_master_fdd_2026.pdf"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-normal"
-                  >
-                    View Draft <ExternalLink className="w-3 h-3" />
-                  </a>
+              <div className="bg-[#F8FAFC] p-4 rounded-xl border border-[#E7ECF2] space-y-3">
+                <div className="flex items-center justify-between text-xs">
+                  <div>
+                    <span className="font-bold text-[#14243A] block">
+                      {room.signatureRequest?.documentTitle || 'Master Franchise Agreement 2026.pdf'}
+                    </span>
+                    <span className="text-[11px] text-[#64748B]">
+                      Includes exclusive 3.5 km territory schedule & fee covenants
+                    </span>
+                  </div>
+                  <span className="text-xs font-bold text-[#315EFB] capitalize">
+                    {room.signatureRequest?.status.replace('_', ' ') || 'Out for Signature'}
+                  </span>
                 </div>
-              </div>
 
-              {/* Signatories Status */}
-              <div className="space-y-2">
-                <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Authorized Signatories
-                </div>
-                <div className="space-y-2">
-                  {room.signatureRequest.participants.map((p, idx) => (
+                {/* Signatories Status */}
+                <div className="space-y-2 pt-2 border-t border-[#E7ECF2]">
+                  {room.signatureRequest?.participants?.map((sig, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center justify-between p-3 rounded-xl bg-slate-800/80 border border-slate-700/80 text-xs"
+                      className="flex items-center justify-between text-xs p-2 rounded-lg bg-white border border-[#E7ECF2]"
                     >
-                      <div className="flex items-center gap-2.5">
-                        <UserCheck
-                          className={`w-4 h-4 ${p.status === 'signed' ? 'text-emerald-400' : 'text-slate-500'}`}
-                        />
+                      <div className="flex items-center gap-2">
+                        <UserCheck className="w-4 h-4 text-[#64748B]" />
                         <div>
-                          <span className="font-bold text-white block">{p.name}</span>
-                          <span className="text-slate-400 text-[11px] capitalize">{p.role} • {p.email}</span>
+                          <strong className="text-[#14243A]">{sig.name}</strong>
+                          <span className="text-[10px] text-[#64748B] ml-1 capitalize">({sig.role})</span>
                         </div>
                       </div>
                       <span
-                        className={`px-2 py-0.5 rounded-full font-bold text-[10px] uppercase tracking-wider ${
-                          p.status === 'signed'
-                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                            : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                        className={`font-semibold text-[11px] ${
+                          sig.status === 'signed' ? 'text-[#159D8B]' : 'text-amber-600'
                         }`}
                       >
-                        {p.status}
+                        {sig.status === 'signed' ? '✓ Signed' : 'Pending Signature'}
                       </span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Sign Action Button */}
-              <div className="pt-2">
-                {room.signatureRequest.status === 'completed' ? (
-                  <div className="p-3 rounded-xl bg-emerald-950/50 border border-emerald-500/40 text-xs text-emerald-300 flex items-center gap-2 font-semibold">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    Agreement fully executed by all parties! Stored in immutable audit vault.
-                  </div>
-                ) : (
-                  <button
-                    onClick={handleSignDocument}
-                    disabled={signing}
-                    className="w-full py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-emerald-700/30 flex items-center justify-center gap-2"
-                  >
-                    <PenTool className="w-4 h-4" />
-                    {signing ? 'Recording Digital Signature...' : 'Digitally Execute Agreement (1-Click Sign)'}
-                  </button>
-                )}
+              {/* Action Button to E-Sign */}
+              <div className="pt-2 flex items-center justify-between">
+                <span className="text-xs text-[#64748B]">
+                  {signSuccess ? 'Signature recorded on audit ledger' : 'Click to execute digital signature'}
+                </span>
+                <button
+                  onClick={handleSignDocument}
+                  disabled={signing || signSuccess}
+                  className="btn-primary py-2.5 px-6 text-xs font-semibold"
+                >
+                  <PenTool className="w-3.5 h-3.5 mr-1" />
+                  {signing ? 'Processing E-Sign...' : signSuccess ? '✓ Successfully Signed' : 'E-Sign Agreement'}
+                </button>
               </div>
             </div>
 
-            {/* Shared Documents Vault */}
-            <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-7 space-y-4 shadow-xl">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-emerald-400" />
-                  <h3 className="text-lg font-bold text-white">Confidential Deal Vault</h3>
-                </div>
-                <span className="text-xs text-slate-400">
-                  {room.sharedDocuments.length} Documents Shared
-                </span>
+            {/* Shared Document Vault */}
+            <div className="surface-card p-6 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-[#E7ECF2]">
+                <h3 className="text-sm font-bold text-[#14243A] flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#315EFB]" />
+                  Confidential Document Vault ({room.sharedDocuments?.length || 0})
+                </h3>
+                <span className="text-xs text-[#64748B]">Watermarked with viewer ID</span>
               </div>
 
-              <div className="divide-y divide-slate-800/80">
-                {room.sharedDocuments.map((doc) => (
-                  <div key={doc.docId} className="py-3.5 flex items-center justify-between gap-4">
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700">
-                          {doc.docType}
-                        </span>
-                        <h4 className="text-sm font-bold text-white">{doc.title}</h4>
-                      </div>
-                      <p className="text-[11px] text-slate-400">
-                        Uploaded on {new Date(doc.uploadedAt).toLocaleDateString()} • Verified by Brokerage
-                      </p>
-                    </div>
-
-                    <a
-                      href={`http://localhost:5000${doc.fileUrl}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition border border-slate-700"
+              {room.sharedDocuments && room.sharedDocuments.length > 0 ? (
+                <div className="space-y-2.5">
+                  {room.sharedDocuments.map((doc, idx) => (
+                    <div
+                      key={idx}
+                      className="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E7ECF2] flex items-center justify-between text-xs hover:border-[#315EFB] transition-colors"
                     >
-                      <Download className="w-3.5 h-3.5" />
-                      Download PDF
-                    </a>
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-[#EFF4FF] text-[#315EFB]">
+                          <FileText className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="font-bold text-[#14243A]">{doc.title}</div>
+                          <div className="text-[11px] text-[#64748B] capitalize">{doc.docType.replace('_', ' ')}</div>
+                        </div>
+                      </div>
+                      <a
+                        href={doc.fileUrl || '#'}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn-secondary py-1.5 px-3 text-[11px] font-semibold"
+                      >
+                        <Download className="w-3 h-3 mr-1" /> Download
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-6 text-center text-xs text-[#64748B] bg-[#F8FAFC] rounded-xl border border-[#E7ECF2]">
+                  Standard FDD Item 1-23 disclosures are being loaded into this room.
+                </div>
+              )}
+            </div>
+
+            {/* Deal Milestones */}
+            <div className="surface-card p-6 space-y-4">
+              <h3 className="text-sm font-bold text-[#14243A]">Closing Milestones</h3>
+              <div className="space-y-2">
+                {room.dealMilestones?.map((m, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-2.5 rounded-lg bg-[#F8FAFC] border border-[#E7ECF2] text-xs"
+                  >
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2
+                        className={`w-4 h-4 ${m.completed ? 'text-[#159D8B]' : 'text-[#64748B]'}`}
+                      />
+                      <span className={`font-medium ${m.completed ? 'text-[#14243A]' : 'text-[#64748B]'}`}>
+                        {m.title}
+                      </span>
+                    </div>
+                    <span
+                      className={`text-[11px] font-semibold ${
+                        m.completed ? 'text-[#159D8B]' : 'text-[#64748B]'
+                      }`}
+                    >
+                      {m.completed ? 'Completed' : 'Pending'}
+                    </span>
                   </div>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Right Column (5 cols): Live Deal Negotiation Chat */}
-          <div className="lg:col-span-5 bg-slate-900/90 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-2xl flex flex-col h-[650px]">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <div className="flex items-center gap-2">
-                <MessageSquare className="w-5 h-5 text-purple-400" />
-                <h3 className="text-base font-bold text-white">Deal Negotiation Chat</h3>
+          {/* Right Column: Multi-Party Secure Chat (5 cols) */}
+          <div className="lg:col-span-5">
+            <div className="surface-card p-6 flex flex-col h-[600px] justify-between">
+              <div>
+                <div className="flex items-center justify-between pb-3 border-b border-[#E7ECF2]">
+                  <h3 className="text-sm font-bold text-[#14243A] flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-[#315EFB]" />
+                    Encrypted Multi-Party Channel
+                  </h3>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                </div>
+                <div className="text-[11px] text-[#64748B] py-2">
+                  All messages are permanently logged for contractual audit defense.
+                </div>
               </div>
-              <span className="text-[11px] text-emerald-400 flex items-center gap-1 font-semibold">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                Encrypted
-              </span>
-            </div>
 
-            {/* Chat Messages */}
-            <div className="flex-1 overflow-y-auto space-y-3.5 pr-2 scrollbar-thin scrollbar-thumb-slate-800">
-              {room.messages.map((m, idx) => (
-                <div key={idx} className="space-y-1">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span
-                      className={`font-bold capitalize ${
-                        m.senderRole === 'franchisor'
-                          ? 'text-amber-400'
-                          : m.senderRole === 'investor'
-                          ? 'text-teal-400'
-                          : 'text-purple-400'
+              {/* Chat Message Scroll */}
+              <div className="flex-1 overflow-y-auto space-y-3 py-3 pr-1">
+                {room.messages && room.messages.length > 0 ? (
+                  room.messages.map((msg, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-3 rounded-xl text-xs space-y-1 ${
+                        msg.senderRole === 'broker'
+                          ? 'bg-[#EFF4FF] border border-[#BFD3FE]'
+                          : 'bg-[#F8FAFC] border border-[#E7ECF2]'
                       }`}
                     >
-                      {m.senderRole}
-                    </span>
-                    <span className="text-slate-400">
-                      {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
+                      <div className="flex items-center justify-between text-[10px]">
+                        <strong className="text-[#14243A]">{msg.sender}</strong>
+                        <span className="text-[#64748B] uppercase font-semibold text-[9px]">
+                          {msg.senderRole}
+                        </span>
+                      </div>
+                      <p className="text-[#14243A] leading-relaxed">{msg.text}</p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-8 text-center text-xs text-[#64748B]">
+                    No messages yet. Initiate discussion regarding franchise terms or territory requirements.
                   </div>
-                  <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800/80 text-xs text-slate-200 leading-relaxed">
-                    {m.text}
-                  </div>
-                </div>
-              ))}
-            </div>
+                )}
+              </div>
 
-            {/* Chat Input */}
-            <form onSubmit={handleSendMessage} className="pt-2 border-t border-slate-800 flex items-center gap-2">
-              <input
-                type="text"
-                placeholder="Post question or negotiation point..."
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                className="flex-1 bg-slate-800/90 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
-              <button
-                type="submit"
-                disabled={!chatInput.trim()}
-                className="p-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl transition disabled:opacity-40"
-              >
-                <Send className="w-4 h-4" />
-              </button>
-            </form>
+              {/* Message Input Box */}
+              <form onSubmit={handleSendMessage} className="pt-3 border-t border-[#E7ECF2] flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Type a secure message..."
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  className="flex-1 px-3 py-2 text-xs rounded-xl border border-[#E7ECF2] focus:outline-none focus:border-[#315EFB] text-[#14243A]"
+                />
+                <button type="submit" className="btn-primary py-2 px-4 text-xs font-semibold">
+                  <Send className="w-3.5 h-3.5" />
+                </button>
+              </form>
+            </div>
           </div>
         </div>
       </div>

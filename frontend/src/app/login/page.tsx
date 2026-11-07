@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/providers/AuthProvider";
-import { Building2, Lock, Mail, ArrowRight, AlertCircle } from "lucide-react";
+import { Building2, Lock, Mail, ArrowRight, AlertCircle, ShieldCheck } from "lucide-react";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -32,14 +32,14 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full bg-white rounded-3xl border border-slate-200/90 shadow-xl p-8 sm:p-10 space-y-6">
+    <div className="min-h-[85vh] bg-[#F8FAFC] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full surface-card p-8 sm:p-10 space-y-6">
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl bg-navy-900 mx-auto flex items-center justify-center shadow-md">
-            <Building2 className="w-6 h-6 text-amber-400" />
+          <div className="w-12 h-12 rounded-xl bg-[#14243A] mx-auto flex items-center justify-center text-white shadow-sm">
+            <Building2 className="w-6 h-6 text-[#315EFB]" />
           </div>
-          <h2 className="text-2xl font-extrabold text-navy-900 tracking-tight">Access FranchiseBridge</h2>
-          <p className="text-xs text-slate-500">Sign in to your business, investor, or brokerage portal</p>
+          <h2 className="text-2xl font-bold text-[#14243A] tracking-tight">Access FranchiseBridge</h2>
+          <p className="text-xs text-[#64748B]">Sign in to your franchisor, investor, or brokerage workspace</p>
         </div>
 
         {error && (
@@ -51,36 +51,36 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           <div>
-            <label className="block text-slate-700 font-semibold mb-1">Corporate or Personal Email</label>
+            <label className="block text-[#14243A] font-semibold mb-1">Corporate or Personal Email</label>
             <div className="relative">
-              <Mail className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
+              <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#64748B]" />
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@company.com"
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-blue-500"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[#E7ECF2] text-sm text-[#14243A] placeholder-[#64748B] focus:outline-none focus:border-[#315EFB]"
               />
             </div>
           </div>
 
           <div>
             <div className="flex justify-between mb-1">
-              <label className="block text-slate-700 font-semibold">Password</label>
-              <a href="#" className="text-blue-600 hover:underline">
+              <label className="block text-[#14243A] font-semibold">Password</label>
+              <a href="#" className="text-[#315EFB] hover:underline">
                 Forgot password?
               </a>
             </div>
             <div className="relative">
-              <Lock className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
+              <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#64748B]" />
               <input
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-blue-500"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[#E7ECF2] text-sm text-[#14243A] placeholder-[#64748B] focus:outline-none focus:border-[#315EFB]"
               />
             </div>
           </div>
@@ -88,44 +88,47 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-md text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            className="btn-primary w-full py-3 text-sm font-semibold justify-center"
           >
-            {loading ? "Authenticating..." : "Sign In"}
-            <ArrowRight className="w-4 h-4" />
+            {loading ? "Authenticating..." : "Sign In to Workspace"}
+            <ArrowRight className="w-4 h-4 ml-1" />
           </button>
         </form>
 
         {/* Demo Fast Login Switcher */}
-        <div className="pt-4 border-t border-slate-100 text-center space-y-2">
-          <span className="text-[11px] uppercase tracking-wider text-slate-400 font-bold block">
-            One-Click Demo Credentials
+        <div className="pt-4 border-t border-[#E7ECF2] text-center space-y-2">
+          <span className="text-[11px] uppercase tracking-wider text-[#64748B] font-bold block">
+            Instant Demo Account Access
           </span>
-          <div className="flex flex-wrap justify-center gap-1.5 text-[11px]">
+          <div className="grid grid-cols-3 gap-2">
             <button
-              onClick={() => handleQuickDemo("broker.admin@franchisebridge.com")}
-              className="px-2.5 py-1 rounded bg-slate-100 text-slate-700 hover:bg-blue-50 hover:text-blue-700 font-medium"
+              type="button"
+              onClick={() => handleQuickDemo("business@franchisebridge.com")}
+              className="py-1.5 px-2 text-[11px] font-semibold bg-[#F8FAFC] border border-[#E7ECF2] text-[#14243A] hover:border-[#315EFB] rounded-lg transition-colors"
             >
-              Broker Admin
+              Franchisor
             </button>
             <button
-              onClick={() => handleQuickDemo("owner.roastcraft@example.com")}
-              className="px-2.5 py-1 rounded bg-slate-100 text-slate-700 hover:bg-blue-50 hover:text-blue-700 font-medium"
-            >
-              Business Owner
-            </button>
-            <button
-              onClick={() => handleQuickDemo("investor.arun@example.com")}
-              className="px-2.5 py-1 rounded bg-slate-100 text-slate-700 hover:bg-blue-50 hover:text-blue-700 font-medium"
+              type="button"
+              onClick={() => handleQuickDemo("investor@franchisebridge.com")}
+              className="py-1.5 px-2 text-[11px] font-semibold bg-[#F8FAFC] border border-[#E7ECF2] text-[#14243A] hover:border-[#315EFB] rounded-lg transition-colors"
             >
               Investor
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickDemo("admin@franchisebridge.com")}
+              className="py-1.5 px-2 text-[11px] font-semibold bg-[#F8FAFC] border border-[#E7ECF2] text-[#14243A] hover:border-[#315EFB] rounded-lg transition-colors"
+            >
+              Admin
             </button>
           </div>
         </div>
 
-        <div className="text-center text-xs text-slate-500">
-          Don't have an account yet?{" "}
-          <Link href="/register" className="font-semibold text-blue-600 hover:underline">
-            Register here
+        <div className="text-center text-xs text-[#64748B]">
+          New to FranchiseBridge?{" "}
+          <Link href="/register" className="font-semibold text-[#315EFB] hover:underline">
+            Create an account
           </Link>
         </div>
       </div>

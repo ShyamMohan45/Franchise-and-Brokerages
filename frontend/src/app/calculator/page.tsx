@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   HelpCircle,
   RefreshCw,
+  SlidersHorizontal,
 } from 'lucide-react';
 
 interface Scenario {
@@ -79,7 +80,7 @@ export default function CalculatorPage() {
         }),
       });
       const res = await response.json();
-      if (res.success) {
+      if (res.success && res.data) {
         setData(res.data);
       }
     } catch (err) {
@@ -100,47 +101,47 @@ export default function CalculatorPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 py-12 px-4 sm:px-6 lg:px-8 selection:bg-emerald-500 selection:text-white">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#14243A] py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto space-y-10">
         {/* Header */}
         <div className="text-center space-y-4 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold uppercase tracking-wider">
-            <Calculator className="w-4 h-4" />
-            Enterprise Expansion Calculator
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#EFF4FF] border border-[#BFD3FE] text-[#315EFB] text-xs font-semibold">
+            <Calculator className="w-3.5 h-3.5" />
+            Financial Intelligence
           </div>
-          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
-            Franchise Expansion Cost Estimator
+          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-[#14243A]">
+            Expansion Cost & ROI Estimator
           </h1>
-          <p className="text-slate-400 text-base sm:text-lg">
-            Forecast multi-tier capex requirements, working capital buffers, and break-even timelines based on audited retail models across Indian metro & tier-2 markets.
+          <p className="text-[#64748B] text-base leading-relaxed">
+            Simulate equipment capex, fitout leases, security deposits, and break-even timelines across Tier-1, Tier-2, and Tier-3 commercial corridors.
           </p>
         </div>
 
         {/* Main Grid: Inputs vs Results */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Inputs Column (5 cols) */}
-          <div className="lg:col-span-5 bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl backdrop-blur-xl">
-            <h2 className="text-xl font-bold text-white flex items-center justify-between">
-              <span>Unit Parameters</span>
+          <div className="lg:col-span-5 surface-card p-6 sm:p-8 space-y-6">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E7ECF2]">
+              <h2 className="text-base font-bold text-[#14243A]">Unit Parameters</h2>
               <button
                 onClick={fetchEstimate}
                 disabled={loading}
-                className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+                className="text-xs text-[#315EFB] hover:text-[#2144EB] font-semibold flex items-center gap-1"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
                 Recalculate
               </button>
-            </h2>
+            </div>
 
-            {/* Industry */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            {/* Industry Selection */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-[#64748B] uppercase tracking-wider">
                 Sector / Industry
               </label>
               <select
                 value={industry}
                 onChange={(e) => setIndustry(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                className="w-full bg-white border border-[#E7ECF2] rounded-xl px-3 py-2 text-xs text-[#14243A] focus:outline-none focus:border-[#315EFB]"
               >
                 <option value="Food & Beverage">Food & Beverage (Café / QSR / Casual)</option>
                 <option value="Health & Fitness">Health & Fitness (Smart Gym / Pilates)</option>
@@ -151,8 +152,8 @@ export default function CalculatorPage() {
             </div>
 
             {/* City Tier */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-[#64748B] uppercase tracking-wider">
                 City / Market Tier
               </label>
               <div className="grid grid-cols-3 gap-2">
@@ -161,30 +162,23 @@ export default function CalculatorPage() {
                     key={tier}
                     type="button"
                     onClick={() => setCityTier(tier)}
-                    className={`py-2 text-xs font-bold rounded-xl border transition ${
+                    className={`py-2 text-xs font-semibold rounded-xl border transition ${
                       cityTier === tier
-                        ? 'bg-emerald-600 text-white border-emerald-500 shadow-md shadow-emerald-700/30'
-                        : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-750'
+                        ? 'bg-[#14243A] text-white border-[#14243A] shadow-sm'
+                        : 'bg-[#F8FAFC] text-[#64748B] border-[#E7ECF2] hover:bg-white'
                     }`}
                   >
                     {tier}
                   </button>
                 ))}
               </div>
-              <p className="text-[11px] text-slate-400">
-                {cityTier === 'Tier 1'
-                  ? 'Metro: Mumbai, Bangalore, Delhi NCR (High rentals, top spending)'
-                  : cityTier === 'Tier 2'
-                  ? 'Growth Hub: Pune, Ahmedabad, Hyderabad, Jaipur (Balanced capex)'
-                  : 'Emerging: Tier-3 towns with lower rental deposits'}
-              </p>
             </div>
 
             {/* Store Size Slider */}
             <div className="space-y-2">
               <div className="flex justify-between items-center text-xs font-semibold">
-                <span className="text-slate-400 uppercase tracking-wider">Store Carpet Area</span>
-                <span className="text-emerald-400 font-mono text-sm">{sizeSqFt} sq. ft</span>
+                <span className="text-[#64748B] uppercase tracking-wider">Store Carpet Area</span>
+                <span className="text-[#315EFB] font-bold">{sizeSqFt} sq. ft</span>
               </div>
               <input
                 type="range"
@@ -193,9 +187,9 @@ export default function CalculatorPage() {
                 step={50}
                 value={sizeSqFt}
                 onChange={(e) => setSizeSqFt(Number(e.target.value))}
-                className="w-full accent-emerald-500 bg-slate-800 rounded-lg cursor-pointer"
+                className="w-full accent-[#315EFB] bg-slate-200 rounded-lg cursor-pointer"
               />
-              <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+              <div className="flex justify-between text-[10px] text-[#64748B]">
                 <span>300 sq.ft (Kiosk)</span>
                 <span>1,500 sq.ft (Standard)</span>
                 <span>4,000 sq.ft (Flagship)</span>
@@ -205,8 +199,8 @@ export default function CalculatorPage() {
             {/* Upfront Franchise Fee */}
             <div className="space-y-2">
               <div className="flex justify-between items-center text-xs font-semibold">
-                <span className="text-slate-400 uppercase tracking-wider">Upfront Franchise Fee</span>
-                <span className="text-white font-mono">{formatLakhs(customFranchiseFee)}</span>
+                <span className="text-[#64748B] uppercase tracking-wider">Upfront Franchise Fee</span>
+                <span className="text-[#14243A] font-bold">{formatLakhs(customFranchiseFee)}</span>
               </div>
               <input
                 type="range"
@@ -215,15 +209,15 @@ export default function CalculatorPage() {
                 step={50000}
                 value={customFranchiseFee}
                 onChange={(e) => setCustomFranchiseFee(Number(e.target.value))}
-                className="w-full accent-emerald-500 bg-slate-800 rounded-lg cursor-pointer"
+                className="w-full accent-[#315EFB] bg-slate-200 rounded-lg cursor-pointer"
               />
             </div>
 
             {/* Fitout per Sq Ft */}
             <div className="space-y-2">
               <div className="flex justify-between items-center text-xs font-semibold">
-                <span className="text-slate-400 uppercase tracking-wider">Interior Fitout Rate</span>
-                <span className="text-white font-mono">₹{customInteriorPerSqFt}/sq.ft</span>
+                <span className="text-[#64748B] uppercase tracking-wider">Interior Fitout Rate</span>
+                <span className="text-[#14243A] font-bold">₹{customInteriorPerSqFt}/sq.ft</span>
               </div>
               <input
                 type="range"
@@ -232,15 +226,15 @@ export default function CalculatorPage() {
                 step={100}
                 value={customInteriorPerSqFt}
                 onChange={(e) => setCustomInteriorPerSqFt(Number(e.target.value))}
-                className="w-full accent-emerald-500 bg-slate-800 rounded-lg cursor-pointer"
+                className="w-full accent-[#315EFB] bg-slate-200 rounded-lg cursor-pointer"
               />
             </div>
 
             {/* Equipment Budget */}
             <div className="space-y-2">
               <div className="flex justify-between items-center text-xs font-semibold">
-                <span className="text-slate-400 uppercase tracking-wider">Equipment & Machinery</span>
-                <span className="text-white font-mono">{formatLakhs(customEquipment)}</span>
+                <span className="text-[#64748B] uppercase tracking-wider">Equipment & Machinery</span>
+                <span className="text-[#14243A] font-bold">{formatLakhs(customEquipment)}</span>
               </div>
               <input
                 type="range"
@@ -249,90 +243,81 @@ export default function CalculatorPage() {
                 step={100000}
                 value={customEquipment}
                 onChange={(e) => setCustomEquipment(Number(e.target.value))}
-                className="w-full accent-emerald-500 bg-slate-800 rounded-lg cursor-pointer"
+                className="w-full accent-[#315EFB] bg-slate-200 rounded-lg cursor-pointer"
               />
             </div>
 
-            <div className="pt-2 border-t border-slate-800 text-[11px] text-slate-400 flex items-center gap-2">
-              <ShieldAlert className="w-4 h-4 text-amber-400 flex-shrink-0" />
-              <span>Calculations incorporate 6-month security deposit and 10% contingency reserve.</span>
+            <div className="pt-2 border-t border-[#E7ECF2] text-[11px] text-[#64748B] flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 text-amber-500 flex-shrink-0" />
+              <span>Includes 6-month rental security deposit and 10% operating reserve.</span>
             </div>
           </div>
 
           {/* Outputs Column (7 cols) */}
           <div className="lg:col-span-7 space-y-6">
             {/* Main Total Highlight Card */}
-            <div className="bg-gradient-to-br from-emerald-950/70 via-slate-900 to-slate-900 border border-emerald-500/40 rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-2xl">
-              <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
-                <Building className="w-48 h-48 text-emerald-400" />
+            <div className="surface-card p-6 sm:p-8 space-y-4 bg-white border border-[#BFD3FE]">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#315EFB] bg-[#EFF4FF] px-3 py-1 rounded-full">
+                  Estimated Turnkey Capex
+                </span>
+                <span className="text-xs text-[#64748B]">
+                  {cityTier} • {sizeSqFt} sq.ft
+                </span>
               </div>
 
-              <div className="relative z-10 space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/30">
-                    Estimated Base Turnkey Capex
-                  </span>
-                  <span className="text-xs text-slate-400 font-mono">
-                    {cityTier} • {sizeSqFt} sq.ft
+              <div className="flex items-baseline gap-3">
+                <div className="text-4xl sm:text-5xl font-extrabold text-[#14243A] tracking-tight">
+                  {formatLakhs(data?.totalEstimatedCapex)}
+                </div>
+                <span className="text-[#64748B] text-sm">all-in launch budget</span>
+              </div>
+
+              {/* Key Financial KPIs */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-4 border-t border-[#E7ECF2]">
+                <div className="bg-[#F8FAFC] rounded-xl p-3 border border-[#E7ECF2]">
+                  <span className="text-[11px] text-[#64748B] block">Monthly Revenue</span>
+                  <span className="text-sm sm:text-base font-bold text-[#14243A]">
+                    {formatLakhs(data?.projectedMonthlyRevenue)}
                   </span>
                 </div>
-
-                <div className="flex items-baseline gap-3">
-                  <div className="text-4xl sm:text-6xl font-black text-white tracking-tight">
-                    {formatLakhs(data?.totalEstimatedCapex)}
-                  </div>
-                  <span className="text-slate-400 text-sm">all-in turnkey launch</span>
+                <div className="bg-[#F8FAFC] rounded-xl p-3 border border-[#E7ECF2]">
+                  <span className="text-[11px] text-[#64748B] block">Monthly Net Profit (22%)</span>
+                  <span className="text-sm sm:text-base font-bold text-[#159D8B]">
+                    {formatLakhs(data?.projectedMonthlyNetProfit)}/mo
+                  </span>
                 </div>
-
-                {/* Key Financial KPIs */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-4 border-t border-slate-800/80">
-                  <div className="bg-slate-800/60 rounded-2xl p-3 border border-slate-700/60">
-                    <span className="text-[11px] text-slate-400 block">Est. Monthly Revenue</span>
-                    <span className="text-base font-bold text-white font-mono">
-                      {formatLakhs(data?.projectedMonthlyRevenue)}
-                    </span>
-                  </div>
-                  <div className="bg-slate-800/60 rounded-2xl p-3 border border-slate-700/60">
-                    <span className="text-[11px] text-slate-400 block">Est. Net Profit (22%)</span>
-                    <span className="text-base font-bold text-emerald-400 font-mono">
-                      {formatLakhs(data?.projectedMonthlyNetProfit)}/mo
-                    </span>
-                  </div>
-                  <div className="bg-slate-800/60 rounded-2xl p-3 border border-slate-700/60 col-span-2 sm:col-span-1">
-                    <span className="text-[11px] text-slate-400 block">Est. Payback Horizon</span>
-                    <span className="text-base font-bold text-amber-300 font-mono">
-                      {data?.scenarios?.medium?.breakEvenMonths || 22} Months
-                    </span>
-                  </div>
+                <div className="bg-[#F8FAFC] rounded-xl p-3 border border-[#E7ECF2] col-span-2 sm:col-span-1">
+                  <span className="text-[11px] text-[#64748B] block">Payback Horizon</span>
+                  <span className="text-sm sm:text-base font-bold text-[#315EFB]">
+                    {data?.scenarios?.medium?.breakEvenMonths || 22} Months
+                  </span>
                 </div>
               </div>
             </div>
 
             {/* Line Item Breakdown */}
-            <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-5 shadow-xl">
-              <h3 className="text-lg font-bold text-white flex items-center justify-between">
-                <span>Detailed Cost Breakdown</span>
-                <span className="text-xs text-slate-400 font-normal">Itemized estimation</span>
-              </h3>
+            <div className="surface-card p-6 sm:p-8 space-y-5">
+              <h3 className="text-base font-bold text-[#14243A]">Detailed Cost Breakdown</h3>
 
               <div className="space-y-3">
                 {[
                   { label: 'Interior Fitout & Architecture', val: data?.interiorFitout, pct: 38 },
-                  { label: 'Equipment, Kitchen Hardware & POS', val: data?.equipmentMachinery, pct: 20 },
-                  { label: 'Real Estate Security Deposit (6 Mos)', val: data?.securityDeposit, pct: 18 },
-                  { label: 'Franchise Brand Royalty & Onboarding Fee', val: data?.franchiseFee, pct: 11 },
+                  { label: 'Equipment, POS & Hardware', val: data?.equipmentMachinery, pct: 20 },
+                  { label: 'Real Estate Deposit (6 Mos)', val: data?.securityDeposit, pct: 18 },
+                  { label: 'Franchise Fee & Onboarding', val: data?.franchiseFee, pct: 11 },
                   { label: 'Opening Raw Material Inventory', val: data?.initialInventory, pct: 6 },
                   { label: 'Working Capital & Contingency Buffer', val: data?.workingCapitalBuffer, pct: 5 },
-                  { label: 'Local Marketing Launch & Legal/FSSAI', val: (data?.grandOpeningMarketing || 0) + (data?.licensingAndLegal || 0), pct: 2 },
+                  { label: 'Marketing Launch & Licenses', val: (data?.grandOpeningMarketing || 0) + (data?.licensingAndLegal || 0), pct: 2 },
                 ].map((item, idx) => (
                   <div key={idx} className="space-y-1">
                     <div className="flex justify-between text-xs">
-                      <span className="text-slate-300">{item.label}</span>
-                      <span className="font-mono text-white font-medium">{formatLakhs(item.val)}</span>
+                      <span className="text-[#64748B]">{item.label}</span>
+                      <span className="font-semibold text-[#14243A]">{formatLakhs(item.val)}</span>
                     </div>
-                    <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                    <div className="w-full h-1.5 bg-[#E7ECF2] rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full"
+                        className="h-full bg-[#315EFB] rounded-full"
                         style={{ width: `${item.pct}%` }}
                       />
                     </div>
@@ -341,60 +326,34 @@ export default function CalculatorPage() {
               </div>
             </div>
 
-            {/* Low / Medium / High Scenario Comparison */}
+            {/* Scenarios Comparison */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-2">
-                <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Low Capex (Lean)</div>
-                <div className="text-xl font-black text-white font-mono">
-                  {formatLakhs(data?.scenarios?.low?.totalCapex)}
-                </div>
-                <p className="text-[11px] text-slate-400">
-                  Value-engineered materials with {data?.scenarios?.low?.breakEvenMonths} mo break-even.
-                </p>
+              <div className="surface-card p-4 space-y-1">
+                <span className="text-[10px] font-bold text-[#64748B] uppercase">Lean Capex</span>
+                <div className="text-base font-bold text-[#14243A]">{formatLakhs(data?.scenarios?.low?.totalCapex)}</div>
+                <span className="text-[11px] text-[#64748B]">{data?.scenarios?.low?.breakEvenMonths} mo break-even</span>
               </div>
-
-              <div className="bg-emerald-950/40 border border-emerald-500/50 rounded-2xl p-5 space-y-2">
-                <div className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Base (Recommended)</div>
-                <div className="text-xl font-black text-emerald-300 font-mono">
-                  {formatLakhs(data?.scenarios?.medium?.totalCapex)}
-                </div>
-                <p className="text-[11px] text-slate-300">
-                  Standard spec floorplan with {data?.scenarios?.medium?.breakEvenMonths} mo break-even.
-                </p>
+              <div className="surface-card p-4 space-y-1 border-[#BFD3FE] bg-[#EFF4FF]">
+                <span className="text-[10px] font-bold text-[#315EFB] uppercase">Base (Recommended)</span>
+                <div className="text-base font-bold text-[#315EFB]">{formatLakhs(data?.scenarios?.medium?.totalCapex)}</div>
+                <span className="text-[11px] text-[#64748B]">{data?.scenarios?.medium?.breakEvenMonths} mo break-even</span>
               </div>
-
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-2">
-                <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">High (Premium Flagship)</div>
-                <div className="text-xl font-black text-white font-mono">
-                  {formatLakhs(data?.scenarios?.high?.totalCapex)}
-                </div>
-                <p className="text-[11px] text-slate-400">
-                  Includes 18% contingency and high-spec fitout.
-                </p>
+              <div className="surface-card p-4 space-y-1">
+                <span className="text-[10px] font-bold text-[#64748B] uppercase">Flagship High-Spec</span>
+                <div className="text-base font-bold text-[#14243A]">{formatLakhs(data?.scenarios?.high?.totalCapex)}</div>
+                <span className="text-[11px] text-[#64748B]">Includes premium fitout</span>
               </div>
             </div>
 
-            {/* Actions Bar */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 rounded-2xl bg-slate-900 border border-slate-800">
-              <div className="space-y-0.5 text-center sm:text-left">
-                <div className="text-sm font-bold text-white">Ready to explore matching opportunities?</div>
-                <div className="text-xs text-slate-400">Browse verified franchise brands operating within your budget range.</div>
+            {/* Action Bar */}
+            <div className="surface-card p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div>
+                <span className="text-xs font-bold text-[#14243A] block">Explore Matching Franchises</span>
+                <span className="text-[11px] text-[#64748B]">Find verified brands fitting your simulated capital range</span>
               </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => window.print()}
-                  className="px-4 py-2 text-xs font-semibold rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700 transition flex items-center gap-1.5"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  Print Summary
-                </button>
-                <Link
-                  href="/franchises"
-                  className="px-5 py-2 text-xs font-bold rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 transition shadow-lg shadow-emerald-700/20 flex items-center gap-1.5"
-                >
-                  Explore Brands <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
+              <Link href="/franchises" className="btn-primary py-2 px-5 text-xs font-semibold">
+                Explore Matching Brands <ArrowRight className="w-3.5 h-3.5 ml-1" />
+              </Link>
             </div>
           </div>
         </div>

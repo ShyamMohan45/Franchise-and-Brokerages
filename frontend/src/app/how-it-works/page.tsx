@@ -1,58 +1,135 @@
+"use client";
+
 import React from "react";
 import Link from "next/link";
-import { CheckCircle2, ArrowRight } from "lucide-react";
+import {
+  CheckCircle2,
+  ArrowRight,
+  Sparkles,
+  FileCheck2,
+  Scale,
+  Users2,
+  Building2,
+  ShieldCheck,
+  Compass,
+  Lock,
+} from "lucide-react";
 
 export default function HowItWorksPage() {
-  const steps = [
+  const stages = [
     {
       num: "01",
-      title: "Diagnostic Assessment & 8-Pillar Scoring",
-      desc: "We analyze unit-level EBITDA, operating repeatability, and brand strength to benchmark franchise readiness.",
+      title: "Create Your Profile & Codify Operating Standards",
+      desc: "Business founders document store unit economics, equipment capex, and staff requirements. Our system guides you through establishing operational benchmarks and territory availability.",
+      points: [
+        "Store footprint and capex breakdown",
+        "Operational checklist and hygiene standards",
+        "Target expansion cities and territory exclusivity radius",
+      ],
     },
     {
       num: "02",
-      title: "SOP Codification & Training Manuals",
-      desc: "All daily recipes, routines, quality benchmarks, and opening/closing sequences are codified into digital SOPs.",
+      title: "Assess Expansion Readiness & Audit Compliance",
+      desc: "Our 8-Pillar Franchise Readiness Engine calculates your brand defensibility, unit EBITDA sustainability, and supply chain readiness before any public or private investor offering.",
+      points: [
+        "Multi-outlet financial audit",
+        "Supply chain & vendor contract verification",
+        "Trademark and brand equity evaluation",
+      ],
     },
     {
       num: "03",
-      title: "Regulatory Legal FDD & FIM Packaging",
-      desc: "We structure the 23-Item disclosure packages, master franchise agreements, and trademark licensing protocols.",
+      title: "Discover Opportunities & Smart Matching",
+      desc: "Investors browse pre-vetted brands benchmarked with transparent financials. Our algorithmic matching engine pairs capital capacity and territory preferences with brand requirements.",
+      points: [
+        "Pre-qualified liquid capital verification",
+        "Catchment demographic compatibility",
+        "Multi-unit vs single-unit matching algorithms",
+      ],
     },
     {
       num: "04",
-      title: "Marketplace Publishing & Investor Matching",
-      desc: "Vetted multi-unit operators are matched against brand requirements based on capital, location, and industry.",
+      title: "Virtual Deal Room & Due Diligence",
+      desc: "Both parties enter an encrypted 256-bit Digital Deal Room. After signing mutual non-disclosure agreements (NDAs), investors inspect statutory 23-Item FDD disclosure files.",
+      points: [
+        "Cryptographic audit trails and document watermarking",
+        "13-Pillar standardized due diligence checklist",
+        "Integrated multi-party messaging with brokerage counsel",
+      ],
     },
     {
       num: "05",
-      title: "Brokerage Deal Closing & Launch Support",
-      desc: "We facilitate NDA signing, founder pitch meetings, lease signing, and ongoing franchise rollout milestones.",
+      title: "Legal E-Signature & Rollout Execution",
+      desc: "Finalize franchise agreements with legally binding digital signatures. The platform assists with site selection, territory escrow milestones, and turnkey store buildout.",
+      points: [
+        "Legally binding digital e-signatures",
+        "Territory allocation and radius protection",
+        "Post-signing store rollout tracking",
+      ],
     },
   ];
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-12">
-      <div className="text-center space-y-3">
-        <span className="text-blue-600 font-semibold text-xs uppercase tracking-wider">The Methodology</span>
-        <h1 className="text-4xl font-extrabold text-navy-900 tracking-tight">How Franchise Development Works</h1>
-        <p className="text-slate-600 text-sm max-w-xl mx-auto">
-          A predictable, transparent pathway for brands to scale and investors to build generational equity.
-        </p>
-      </div>
-
-      <div className="space-y-6">
-        {steps.map((s, idx) => (
-          <div key={idx} className="bg-white rounded-2xl border border-slate-200 p-6 flex gap-6 items-start shadow-sm">
-            <div className="w-12 h-12 rounded-2xl bg-navy-900 text-amber-400 font-extrabold flex items-center justify-center text-lg shrink-0">
-              {s.num}
-            </div>
-            <div className="space-y-1">
-              <h3 className="text-lg font-bold text-navy-900">{s.title}</h3>
-              <p className="text-sm text-slate-600 leading-relaxed">{s.desc}</p>
-            </div>
+    <div className="bg-[#F8FAFC] min-h-screen py-16">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
+        {/* Header */}
+        <div className="text-center space-y-4 max-w-2xl mx-auto">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#EFF4FF] border border-[#BFD3FE] text-[#315EFB] text-xs font-semibold">
+            <Compass className="w-3.5 h-3.5" />
+            Standardized Expansion Architecture
           </div>
-        ))}
+          <h1 className="text-4xl sm:text-5xl font-extrabold text-[#14243A] tracking-tight">
+            How Franchise Expansion Works
+          </h1>
+          <p className="text-sm sm:text-base text-[#64748B] leading-relaxed">
+            A predictable, transparent, and legally audited pathway for brands to scale nationally and investors to build compounding equity.
+          </p>
+        </div>
+
+        {/* 5-Stage Step-by-Step Flow */}
+        <div className="space-y-6">
+          {stages.map((stage, idx) => (
+            <div
+              key={idx}
+              className="surface-card p-6 sm:p-8 flex flex-col md:flex-row gap-6 items-start"
+            >
+              <div className="w-14 h-14 rounded-2xl bg-[#14243A] text-white font-extrabold text-lg flex items-center justify-center shrink-0 shadow-sm">
+                {stage.num}
+              </div>
+              <div className="space-y-3 flex-1">
+                <h3 className="text-lg sm:text-xl font-bold text-[#14243A]">{stage.title}</h3>
+                <p className="text-xs sm:text-sm text-[#64748B] leading-relaxed">{stage.desc}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 text-xs">
+                  {stage.points.map((pt, pIdx) => (
+                    <div
+                      key={pIdx}
+                      className="bg-[#F8FAFC] p-2.5 rounded-lg border border-[#E7ECF2] text-[#14243A] flex items-center gap-2"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 text-[#159D8B] shrink-0" />
+                      <span className="text-[11px] font-medium">{pt}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Bottom CTA Box */}
+        <div className="surface-card p-10 bg-white text-center space-y-6">
+          <h2 className="text-2xl font-bold text-[#14243A]">Ready to Take the First Step?</h2>
+          <p className="text-xs sm:text-sm text-[#64748B] max-w-lg mx-auto">
+            Whether you want to franchise your brand or invest in a vetted business, our team is ready to guide you.
+          </p>
+          <div className="flex flex-col sm:flex-row justify-center gap-3">
+            <Link href="/for-businesses" className="btn-primary py-2.5 px-6 text-xs font-semibold">
+              List Your Franchise
+            </Link>
+            <Link href="/franchises" className="btn-secondary py-2.5 px-6 text-xs font-semibold">
+              Browse Directory
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );

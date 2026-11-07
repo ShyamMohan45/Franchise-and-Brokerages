@@ -28,32 +28,32 @@ import {
   Dumbbell,
   UtensilsCrossed,
   Cpu,
-  Sparkle,
   Clock,
   Briefcase,
   Lock,
+  ArrowDownRight,
+  ChevronDown,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
-import { StatusBadge } from "@/components/StatusBadge";
 
 export default function HomePage() {
   const router = useRouter();
   const [featuredListings, setFeaturedListings] = useState<any[]>([]);
   const [stats, setStats] = useState({ totalFranchises: 5, totalIndustries: 5, activeExpansionCities: 45 });
-  const [newsletterEmail, setNewsletterEmail] = useState("");
-  const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
-  const [activeFaq, setActiveFaq] = useState<number | null>(0);
-  const [selectedPillar, setSelectedPillar] = useState(0);
+  const [loadingListings, setLoadingListings] = useState(true);
 
-  // Quick Finder state
-  const [finderIndustry, setFinderIndustry] = useState("All");
-  const [finderBudget, setFinderBudget] = useState("All");
-  const [finderCity, setFinderCity] = useState("All");
+  // Hero Mockup Active Tab
+  const [heroTab, setHeroTab] = useState<"matching" | "dealroom" | "pipeline">("matching");
+
+  // Search & Filter state
+  const [selectedIndustry, setSelectedIndustry] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     async function loadData() {
       try {
+        setLoadingListings(true);
         const res = await api.get<any[]>("/franchises", { limit: 6, sort: "popular" });
         if (res.success && res.data) {
           setFeaturedListings(res.data);
@@ -64,920 +64,1000 @@ export default function HomePage() {
         }
       } catch (err) {
         console.error("Failed to load homepage data:", err);
+      } finally {
+        setLoadingListings(false);
       }
     }
     loadData();
   }, []);
 
-  const handleFinderSubmit = (e: React.FormEvent) => {
+  const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const queryParams = new URLSearchParams();
-    if (finderIndustry !== "All") queryParams.append("industry", finderIndustry);
-    if (finderBudget !== "All") queryParams.append("budget", finderBudget);
-    if (finderCity !== "All") queryParams.append("search", finderCity);
+    if (selectedIndustry !== "All") queryParams.append("industry", selectedIndustry);
+    if (searchQuery.trim()) queryParams.append("search", searchQuery.trim());
     router.push(`/franchises?${queryParams.toString()}`);
   };
 
-  const handleNewsletterSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newsletterEmail) {
-      setNewsletterSubscribed(true);
-      setNewsletterEmail("");
-    }
-  };
-
-  const categories = [
-    { label: "Specialty Coffee", icon: Coffee, count: "12+ Hubs", industry: "Food & Beverage" },
-    { label: "Smart 24/7 Gyms", icon: Dumbbell, count: "8+ Clusters", industry: "Health & Wellness" },
-    { label: "Fast Casual QSR", icon: UtensilsCrossed, count: "18+ Units", industry: "Fast Casual Dining" },
-    { label: "AI & STEM Labs", icon: Cpu, count: "6+ Centers", industry: "Education & EdTech" },
-    { label: "Luxury MedSpa", icon: Sparkles, count: "5+ Clinics", industry: "Health & Beauty" },
-  ];
-
-  const readinessPillars = [
-    {
-      id: "brand",
-      title: "1. Brand Equity & Defensibility",
-      score: 94,
-      summary: "Customer net promoter score (NPS > 65), registered Class 43/44 IP trademarks, and distinctive proprietary recipes.",
-      metrics: "NPS > 65 • Registered Class 43 IP • Distinct Market Voice",
-      deliverable: "Comprehensive Trademark Portfolio & Brand Identity Standards Manual",
-    },
-    {
-      id: "economics",
-      title: "2. Unit-Level Economics",
-      score: 92,
-      summary: "Healthy store EBITDA absorbing 5-7% ongoing royalties while maintaining 18-24% annual net franchisee return on capital.",
-      metrics: "Store EBITDA > 20% • Payback < 22 Months • Labor < 18%",
-      deliverable: "Audited 3-Year P&L Model & Store Capital Sensitivity Calculator",
-    },
-    {
-      id: "sops",
-      title: "3. Codified SOP Manuals",
-      score: 88,
-      summary: "Digital operating playbooks covering daily prep, recipe grammage, machinery calibration, POS cashiering, and quality audits.",
-      metrics: "Opening/Closing Checklists • Grammage Recipes • Cloud ERP Integration",
-      deliverable: "Interactive Cloud SOP Academy with Video Checklists & Staff Quizzes",
-    },
-    {
-      id: "legal",
-      title: "4. FDD & Regulatory Compliance",
-      score: 90,
-      summary: "US FTC 23-Item Franchise Disclosure Document (FDD) or India Franchise Information Memorandum (FIM) governing all legal covenants.",
-      metrics: "Audited Financials Disclosed • Item 19 FPR Structured • Exclusivity Radii",
-      deliverable: "State/National Legal Disclosure Packet + Master Franchise Agreement",
-    },
-    {
-      id: "supply",
-      title: "5. Supply Chain Scalability",
-      score: 87,
-      summary: "Direct roaster contracts, centralized commissary sauces, and cold-chain logistics guaranteeing unit consistency.",
-      metrics: "Direct Vendor SLAs • Central Commissary Logistics • Guaranteed Shelf-Life",
-      deliverable: "Approved Supplier Master List with Volume-Discount Rebate Schedules",
-    },
-    {
-      id: "training",
-      title: "6. Certified Training Academy",
-      score: 86,
-      summary: "Structured 2-to-4 week curriculum certifying head baristas, store managers, shift supervisors, and franchisee owners.",
-      metrics: "14-28 Day Field Training • Practical Shadowing • Annual Recertification",
-      deliverable: "Franchisee Onboarding LMS Portal & Store Manager Certification Kit",
-    },
-    {
-      id: "repeat",
-      title: "7. Geographic Repeatability",
-      score: 91,
-      summary: "Empirical proof of store profitability across distinct demographic clusters without the founder's daily oversight.",
-      metrics: "Multi-Outlet Verification • High-Street & Mall Formats • Suburban Viability",
-      deliverable: "Demographic Catchment Study & Foot-Traffic Correlation Reports",
-    },
-    {
-      id: "expansion",
-      title: "8. Expansion Support Capacity",
-      score: 89,
-      summary: "Dedicated corporate field operations managers, site selection lease negotiators, and national marketing co-op teams.",
-      metrics: "Lease Advisory • Launch Field Team • Marketing Co-op Support",
-      deliverable: "90-Day New Store Opening Countdown Schedule & Local Launch Playbook",
-    },
-  ];
-
-  const faqs = [
-    {
-      q: "How does FranchiseBridge prepare local businesses for national franchising?",
-      a: "We deploy an institutional 4-phase development engine: first benchmarking your unit economics across our 8-Pillar Readiness Index, codifying daily workflows into digital SOP manuals, drafting regulatory disclosure packets (US FTC 23 Items or India FIM), and placing your opportunity in front of vetted multi-unit investors.",
-    },
-    {
-      q: "What is the difference between an FDD and standard franchise agreements?",
-      a: "A Franchise Disclosure Document (FDD), mandated by the US FTC and adopted internationally as a Franchise Information Memorandum (FIM), requires disclosing 23 statutory items including litigation history, audited store financials (Item 19), fee breakdowns, and supplier rebates before an investor can sign a binding agreement.",
-    },
-    {
-      q: "How do you screen and qualify prospective franchise investors?",
-      a: "Every candidate submits proof of unencumbered liquid capital, verified net worth, multi-unit operating experience, and targeted geographic territory. Direct contact details remain encrypted until mutual non-disclosure agreements (NDAs) and approval are confirmed.",
-    },
-    {
-      q: "How does the brokerage commission and advisory fee structure work?",
-      a: "FranchiseBridge operates with complete transparency. Packaging advisory fees are milestone-based, covering legal drafting and SOP creation, while brokerage commissions are success-based and payable only upon successfully closing executed franchise contracts.",
-    },
+  const industries = [
+    "All",
+    "Food & Beverage",
+    "Health & Wellness",
+    "Retail & Convenience",
+    "Education & STEM",
+    "Healthcare & Clinics",
   ];
 
   return (
-    <div className="space-y-28 pb-20 overflow-x-hidden">
-      {/* HERO SECTION */}
-      <section className="relative overflow-hidden bg-[#070B14] text-white pt-20 pb-28 border-b border-white/[0.08]">
-        {/* Ambient glow backgrounds */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[550px] bg-gradient-to-tr from-blue-600/20 via-indigo-500/15 to-amber-500/10 blur-[130px] pointer-events-none" />
-        <div className="absolute top-1/3 -left-48 w-96 h-96 bg-blue-600/15 rounded-full blur-[100px] pointer-events-none" />
-        <div className="absolute bottom-0 -right-48 w-96 h-96 bg-amber-500/10 rounded-full blur-[120px] pointer-events-none" />
+    <div className="bg-[#F8FAFC] min-h-screen">
+      {/* =========================================================================
+          HERO SECTION (Stripe & Linear Inspired)
+          ========================================================================= */}
+      <section className="relative pt-12 pb-20 lg:pt-20 lg:pb-28 overflow-hidden bg-white border-b border-[#E7ECF2]">
+        {/* Subtle Background Pattern */}
+        <div className="absolute inset-0 subtle-grid pointer-events-none opacity-60" />
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#EFF4FF] rounded-full filter blur-3xl opacity-70 pointer-events-none" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
-            
-            {/* Left Column: Headline & Quick Match Finder */}
-            <div className="lg:col-span-7 space-y-7 text-left">
-              {/* Badge */}
-              <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-blue-500/20 to-indigo-500/10 border border-blue-400/30 text-blue-300 text-xs font-semibold backdrop-blur-md shadow-inner">
-                <span className="flex h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
-                <span className="text-white font-bold tracking-wide">Premier Platform:</span>
-                <span>Packaging SOPs, FDD Legal Packets & Multi-Unit Capital</span>
+            {/* Left Column: Headline, Description & CTAs */}
+            <div className="lg:col-span-7 space-y-6">
+              {/* Product Badge */}
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#EFF4FF] border border-[#BFD3FE] text-[#315EFB] text-xs font-semibold">
+                <span className="w-2 h-2 rounded-full bg-[#315EFB] animate-pulse" />
+                Next-Gen Franchise Development & Brokerage
               </div>
 
-              {/* Main Headline */}
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-[1.08]">
-                Turn Proven Local Brands Into{" "}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-amber-400 to-yellow-500">
-                  National Franchise Empires.
-                </span>
+              {/* Master Prompt Mandated Headline */}
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-[#14243A] tracking-tight leading-[1.12]">
+                Turn Business Ambition Into{" "}
+                <span className="text-[#315EFB]">Franchise Growth.</span>
               </h1>
 
-              {/* Subtitle */}
-              <p className="text-base sm:text-lg text-slate-300 leading-relaxed max-w-2xl font-normal">
-                FranchiseBridge assists high-performing regional businesses with full-suite franchise development:
-                codified SOP manuals, regulatory legal disclosure (FDD/FIM) compliance, and targeted multi-unit investor recruitment.
+              {/* Master Prompt Mandated Supporting Text */}
+              <p className="text-lg sm:text-xl text-[#64748B] leading-relaxed max-w-2xl">
+                Connect ambitious brands with the right investors, discover promising franchise opportunities, and manage expansion through one intelligent platform.
               </p>
 
-              {/* Quick Match Finder Bar */}
-              <div className="bg-white/[0.05] border border-white/[0.12] p-4 sm:p-5 rounded-2xl backdrop-blur-xl shadow-2xl max-w-2xl">
-                <div className="text-xs font-bold uppercase tracking-wider text-amber-400 mb-3 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                  Quick Opportunity Match Finder
-                </div>
-                <form onSubmit={handleFinderSubmit} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-300 mb-1">Industry Vertical</label>
-                    <select
-                      value={finderIndustry}
-                      onChange={(e) => setFinderIndustry(e.target.value)}
-                      className="w-full bg-[#0F172A] border border-white/[0.15] text-white text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400"
-                    >
-                      <option value="All">All Verticals</option>
-                      <option value="Food & Beverage">Food & Beverage</option>
-                      <option value="Health & Wellness">Health & Wellness</option>
-                      <option value="Fast Casual Dining">Fast Casual Dining</option>
-                      <option value="Education & EdTech">Education & EdTech</option>
-                      <option value="Health & Beauty">Health & Beauty</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-300 mb-1">Target Capital</label>
-                    <select
-                      value={finderBudget}
-                      onChange={(e) => setFinderBudget(e.target.value)}
-                      className="w-full bg-[#0F172A] border border-white/[0.15] text-white text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400"
-                    >
-                      <option value="All">Any Capital Range</option>
-                      <option value="under_30l">Under ₹30 Lakh</option>
-                      <option value="30l_to_60l">₹30L - ₹60 Lakh</option>
-                      <option value="60l_to_1cr">₹60L - ₹1 Crore</option>
-                      <option value="above_1cr">₹1 Crore+</option>
-                    </select>
-                  </div>
-
-                  <div className="flex flex-col justify-end">
-                    <button
-                      type="submit"
-                      className="w-full bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-xs py-2.5 px-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 h-[38px]"
-                    >
-                      <Search className="w-3.5 h-3.5" />
-                      Find Franchises
-                    </button>
-                  </div>
-                </form>
-              </div>
-
-              {/* Trust Metric Strip */}
-              <div className="pt-4 border-t border-white/[0.08] grid grid-cols-3 gap-6 max-w-lg">
-                <div>
-                  <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">₹45+ Cr</div>
-                  <div className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
-                    Pipeline Volume
-                  </div>
-                </div>
-                <div>
-                  <div className="text-2xl sm:text-3xl font-extrabold text-amber-400 tracking-tight">8 Pillars</div>
-                  <div className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
-                    Readiness Index
-                  </div>
-                </div>
-                <div>
-                  <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">{stats.activeExpansionCities}+ Cities</div>
-                  <div className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
-                    Active Corridors
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column: Live High-Impact Showcase Card */}
-            <div className="lg:col-span-5 relative">
-              <div className="relative mx-auto max-w-md bg-gradient-to-b from-white/[0.15] via-white/[0.06] to-white/[0.02] p-[1.5px] rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.6)] backdrop-blur-2xl">
-                <div className="bg-[#0B1220]/95 rounded-[22px] overflow-hidden text-white">
-                  
-                  {/* Photo Banner with Badges */}
-                  <div className="relative h-44 sm:h-48 overflow-hidden group">
-                    <img
-                      src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=1200&auto=format&fit=crop&q=80"
-                      alt="RoastCraft Specialty Coffee"
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0B1220] via-black/30 to-black/40" />
-                    
-                    <div className="absolute top-3 left-3">
-                      <span className="px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-md text-[11px] font-bold text-amber-300 border border-white/[0.1]">
-                        ☕ Food & Beverage
-                      </span>
-                    </div>
-
-                    <div className="absolute top-3 right-3">
-                      <span className="px-2.5 py-1 rounded-full bg-emerald-500/90 text-white text-[11px] font-bold shadow-md flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" /> Certified Ready
-                      </span>
-                    </div>
-
-                    {/* Logo Avatar overlapping */}
-                    <div className="absolute -bottom-4 left-5 flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl border-2 border-white/20 bg-slate-900 shadow-xl overflow-hidden">
-                        <img
-                          src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=200&auto=format&fit=crop&q=80"
-                          alt="RoastCraft Logo"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-5 sm:p-6 pt-6 space-y-4">
-                    {/* Title & Tagline */}
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <h3 className="text-lg font-bold text-white">RoastCraft Specialty Coffee</h3>
-                        <BadgeCheck className="w-4 h-4 text-blue-400" />
-                      </div>
-                      <p className="text-xs text-amber-400 font-semibold mt-0.5">
-                        Artisan Micro-Roastery & Premium Café Chain
-                      </p>
-                    </div>
-
-                    {/* Readiness Bar */}
-                    <div className="space-y-1.5 bg-white/[0.03] p-3 rounded-xl border border-white/[0.06]">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-slate-300 font-medium flex items-center gap-1">
-                          <Sparkles className="w-3 h-3 text-amber-400" />
-                          Franchise Readiness Index
-                        </span>
-                        <span className="font-bold text-amber-400">88 / 100</span>
-                      </div>
-                      <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                        <div className="bg-gradient-to-r from-blue-500 via-indigo-400 to-amber-400 h-full rounded-full" style={{ width: "88%" }} />
-                      </div>
-                      <div className="flex justify-between text-[10px] text-slate-400 pt-0.5 font-medium">
-                        <span>4 Active Outlets</span>
-                        <span className="text-emerald-400 font-semibold">Store EBITDA: 22.4%</span>
-                      </div>
-                    </div>
-
-                    {/* Financial Specs */}
-                    <div className="grid grid-cols-2 gap-2.5 text-xs">
-                      <div className="bg-white/[0.04] p-2.5 rounded-xl border border-white/[0.06]">
-                        <span className="text-[10px] text-slate-400 uppercase font-semibold">Est. Investment</span>
-                        <p className="text-sm font-black text-white mt-0.5">₹35L - ₹55 Lakh</p>
-                      </div>
-                      <div className="bg-white/[0.04] p-2.5 rounded-xl border border-white/[0.06]">
-                        <span className="text-[10px] text-slate-400 uppercase font-semibold">Payback Period</span>
-                        <p className="text-sm font-black text-emerald-400 mt-0.5">~18 Months</p>
-                      </div>
-                    </div>
-
-                    {/* Operational Highlights */}
-                    <div className="space-y-1 text-xs text-slate-300">
-                      <div className="flex items-center gap-2 text-[11px]">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>SOP Manuals Codified (Extraction, Barista & POS)</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-[11px]">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>Legal FDD Master & Territory Protection (3.5 km)</span>
-                      </div>
-                    </div>
-
-                    {/* Action */}
-                    <Link
-                      href="/franchises/roastcraft-specialty-coffee"
-                      className="block text-center w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md transition-all"
-                    >
-                      View Verified Franchise Dossier &rarr;
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-      {/* CATEGORY EXPLORER PILLS */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-xs uppercase tracking-widest text-slate-400 font-extrabold">
-              Explore High-Growth Franchise Verticals
-            </p>
-            <Link href="/franchises" className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1">
-              Browse All Categories <ChevronRight className="w-3 h-3" />
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
-            {categories.map((cat) => {
-              const Icon = cat.icon;
-              return (
+              {/* 2 Prominent CTA Buttons */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
                 <Link
-                  key={cat.label}
-                  href={`/franchises?industry=${encodeURIComponent(cat.industry)}`}
-                  className="bg-white p-4 rounded-2xl border border-slate-200/90 hover:border-blue-400 hover:shadow-lg transition-all group flex items-center gap-3.5"
+                  href="/franchises"
+                  className="btn-primary py-3.5 px-6 text-base font-semibold shadow-md"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-slate-50 group-hover:bg-blue-50 text-slate-700 group-hover:text-blue-600 flex items-center justify-center shrink-0 transition-colors">
-                    <Icon className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-navy-900 group-hover:text-blue-600 transition-colors">
-                      {cat.label}
-                    </h4>
-                    <span className="text-[10px] text-slate-400 font-medium">{cat.count}</span>
-                  </div>
+                  Explore Opportunities
+                  <ArrowRight className="w-4 h-4 ml-1" />
                 </Link>
-              );
-            })}
-          </div>
-        </div>
-      </section>
+                <Link
+                  href="/for-businesses"
+                  className="btn-secondary py-3.5 px-6 text-base font-semibold"
+                >
+                  List Your Franchise
+                </Link>
+              </div>
 
-      {/* FEATURED FRANCHISE OPPORTUNITIES (STUNNING PHOTOGRAPHY CARDS) */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row items-start md:items-end justify-between mb-10 gap-4">
-          <div className="space-y-2">
-            <span className="text-blue-600 font-bold text-xs uppercase tracking-wider px-3 py-1 rounded-full bg-blue-50 border border-blue-200">
-              Verified Marketplace
-            </span>
-            <h2 className="text-3xl font-extrabold text-navy-900 tracking-tight">
-              Featured Franchise Opportunities
-            </h2>
-            <p className="text-slate-600 text-xs sm:text-sm max-w-xl">
-              Pre-vetted regional brand models with codified operating manuals, audited EBITDA margins, and active multi-unit expansion mandates.
-            </p>
-          </div>
-          <Link
-            href="/franchises"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 bg-white px-4 py-2.5 rounded-xl border border-slate-200 shadow-sm transition-all"
-          >
-            View All {stats.totalFranchises} Opportunities &rarr;
-          </Link>
-        </div>
+              {/* Minimal Credibility Statements (No invented fake claims) */}
+              <div className="pt-6 border-t border-[#E7ECF2] grid grid-cols-3 gap-6">
+                <div>
+                  <div className="text-2xl font-bold text-[#14243A]">100%</div>
+                  <div className="text-xs text-[#64748B] mt-0.5 font-medium">Standardized SOPs</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-[#14243A]">256-Bit</div>
+                  <div className="text-xs text-[#64748B] mt-0.5 font-medium">Encrypted Deal Rooms</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-[#14243A]">8-Pillar</div>
+                  <div className="text-xs text-[#64748B] mt-0.5 font-medium">Readiness Diagnostic</div>
+                </div>
+              </div>
+            </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {featuredListings.slice(0, 6).map((listing) => (
-            <div
-              key={listing._id}
-              className="bg-white rounded-3xl border border-slate-200/90 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between group"
-            >
-              <div>
-                {/* Photo Banner with Logo Avatar */}
-                <div className="relative h-48 overflow-hidden bg-slate-900">
-                  <img
-                    src={listing.bannerUrl || "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=1200&auto=format&fit=crop&q=80"}
-                    alt={listing.brandName}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                  
-                  {/* Category Pill */}
-                  <div className="absolute top-3 left-3">
-                    <span className="px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-md text-[11px] font-bold text-white border border-white/[0.15]">
-                      {listing.industry}
+            {/* Right Column: Sophisticated SaaS Product Interface Mockup */}
+            <div className="lg:col-span-5">
+              <div className="bg-white rounded-2xl border border-[#E7ECF2] shadow-elevated overflow-hidden">
+                {/* Mockup Window Chrome Header */}
+                <div className="bg-[#14243A] px-4 py-3 flex items-center justify-between border-b border-[#1C2A3E]">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-red-400/80" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-amber-400/80" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-400/80" />
+                    <span className="text-xs text-slate-400 ml-2 font-mono">franchisebridge.app/workspace</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-medium">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                      Live Sync
                     </span>
                   </div>
-
-                  {/* Status Badge */}
-                  <div className="absolute top-3 right-3">
-                    <StatusBadge status={listing.status} />
-                  </div>
-
-                  {/* Logo Avatar & ROI Chip */}
-                  <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-10 h-10 rounded-xl bg-white p-0.5 shadow-lg overflow-hidden shrink-0">
-                        <img
-                          src={listing.logoUrl || "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=200&auto=format&fit=crop&q=80"}
-                          alt={listing.brandName}
-                          className="w-full h-full object-cover rounded-lg"
-                        />
-                      </div>
-                      <span className="text-white font-extrabold text-sm drop-shadow-md truncate">
-                        {listing.brandName}
-                      </span>
-                    </div>
-                    {listing.estimatedRoiMonths && (
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/90 text-white font-bold text-[10px] shadow-sm">
-                        ROI: ~{listing.estimatedRoiMonths} Mo
-                      </span>
-                    )}
-                  </div>
                 </div>
 
-                {/* Card Content */}
-                <div className="p-6 space-y-4">
-                  <div>
-                    <p className="text-xs text-amber-700 font-semibold line-clamp-1">{listing.tagline}</p>
-                    <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed mt-1">{listing.summary}</p>
-                  </div>
-
-                  {/* Key Metrics Grid */}
-                  <div className="pt-3 border-t border-slate-100 grid grid-cols-2 gap-3 text-xs">
-                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                      <span className="text-slate-400 uppercase font-medium text-[10px]">Est. Capital Required</span>
-                      <div className="font-extrabold text-navy-900 text-xs sm:text-sm mt-0.5">
-                        {formatCurrency(listing.totalInvestmentMin)} - {formatCurrency(listing.totalInvestmentMax)}
-                      </div>
-                    </div>
-                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                      <span className="text-slate-400 uppercase font-medium text-[10px]">Franchise Fee</span>
-                      <div className="font-extrabold text-navy-900 text-xs sm:text-sm mt-0.5">
-                        {formatCurrency(listing.initialFranchiseFee)}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Operational Tags */}
-                  <div className="space-y-1.5 text-xs text-slate-500 pt-1">
-                    <div className="flex items-center gap-1.5">
-                      <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span className="truncate">Expansion: {listing.expansionLocations?.slice(0, 3).join(", ")}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span>Space: {listing.commercialSpaceMinSqFt} - {listing.commercialSpaceMaxSqFt} Sq Ft</span>
-                    </div>
-                  </div>
+                {/* Mockup Interactive Navigation Tabs */}
+                <div className="bg-[#F8FAFC] px-4 py-2 border-b border-[#E7ECF2] flex items-center gap-2 text-xs font-semibold text-[#64748B]">
+                  <button
+                    onClick={() => setHeroTab("matching")}
+                    className={`px-3 py-1.5 rounded-md transition-colors ${
+                      heroTab === "matching"
+                        ? "bg-white text-[#315EFB] shadow-sm border border-[#E7ECF2]"
+                        : "hover:text-[#14243A]"
+                    }`}
+                  >
+                    Smart Matching
+                  </button>
+                  <button
+                    onClick={() => setHeroTab("pipeline")}
+                    className={`px-3 py-1.5 rounded-md transition-colors ${
+                      heroTab === "pipeline"
+                        ? "bg-white text-[#315EFB] shadow-sm border border-[#E7ECF2]"
+                        : "hover:text-[#14243A]"
+                    }`}
+                  >
+                    Expansion Pipeline
+                  </button>
+                  <button
+                    onClick={() => setHeroTab("dealroom")}
+                    className={`px-3 py-1.5 rounded-md transition-colors ${
+                      heroTab === "dealroom"
+                        ? "bg-white text-[#315EFB] shadow-sm border border-[#E7ECF2]"
+                        : "hover:text-[#14243A]"
+                    }`}
+                  >
+                    FDD Deal Room
+                  </button>
                 </div>
-              </div>
 
-              {/* Bottom Footer CTA */}
-              <div className="bg-slate-50/80 px-6 py-3.5 border-t border-slate-100 flex items-center justify-between">
-                <Link
-                  href={`/franchises/${listing.slug}`}
-                  className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform"
-                >
-                  View Full Dossier &rarr;
-                </Link>
-                <Link
-                  href={`/franchises/${listing.slug}`}
-                  className="text-[11px] font-bold text-slate-700 hover:text-blue-600 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-xs"
-                >
-                  Request Terms
-                </Link>
+                {/* Mockup Tab Content */}
+                <div className="p-5 space-y-4">
+                  {heroTab === "matching" && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-[#14243A] uppercase tracking-wide">
+                          Investor Compatibility Match
+                        </span>
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#E6F7F5] text-[#159D8B]">
+                          98% High Alignment
+                        </span>
+                      </div>
+
+                      {/* Matched Opportunity Preview Card */}
+                      <div className="p-3.5 rounded-xl border border-[#E7ECF2] bg-[#F8FAFC] space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-[#315EFB] text-white flex items-center justify-center font-bold text-xs">
+                              RC
+                            </div>
+                            <div>
+                              <div className="text-xs font-bold text-[#14243A]">RoastCraft Specialty Coffee</div>
+                              <div className="text-[11px] text-[#64748B]">QSR & Café • 3 Outlets Open</div>
+                            </div>
+                          </div>
+                          <span className="text-xs font-bold text-[#315EFB]">₹35L - 55L</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-[#E7ECF2]">
+                          <div>
+                            <span className="text-[#64748B]">EBITDA Margin:</span>{" "}
+                            <span className="font-semibold text-[#14243A]">22.4%</span>
+                          </div>
+                          <div>
+                            <span className="text-[#64748B]">Payback Period:</span>{" "}
+                            <span className="font-semibold text-[#14243A]">18 Months</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Matching Factors Scorebar */}
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between text-[11px]">
+                          <span className="text-[#64748B]">Capital Capacity & Territory Match</span>
+                          <span className="font-semibold text-[#14243A]">95%</span>
+                        </div>
+                        <div className="w-full bg-[#E7ECF2] h-2 rounded-full overflow-hidden">
+                          <div className="bg-[#315EFB] h-full rounded-full w-[95%]" />
+                        </div>
+                      </div>
+
+                      <div className="pt-2 flex items-center justify-between text-xs">
+                        <span className="text-[#64748B]">Investor: Rajesh Singhania (Delhi NCR)</span>
+                        <span className="text-[#315EFB] font-semibold flex items-center gap-0.5">
+                          Open Room <ChevronRight className="w-3.5 h-3.5" />
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {heroTab === "pipeline" && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-[#14243A] uppercase tracking-wide">
+                          Expansion Stage Milestones
+                        </span>
+                        <span className="text-xs text-[#64748B]">Stage 4 of 6</span>
+                      </div>
+                      <div className="space-y-2">
+                        {[
+                          { title: "SOP Codification & Audits", status: "Completed", color: "text-[#159D8B]" },
+                          { title: "FDD Legal Documentation", status: "Verified", color: "text-[#159D8B]" },
+                          { title: "Investor Due Diligence", status: "In Progress", color: "text-[#315EFB]" },
+                          { title: "Territory Escrow Closing", status: "Pending", color: "text-[#64748B]" },
+                        ].map((m, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-center justify-between p-2 rounded-lg bg-[#F8FAFC] border border-[#E7ECF2] text-xs"
+                          >
+                            <span className="font-medium text-[#14243A]">{m.title}</span>
+                            <span className={`font-semibold ${m.color}`}>{m.status}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {heroTab === "dealroom" && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-[#14243A] uppercase tracking-wide">
+                          Encrypted Diligence Room
+                        </span>
+                        <span className="text-xs font-semibold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">
+                          256-Bit TLS
+                        </span>
+                      </div>
+                      <div className="p-3 bg-[#F8FAFC] rounded-xl border border-[#E7ECF2] space-y-2 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-[#14243A]">Franchise_Disclosure_Doc_2026.pdf</span>
+                          <span className="text-emerald-600 font-medium">E-Signed</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-[#14243A]">Standard_Operating_Procedures.pdf</span>
+                          <span className="text-blue-600 font-medium">Verified</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-[#14243A]">Territory_Financial_Audit.xlsx</span>
+                          <span className="text-slate-500 font-medium">Watermarked</span>
+                        </div>
+                      </div>
+                      <div className="text-[11px] text-[#64748B] flex items-center gap-1">
+                        <Lock className="w-3.5 h-3.5 text-[#315EFB]" />
+                        <span>Audit logged access with cryptographic timestamping</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          ))}
+          </div>
         </div>
       </section>
 
-      {/* 4-PHASE DEVELOPMENT ROADMAP */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
-          <span className="text-blue-600 font-bold text-xs uppercase tracking-wider px-3 py-1 rounded-full bg-blue-50 border border-blue-200">
-            End-To-End Development Engine
+      {/* =========================================================================
+          QUICK SEARCH & FILTER BAR
+          ========================================================================= */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-7 relative z-20">
+        <form
+          onSubmit={handleSearchSubmit}
+          className="bg-white rounded-2xl border border-[#E7ECF2] shadow-card p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-12 gap-3 items-center"
+        >
+          <div className="sm:col-span-5 relative">
+            <Search className="w-4 h-4 text-[#64748B] absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search by brand name, city, or concept..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-[#E7ECF2] focus:outline-none focus:border-[#315EFB] text-[#14243A] placeholder-[#64748B]"
+            />
+          </div>
+
+          <div className="sm:col-span-4">
+            <select
+              value={selectedIndustry}
+              onChange={(e) => setSelectedIndustry(e.target.value)}
+              className="w-full px-3 py-2.5 text-sm rounded-xl border border-[#E7ECF2] focus:outline-none focus:border-[#315EFB] text-[#14243A] bg-white"
+            >
+              {industries.map((ind) => (
+                <option key={ind} value={ind}>
+                  {ind === "All" ? "All Industries" : ind}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="sm:col-span-3">
+            <button type="submit" className="btn-primary w-full py-2.5 text-sm">
+              <Search className="w-4 h-4 mr-1" />
+              Find Franchises
+            </button>
+          </div>
+        </form>
+      </section>
+
+      {/* =========================================================================
+          SECTION 1: PLATFORM BENEFITS (For Brands, Investors, Brokers)
+          ========================================================================= */}
+      <section className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center max-w-3xl mx-auto mb-14 space-y-3">
+          <span className="text-xs font-bold uppercase tracking-wider text-[#315EFB]">
+            Platform Benefits
           </span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-navy-900 tracking-tight">
-            How We Transform Proven Brands Into National Chains
+          <h2 className="text-3xl sm:text-4xl font-bold text-[#14243A] tracking-tight">
+            Purpose-Built for the Entire Franchise Lifecycle
           </h2>
-          <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
-            Franchising is not merely selling a brand license. It requires financial engineering, codified operations,
-            statutory legal disclosures, and targeted recruitment of qualified multi-unit franchisees.
+          <p className="text-[#64748B] text-base leading-relaxed">
+            Eliminating fragmented spreadsheets, opaque offline brokering, and compliance risks through structured digital workflows.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white p-7 rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-lg transition-all space-y-4 flex flex-col justify-between">
-            <div className="space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold shadow-inner">
-                <TrendingUp className="w-6 h-6" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* Card 1: For Franchise Brands */}
+          <div className="surface-card p-8 flex flex-col justify-between">
+            <div className="space-y-4">
+              <div className="w-12 h-12 rounded-xl bg-[#EFF4FF] flex items-center justify-center text-[#315EFB]">
+                <Building2 className="w-6 h-6" />
               </div>
-              <span className="text-[10px] font-extrabold text-blue-600 uppercase tracking-wider">Phase 1</span>
-              <h3 className="text-lg font-bold text-navy-900">Franchise Readiness Audit</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Diagnostic review evaluating EBITDA margins, geographic repeatability, gross profits, and 8-pillar benchmark scores.
+              <h3 className="text-xl font-bold text-[#14243A]">For Franchise Brands</h3>
+              <p className="text-sm text-[#64748B] leading-relaxed">
+                Transform a successful single or multi-unit concept into a scalable franchise network with certified operational SOPs and automated vetting.
               </p>
+              <ul className="space-y-2.5 text-xs text-[#14243A] pt-2">
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#159D8B] flex-shrink-0" />
+                  <span>8-Pillar Franchise Readiness Diagnostic</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#159D8B] flex-shrink-0" />
+                  <span>Standard Operating Procedures (SOP) Codification</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#159D8B] flex-shrink-0" />
+                  <span>Verified Multi-Unit Operator Recruitment</span>
+                </li>
+              </ul>
             </div>
-            <Link
-              href="/services/franchise-development"
-              className="inline-flex items-center text-xs font-bold text-blue-600 hover:text-blue-800 gap-1 pt-3 border-t border-slate-100"
-            >
-              Explore Diagnostic &rarr;
-            </Link>
+            <div className="pt-6 mt-6 border-t border-[#E7ECF2]">
+              <Link
+                href="/for-businesses"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#315EFB] hover:text-[#2144EB]"
+              >
+                Scale Your Brand <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
           </div>
 
-          <div className="bg-white p-7 rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-lg transition-all space-y-4 flex flex-col justify-between">
-            <div className="space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold shadow-inner">
-                <FileCheck2 className="w-6 h-6" />
-              </div>
-              <span className="text-[10px] font-extrabold text-amber-600 uppercase tracking-wider">Phase 2</span>
-              <h3 className="text-lg font-bold text-navy-900">Codified SOP Manuals</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Standardizing recipes, daily shift opening/closing checklists, register balancing, POS flows, and staff training academies.
-              </p>
-            </div>
-            <Link
-              href="/services/sop-development"
-              className="inline-flex items-center text-xs font-bold text-amber-600 hover:text-amber-800 gap-1 pt-3 border-t border-slate-100"
-            >
-              Explore SOP Modules &rarr;
-            </Link>
-          </div>
-
-          <div className="bg-white p-7 rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-lg transition-all space-y-4 flex flex-col justify-between">
-            <div className="space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold shadow-inner">
-                <Scale className="w-6 h-6" />
-              </div>
-              <span className="text-[10px] font-extrabold text-indigo-600 uppercase tracking-wider">Phase 3</span>
-              <h3 className="text-lg font-bold text-navy-900">Legal FDD & FIM Disclosure</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                US FTC 23-Item compliance or India/Commonwealth FIM packages, territory protection radii, and trademark licensing.
-              </p>
-            </div>
-            <Link
-              href="/services/legal-documentation"
-              className="inline-flex items-center text-xs font-bold text-indigo-600 hover:text-indigo-800 gap-1 pt-3 border-t border-slate-100"
-            >
-              Explore Legal Packaging &rarr;
-            </Link>
-          </div>
-
-          <div className="bg-white p-7 rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-lg transition-all space-y-4 flex flex-col justify-between">
-            <div className="space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shadow-inner">
+          {/* Card 2: For Investors */}
+          <div className="surface-card p-8 flex flex-col justify-between">
+            <div className="space-y-4">
+              <div className="w-12 h-12 rounded-xl bg-[#E6F7F5] flex items-center justify-center text-[#159D8B]">
                 <Users2 className="w-6 h-6" />
               </div>
-              <span className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider">Phase 4</span>
-              <h3 className="text-lg font-bold text-navy-900">Multi-Unit Brokerage</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Connecting franchisors with qualified high-net-worth operators, managing CRM deal pipelines, and closing area contracts.
+              <h3 className="text-xl font-bold text-[#14243A]">For Franchise Investors</h3>
+              <p className="text-sm text-[#64748B] leading-relaxed">
+                Invest with complete transparency. Access verified unit economics, audited FDD disclosure documents, and territory catchment demographics.
               </p>
-            </div>
-            <Link
-              href="/services/investor-recruitment"
-              className="inline-flex items-center text-xs font-bold text-emerald-600 hover:text-emerald-800 gap-1 pt-3 border-t border-slate-100"
-            >
-              Explore Recruitment &rarr;
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* INTERACTIVE 8 PILLARS BENCHMARK EXPLORER */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-[#0B1220] rounded-3xl p-8 sm:p-12 text-white border border-slate-800 shadow-2xl space-y-10">
-          <div className="max-w-3xl space-y-2">
-            <span className="text-xs font-extrabold text-amber-400 uppercase tracking-wider">
-              Proprietary Diagnostic Benchmark
-            </span>
-            <h2 className="text-3xl font-extrabold tracking-tight text-white">
-              The 8 Pillars of Franchise Readiness
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-              Every brand on FranchiseBridge is benchmarked across 8 rigorous pillars to ensure unit repeatability,
-              documentation integrity, and mutual franchisee profitability.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            {/* Left: Pillar Selectors */}
-            <div className="lg:col-span-5 space-y-2">
-              {readinessPillars.map((p, idx) => (
-                <button
-                  key={p.id}
-                  onClick={() => setSelectedPillar(idx)}
-                  className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-between border ${
-                    selectedPillar === idx
-                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-500 shadow-lg"
-                      : "bg-white/[0.03] text-slate-300 border-white/[0.06] hover:bg-white/[0.06]"
-                  }`}
-                >
-                  <span>{p.title}</span>
-                  <span className={`text-[11px] font-extrabold px-2 py-0.5 rounded-full ${
-                    selectedPillar === idx ? "bg-white text-blue-900" : "bg-slate-800 text-amber-400"
-                  }`}>
-                    {p.score}%
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            {/* Right: Selected Pillar Details */}
-            <div className="lg:col-span-7 bg-white/[0.04] border border-white/[0.1] rounded-2xl p-6 sm:p-8 space-y-6">
-              <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
-                <div>
-                  <span className="text-[11px] text-amber-400 uppercase font-semibold">Diagnostic Specification</span>
-                  <h3 className="text-xl font-bold text-white mt-0.5">{readinessPillars[selectedPillar].title}</h3>
-                </div>
-                <div className="text-right">
-                  <div className="text-3xl font-black text-amber-400">{readinessPillars[selectedPillar].score}%</div>
-                  <span className="text-[10px] text-slate-400 uppercase font-bold">Readiness Score</span>
-                </div>
-              </div>
-
-              <p className="text-sm text-slate-300 leading-relaxed">
-                {readinessPillars[selectedPillar].summary}
-              </p>
-
-              <div className="bg-black/40 p-4 rounded-xl border border-white/[0.06] space-y-1.5 text-xs">
-                <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">
-                  Mandatory Validation Checkpoints:
-                </span>
-                <p className="font-semibold text-emerald-400">
-                  {readinessPillars[selectedPillar].metrics}
-                </p>
-              </div>
-
-              <div className="bg-blue-950/40 p-4 rounded-xl border border-blue-500/20 space-y-1 text-xs">
-                <span className="text-[10px] uppercase font-bold tracking-wider text-blue-300 block">
-                  FranchiseBridge Deliverable:
-                </span>
-                <p className="font-semibold text-white">
-                  {readinessPillars[selectedPillar].deliverable}
-                </p>
-              </div>
-
-              <div className="pt-2 flex items-center justify-between text-xs">
-                <span className="text-slate-400">Want to test your business against this benchmark?</span>
-                <Link
-                  href="/register?role=business_owner"
-                  className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold px-4 py-2 rounded-xl transition-all"
-                >
-                  Start Diagnostic &rarr;
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* DUAL FDD & FIM LEGAL DISCLOSURE PACKET COMPARISON */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-gradient-to-br from-slate-50 to-blue-50/50 rounded-3xl border border-slate-200 p-8 sm:p-12 space-y-8">
-          <div className="max-w-3xl space-y-2">
-            <span className="text-blue-600 font-bold text-xs uppercase tracking-wider px-3 py-1 rounded-full bg-blue-100/70 border border-blue-200">
-              Institutional Compliance
-            </span>
-            <h2 className="text-3xl font-extrabold text-navy-900 tracking-tight">
-              Dual Legal Disclosure: US FTC 23-Item FDD & India FIM
-            </h2>
-            <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
-              We eliminate regulatory exposure for franchisors and protect investors through jurisdiction-tailored legal disclosure packaging.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white p-7 rounded-2xl border border-slate-200/90 shadow-sm space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <h3 className="text-lg font-bold text-navy-900">US FTC 23-Item FDD Standard</h3>
-                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                  United States FTC 16 CFR Part 436
-                </span>
-              </div>
-              <ul className="space-y-2.5 text-xs text-slate-600">
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                  <span><strong>Items 1-4:</strong> Franchisor history, executive litigation, and bankruptcy disclosures.</span>
+              <ul className="space-y-2.5 text-xs text-[#14243A] pt-2">
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#159D8B] flex-shrink-0" />
+                  <span>Audited Financials & Real Payback Timelines</span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                  <span><strong>Items 5-7:</strong> Initial franchise fees, continuing royalties, and total estimated startup capital.</span>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#159D8B] flex-shrink-0" />
+                  <span>Digital Deal Rooms with NDA Protection</span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                  <span><strong>Item 19:</strong> Financial Performance Representations (FPR) with verified historic store sales.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                  <span><strong>Items 20-23:</strong> Outlets status, audited financial statements, contracts, and receipt confirmation.</span>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#159D8B] flex-shrink-0" />
+                  <span>13-Pillar Due Diligence Checklist</span>
                 </li>
               </ul>
             </div>
-
-            <div className="bg-white p-7 rounded-2xl border border-slate-200/90 shadow-sm space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <h3 className="text-lg font-bold text-navy-900">India & Commonwealth FIM Standard</h3>
-                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
-                  Indian Contract Act 1872 & Trademarks Act 1999
-                </span>
-              </div>
-              <ul className="space-y-2.5 text-xs text-slate-600">
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                  <span><strong>Trademark Licensing:</strong> Registered Class 35/43/44 IP covenants preventing brand infringement.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                  <span><strong>Territory Protection:</strong> Explicit radius covenants (e.g. 3.5 km non-compete buffers in metro corridors).</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                  <span><strong>Supply Chain Mandate:</strong> Proprietary ingredient purchase agreements and commissary quality standards.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                  <span><strong>Arbitration & Dispute Resolution:</strong> Neutral institutional seat clauses ensuring speedy mediation.</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* MULTI-UNIT INVESTOR PRIVACY SHIELD */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-[#070B14] rounded-3xl p-8 sm:p-12 text-white border border-white/[0.08] shadow-2xl">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            <div className="lg:col-span-7 space-y-5">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
-                <Lock className="w-3.5 h-3.5" /> Privacy-by-Default Architecture
-              </div>
-              <h2 className="text-3xl font-extrabold tracking-tight text-white">
-                Protecting High-Net-Worth Investor Identity and Financials
-              </h2>
-              <p className="text-sm text-slate-300 leading-relaxed font-normal">
-                Unlike uncurated listing directories where your contact info is immediately sold to telemarketers,
-                FranchiseBridge encrypts your net worth, available liquid capital, and personal identifiers.
-                Contact is only revealed after mutual review and an executed Non-Disclosure Agreement (NDA).
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 text-xs">
-                <div className="bg-white/[0.04] p-3 rounded-xl border border-white/[0.06]">
-                  <span className="text-emerald-400 font-bold block mb-1">1. Encrypted Screening</span>
-                  <span className="text-slate-400">Suitability assessed without leaking personal data.</span>
-                </div>
-                <div className="bg-white/[0.04] p-3 rounded-xl border border-white/[0.06]">
-                  <span className="text-emerald-400 font-bold block mb-1">2. Mutual NDA Gate</span>
-                  <span className="text-slate-400">Strict legal confidentiality signed before term disclosure.</span>
-                </div>
-                <div className="bg-white/[0.04] p-3 rounded-xl border border-white/[0.06]">
-                  <span className="text-emerald-400 font-bold block mb-1">3. Direct Deal Room</span>
-                  <span className="text-slate-400">Direct founder dialogue managed via our brokerage team.</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="lg:col-span-5 bg-white/[0.04] p-6 rounded-2xl border border-white/[0.08] space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
-                <span className="text-xs font-bold text-amber-400">Protected Investor Profile</span>
-                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full font-bold">
-                  Verified Candidate
-                </span>
-              </div>
-              <div className="space-y-2.5 text-xs text-slate-300">
-                <div className="flex justify-between py-1 border-b border-white/[0.04]">
-                  <span className="text-slate-400">Investor Mask:</span>
-                  <span className="font-mono text-white">INV-KA-BLR-0498</span>
-                </div>
-                <div className="flex justify-between py-1 border-b border-white/[0.04]">
-                  <span className="text-slate-400">Liquid Capital Band:</span>
-                  <span className="font-semibold text-emerald-400">₹60 Lakh - ₹1 Crore</span>
-                </div>
-                <div className="flex justify-between py-1 border-b border-white/[0.04]">
-                  <span className="text-slate-400">Expansion Interest:</span>
-                  <span className="font-semibold text-white">Multi-Unit (3 Outlets)</span>
-                </div>
-                <div className="flex justify-between py-1 border-b border-white/[0.04]">
-                  <span className="text-slate-400">Preferred Territory:</span>
-                  <span className="text-white">Bengaluru / Hyderabad</span>
-                </div>
-                <div className="flex justify-between py-1">
-                  <span className="text-slate-400">Mutual NDA Status:</span>
-                  <span className="text-emerald-400 font-bold">Counter-Signed & Active</span>
-                </div>
-              </div>
+            <div className="pt-6 mt-6 border-t border-[#E7ECF2]">
               <Link
                 href="/for-investors"
-                className="block text-center w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md transition-all mt-2"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#159D8B] hover:text-[#0F7D6F]"
               >
-                Join Investor Syndicate &rarr;
+                Explore Investment Portfolios <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+
+          {/* Card 3: For Brokerage Teams */}
+          <div className="surface-card p-8 flex flex-col justify-between">
+            <div className="space-y-4">
+              <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+                <Briefcase className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold text-[#14243A]">For Brokerage Teams</h3>
+              <p className="text-sm text-[#64748B] leading-relaxed">
+                Manage your expansion pipeline with automated lead qualification, CRM tracking, document vaults, and escrow milestone compliance.
+              </p>
+              <ul className="space-y-2.5 text-xs text-[#14243A] pt-2">
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#159D8B] flex-shrink-0" />
+                  <span>Kanban Lead Pipeline & Activity Logs</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#159D8B] flex-shrink-0" />
+                  <span>Automated Territory Conflict Checking</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#159D8B] flex-shrink-0" />
+                  <span>Integrated E-Signatures & Audit Logs</span>
+                </li>
+              </ul>
+            </div>
+            <div className="pt-6 mt-6 border-t border-[#E7ECF2]">
+              <Link
+                href="/deal-room"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700"
+              >
+                View Deal Management <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
           </div>
         </div>
       </section>
 
-      {/* FREQUENTLY ASKED QUESTIONS */}
-      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12 space-y-2">
-          <span className="text-blue-600 font-bold text-xs uppercase tracking-wider">Frequently Asked Questions</span>
-          <h2 className="text-3xl font-extrabold text-navy-900 tracking-tight">Everything You Need to Know</h2>
+      {/* =========================================================================
+          SECTION 2: HOW IT WORKS (5-Step Horizontal Timeline on Desktop)
+          ========================================================================= */}
+      <section className="py-20 bg-white border-y border-[#E7ECF2]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#315EFB]">
+              Standardized Workflow
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-bold text-[#14243A] tracking-tight">
+              How Franchise Expansion Works
+            </h2>
+            <p className="text-[#64748B] text-base leading-relaxed">
+              A structured 5-stage lifecycle ensuring quality control, legal compliance, and aligned capital.
+            </p>
+          </div>
+
+          {/* Desktop Timeline */}
+          <div className="hidden lg:grid grid-cols-5 gap-4 relative">
+            {/* Timeline Connecting Line */}
+            <div className="absolute top-7 left-12 right-12 h-0.5 bg-[#E7ECF2] -z-0" />
+
+            {[
+              {
+                step: "01",
+                title: "Create Your Profile",
+                desc: "Brands codify operational standards; investors set territory & capital criteria.",
+              },
+              {
+                step: "02",
+                title: "Discover Opportunities",
+                desc: "Explore verified opportunities benchmarked with realistic unit economics.",
+              },
+              {
+                step: "03",
+                title: "Connect With Investors",
+                desc: "Algorithmic matching aligns net worth, location, and operational capability.",
+              },
+              {
+                step: "04",
+                title: "Complete Due Diligence",
+                desc: "Execute mutual NDAs and review audited FDDs in secure virtual deal rooms.",
+              },
+              {
+                step: "05",
+                title: "Expand Your Business",
+                desc: "Sign franchise agreements and initiate site selection & outlet rollout.",
+              },
+            ].map((item, idx) => (
+              <div key={idx} className="relative z-10 flex flex-col items-center text-center px-2">
+                <div className="w-14 h-14 rounded-2xl bg-white border-2 border-[#315EFB] text-[#315EFB] font-extrabold text-sm flex items-center justify-center shadow-subtle mb-4">
+                  {item.step}
+                </div>
+                <h4 className="text-sm font-bold text-[#14243A] mb-1.5">{item.title}</h4>
+                <p className="text-xs text-[#64748B] leading-relaxed">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Mobile Vertical Timeline */}
+          <div className="lg:hidden space-y-6">
+            {[
+              {
+                step: "01",
+                title: "Create Your Profile",
+                desc: "Brands codify operational standards; investors set territory & capital criteria.",
+              },
+              {
+                step: "02",
+                title: "Discover Opportunities",
+                desc: "Explore verified opportunities benchmarked with realistic unit economics.",
+              },
+              {
+                step: "03",
+                title: "Connect With Investors",
+                desc: "Algorithmic matching aligns net worth, location, and operational capability.",
+              },
+              {
+                step: "04",
+                title: "Complete Due Diligence",
+                desc: "Execute mutual NDAs and review audited FDDs in secure virtual deal rooms.",
+              },
+              {
+                step: "05",
+                title: "Expand Your Business",
+                desc: "Sign franchise agreements and initiate site selection & outlet rollout.",
+              },
+            ].map((item, idx) => (
+              <div key={idx} className="flex items-start gap-4 p-4 rounded-xl bg-[#F8FAFC] border border-[#E7ECF2]">
+                <div className="w-10 h-10 rounded-xl bg-[#315EFB] text-white font-bold text-xs flex items-center justify-center flex-shrink-0">
+                  {item.step}
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-[#14243A]">{item.title}</h4>
+                  <p className="text-xs text-[#64748B] mt-1 leading-relaxed">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* =========================================================================
+          SECTION 3: EXPLORE FRANCHISE OPPORTUNITIES (Real Verified Backend Data)
+          ========================================================================= */}
+      <section className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wider text-[#315EFB]">
+              Marketplace Portfolio
+            </span>
+            <h2 className="text-3xl font-bold text-[#14243A] tracking-tight mt-1">
+              Featured Franchise Opportunities
+            </h2>
+            <p className="text-sm text-[#64748B] mt-1">
+              Verified concepts with codified SOPs, active outlets, and transparent financials.
+            </p>
+          </div>
+          <Link
+            href="/franchises"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#315EFB] hover:text-[#2144EB]"
+          >
+            View All Opportunities <ArrowRight className="w-4 h-4" />
+          </Link>
         </div>
 
-        <div className="space-y-4">
-          {faqs.map((faq, idx) => (
-            <div
-              key={idx}
-              className="bg-white rounded-2xl border border-slate-200 overflow-hidden transition-all shadow-sm"
-            >
-              <button
-                onClick={() => setActiveFaq(activeFaq === idx ? null : idx)}
-                className="w-full px-6 py-4.5 text-left flex items-center justify-between font-bold text-navy-900 text-sm hover:text-blue-600 transition-colors"
+        {/* Listings Grid */}
+        {loadingListings ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[1, 2, 3].map((n) => (
+              <div key={n} className="surface-card p-6 h-80 animate-pulse space-y-4">
+                <div className="w-full h-40 bg-slate-200 rounded-xl" />
+                <div className="h-4 bg-slate-200 rounded w-2/3" />
+                <div className="h-4 bg-slate-200 rounded w-1/2" />
+              </div>
+            ))}
+          </div>
+        ) : featuredListings.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {featuredListings.map((franchise) => (
+              <div
+                key={franchise._id || franchise.id}
+                className="surface-card overflow-hidden flex flex-col justify-between group"
               >
-                <span>{faq.q}</span>
-                <ChevronRight
-                  className={`w-5 h-5 text-slate-400 transition-transform ${
-                    activeFaq === idx ? "rotate-90 text-blue-600" : ""
-                  }`}
-                />
-              </button>
-              {activeFaq === idx && (
-                <div className="px-6 pb-6 text-xs text-slate-600 leading-relaxed border-t border-slate-100 pt-3.5">
-                  {faq.a}
+                <div>
+                  {/* Card Image Banner */}
+                  <div className="relative h-48 w-full bg-slate-100 overflow-hidden">
+                    <img
+                      src={
+                        franchise.coverImage ||
+                        franchise.logo ||
+                        "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800&auto=format&fit=crop&q=80"
+                      }
+                      alt={franchise.brandName}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm px-2.5 py-1 rounded-md text-[11px] font-bold text-[#14243A] border border-[#E7ECF2]">
+                      {franchise.industry || "Franchise"}
+                    </div>
+                    {franchise.readinessScore && (
+                      <div className="absolute top-3 right-3 bg-[#14243A]/90 text-white px-2 py-0.5 rounded text-[10px] font-bold">
+                        Score: {franchise.readinessScore}/100
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Card Body */}
+                  <div className="p-6 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-bold text-[#14243A] group-hover:text-[#315EFB] transition-colors">
+                        {franchise.brandName}
+                      </h3>
+                      <span className="text-xs font-semibold text-[#159D8B] bg-[#E6F7F5] px-2 py-0.5 rounded">
+                        Verified
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-[#64748B] line-clamp-2 leading-relaxed">
+                      {franchise.tagline || franchise.description || "Proven franchise concept with documented operational manuals and turnkey setup."}
+                    </p>
+
+                    {/* Investment & Outlets Details */}
+                    <div className="grid grid-cols-2 gap-2 pt-3 border-t border-[#E7ECF2] text-xs">
+                      <div>
+                        <span className="text-[#64748B] block text-[11px]">Investment Range</span>
+                        <span className="font-bold text-[#14243A]">
+                          {franchise.financials?.minInvestment
+                            ? formatCurrency(franchise.financials.minInvestment)
+                            : "₹25L - 45L"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[#64748B] block text-[11px]">Active Outlets</span>
+                        <span className="font-bold text-[#14243A]">
+                          {franchise.unitsCount || "5+ Units"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              )}
+
+                {/* Card Action Footer */}
+                <div className="p-6 pt-0">
+                  <Link
+                    href={`/franchises/${franchise.slug || franchise._id}`}
+                    className="btn-secondary w-full py-2.5 text-xs font-semibold justify-center group-hover:border-[#315EFB] group-hover:text-[#315EFB]"
+                  >
+                    View Details & Financials
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 surface-card p-8">
+            <p className="text-[#64748B] text-sm">No franchise listings currently available.</p>
+          </div>
+        )}
+      </section>
+
+      {/* =========================================================================
+          SECTION 4: FOR FRANCHISE BRANDS (Split Layout with Interface Preview)
+          ========================================================================= */}
+      <section className="py-20 bg-white border-y border-[#E7ECF2]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            {/* Left Content */}
+            <div className="lg:col-span-6 space-y-6">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#315EFB]">
+                For Business Owners & Franchisors
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-bold text-[#14243A] tracking-tight">
+                Package Your Brand for Institutional Multi-Unit Expansion
+              </h2>
+              <p className="text-base text-[#64748B] leading-relaxed">
+                Most promising brands fail to scale because recipes, operations, and training are trapped in the founder's head. We codify your entire system into investor-ready assets.
+              </p>
+
+              <div className="space-y-4 pt-2">
+                {[
+                  {
+                    title: "Build Your Franchise Profile",
+                    desc: "Digitalize brand assets, floor plans, capex requirements, and territory availability.",
+                  },
+                  {
+                    title: "Assess Expansion Readiness",
+                    desc: "Benchmark your brand across unit economics, supply chain resilience, and defensibility.",
+                  },
+                  {
+                    title: "Publish Opportunities to Vetted Investors",
+                    desc: "Gain targeted visibility without spamming brokers or exposing trade secrets.",
+                  },
+                  {
+                    title: "Manage Enquiries in Centralized CRM",
+                    desc: "Track investor profiles, capital statements, and scheduled territory visits.",
+                  },
+                ].map((item, idx) => (
+                  <div key={idx} className="flex items-start gap-3.5">
+                    <div className="w-6 h-6 rounded-full bg-[#EFF4FF] text-[#315EFB] flex items-center justify-center font-bold text-xs flex-shrink-0 mt-0.5">
+                      ✓
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-[#14243A]">{item.title}</h4>
+                      <p className="text-xs text-[#64748B] mt-0.5 leading-relaxed">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-4">
+                <Link href="/for-businesses" className="btn-primary py-3 px-6 text-sm">
+                  Assess Your Franchise Readiness
+                  <ArrowRight className="w-4 h-4 ml-1" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Right Split Mockup */}
+            <div className="lg:col-span-6">
+              <div className="surface-card p-6 bg-[#F8FAFC] border border-[#E7ECF2] space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-[#E7ECF2]">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                    <span className="text-xs font-bold text-[#14243A]">Franchise Readiness Index</span>
+                  </div>
+                  <span className="text-xs font-bold text-[#315EFB]">Score: 84 / 100</span>
+                </div>
+
+                <div className="space-y-3">
+                  {[
+                    { label: "Unit Financial Viability", score: 92, status: "Optimal" },
+                    { label: "SOP & Operational Codification", score: 88, status: "Certified" },
+                    { label: "Supply Chain & Vendor Continuity", score: 81, status: "Standard" },
+                    { label: "Territory Legal Defensibility", score: 75, status: "Review" },
+                  ].map((p, idx) => (
+                    <div key={idx} className="bg-white p-3 rounded-xl border border-[#E7ECF2] space-y-1.5">
+                      <div className="flex justify-between text-xs">
+                        <span className="font-semibold text-[#14243A]">{p.label}</span>
+                        <span className="text-[#64748B] font-medium">{p.score}%</span>
+                      </div>
+                      <div className="w-full bg-[#E7ECF2] h-1.5 rounded-full overflow-hidden">
+                        <div
+                          className="bg-[#315EFB] h-full rounded-full"
+                          style={{ width: `${p.score}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="p-3 bg-[#EFF4FF] rounded-xl text-xs text-[#315EFB] flex items-center justify-between font-semibold">
+                  <span>Diagnostic Conclusion: Ready for Multi-Unit Brokerage</span>
+                  <ArrowRight className="w-4 h-4" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* =========================================================================
+          SECTION 5: FOR INVESTORS
+          ========================================================================= */}
+      <section className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+          {/* Left Split Interface */}
+          <div className="lg:col-span-6 order-2 lg:order-1">
+            <div className="surface-card p-6 bg-white border border-[#E7ECF2] space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-[#E7ECF2]">
+                <span className="text-xs font-bold text-[#14243A] uppercase tracking-wide">
+                  Investor Discovery Console
+                </span>
+                <span className="text-xs text-[#64748B]">Filter: ₹25L - ₹50L Budget</span>
+              </div>
+
+              <div className="space-y-3">
+                <div className="p-3.5 rounded-xl border border-[#BFD3FE] bg-[#EFF4FF] flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-[#14243A]">Filter by Net Worth & Liquidity</span>
+                    <span className="block text-[11px] text-[#64748B]">Automated pre-qualification</span>
+                  </div>
+                  <BadgeCheck className="w-5 h-5 text-[#315EFB]" />
+                </div>
+
+                <div className="p-3.5 rounded-xl border border-[#E7ECF2] bg-white flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-[#14243A]">Side-by-Side Brand Comparison</span>
+                    <span className="block text-[11px] text-[#64748B]">Capex, royalty fees & break-even</span>
+                  </div>
+                  <SlidersHorizontal className="w-5 h-5 text-[#64748B]" />
+                </div>
+
+                <div className="p-3.5 rounded-xl border border-[#E7ECF2] bg-white flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-[#14243A]">Save Favorites & Territory Holds</span>
+                    <span className="block text-[11px] text-[#64748B]">Direct notification on status updates</span>
+                  </div>
+                  <Star className="w-5 h-5 text-amber-500" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Content */}
+          <div className="lg:col-span-6 order-1 lg:order-2 space-y-6">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#159D8B]">
+              For Franchise Investors & Multi-Unit Operators
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-bold text-[#14243A] tracking-tight">
+              Invest with Institutional Clarity and Verified Unit Economics
+            </h2>
+            <p className="text-base text-[#64748B] leading-relaxed">
+              Skip speculative brochures and opaque broker claims. Review standardized financial performance disclosures, inspect territory catchments, and track diligence in real-time.
+            </p>
+
+            <div className="space-y-3 pt-2 text-sm text-[#14243A]">
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-[#159D8B]" />
+                <span>Audited historical store performance and EBITDA benchmarks</span>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-[#159D8B]" />
+                <span>Direct communication with franchisor leadership</span>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-[#159D8B]" />
+                <span>Territory exclusivity mapping and catchment protection</span>
+              </div>
+            </div>
+
+            <div className="pt-4">
+              <Link href="/for-investors" className="btn-dark py-3 px-6 text-sm">
+                Explore Investor Opportunities
+                <ArrowRight className="w-4 h-4 ml-1" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* =========================================================================
+          SECTION 6: PLATFORM INTELLIGENCE
+          ========================================================================= */}
+      <section className="py-20 bg-white border-y border-[#E7ECF2]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#315EFB]">
+              Platform Intelligence
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-bold text-[#14243A] tracking-tight">
+              Specialized Tools Built for Franchise Decision-Making
+            </h2>
+            <p className="text-[#64748B] text-base leading-relaxed">
+              Algorithmic tools engineered to evaluate financial feasibility, location demographics, and investor readiness.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Tool 1: Capex & ROI Estimator */}
+            <div className="surface-card p-6 flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-[#EFF4FF] flex items-center justify-center text-[#315EFB]">
+                  <BarChart3 className="w-5 h-5" />
+                </div>
+                <h3 className="text-lg font-bold text-[#14243A]">Expansion Cost Estimator</h3>
+                <p className="text-xs text-[#64748B] leading-relaxed">
+                  Interactive multi-variable capex model calculating equipment leases, interior fitouts, working capital, and break-even timelines.
+                </p>
+              </div>
+              <div className="pt-6 mt-4 border-t border-[#E7ECF2]">
+                <Link
+                  href="/calculator"
+                  className="inline-flex items-center gap-1 text-xs font-bold text-[#315EFB] hover:text-[#2144EB]"
+                >
+                  Launch Calculator <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Tool 2: Location Intelligence */}
+            <div className="surface-card p-6 flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-[#E6F7F5] flex items-center justify-center text-[#159D8B]">
+                  <Compass className="w-5 h-5" />
+                </div>
+                <h3 className="text-lg font-bold text-[#14243A]">Location Intelligence</h3>
+                <p className="text-xs text-[#64748B] leading-relaxed">
+                  Catchment demographic analysis evaluating footfall patterns, competitor density, and household disposable income for Tier-1, 2, and 3 cities.
+                </p>
+              </div>
+              <div className="pt-6 mt-4 border-t border-[#E7ECF2]">
+                <Link
+                  href="/location-intelligence"
+                  className="inline-flex items-center gap-1 text-xs font-bold text-[#159D8B] hover:text-[#0F7D6F]"
+                >
+                  Explore Location Radar <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Tool 3: Smart Matching Engine */}
+            <div className="surface-card p-6 flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <h3 className="text-lg font-bold text-[#14243A]">Smart Matching Engine</h3>
+                <p className="text-xs text-[#64748B] leading-relaxed">
+                  Multivariate compatibility scoring evaluating capital capacity, territory availability, operational experience, and risk appetite.
+                </p>
+              </div>
+              <div className="pt-6 mt-4 border-t border-[#E7ECF2]">
+                <Link
+                  href="/franchises"
+                  className="inline-flex items-center gap-1 text-xs font-bold text-purple-600 hover:text-purple-700"
+                >
+                  View Matched Portfolios <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* =========================================================================
+          SECTION 7: TRUST & SECURITY
+          ========================================================================= */}
+      <section className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center max-w-3xl mx-auto mb-14 space-y-3">
+          <span className="text-xs font-bold uppercase tracking-wider text-[#159D8B]">
+            Enterprise Governance
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-bold text-[#14243A] tracking-tight">
+            Institutional Trust, Security, and Compliance
+          </h2>
+          <p className="text-[#64748B] text-base leading-relaxed">
+            Every transaction is governed by bank-grade security protocols, strict role-based access, and verifiable audit trails.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[
+            {
+              title: "Encrypted Data Rooms",
+              desc: "Confidential Franchise Disclosure Documents (FDDs) are watermarked and encrypted with 256-bit TLS.",
+              icon: Lock,
+            },
+            {
+              title: "Role-Based Access Control",
+              desc: "Distinct security permissions for Franchisors, Franchisees, Brokers, and Compliance Officers.",
+              icon: ShieldCheck,
+            },
+            {
+              title: "Transparent Diligence",
+              desc: "13-pillar standardized checklist ensuring zero post-signing legal or operational ambiguity.",
+              icon: FileCheck2,
+            },
+            {
+              title: "Legally Binding E-Sign",
+              desc: "Integrated digital signatures with IP logging, timestamping, and mutual cryptographic confirmation.",
+              icon: Scale,
+            },
+          ].map((item, idx) => (
+            <div key={idx} className="surface-card p-6 space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-[#EFF4FF] flex items-center justify-center text-[#315EFB]">
+                <item.icon className="w-5 h-5" />
+              </div>
+              <h4 className="text-sm font-bold text-[#14243A]">{item.title}</h4>
+              <p className="text-xs text-[#64748B] leading-relaxed">{item.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* LUXURY CTA BLOCK */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-gradient-to-r from-navy-950 via-[#0B1220] to-blue-950 rounded-3xl p-8 sm:p-16 text-white text-center space-y-8 border border-white/[0.08] shadow-2xl relative overflow-hidden">
-          <div className="max-w-2xl mx-auto space-y-3 relative z-10">
-            <span className="text-amber-400 text-xs font-bold uppercase tracking-wider">The National Expansion Portal</span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
-              Ready to Expand Your Brand or Deploy Growth Capital?
-            </h2>
-            <p className="text-slate-300 text-xs sm:text-sm">
-              Join hundreds of successful brand founders and certified multi-unit operators scaling together.
-            </p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 relative z-10">
+      {/* =========================================================================
+          SECTION 8: FINAL CTA
+          ========================================================================= */}
+      <section className="py-20 bg-[#14243A] text-white">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
+          <span className="inline-block px-3 py-1 rounded-full bg-[#1C2A3E] text-[#6092FB] text-xs font-semibold uppercase tracking-wider">
+            Ready to Scale
+          </span>
+          <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight">
+            Accelerate Your Franchise Expansion Today
+          </h2>
+          <p className="text-base sm:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
+            Whether you are a founder ready to package your business for national growth, or an investor seeking vetted opportunities, FranchiseBridge provides the institutional infrastructure.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
             <Link
-              href="/register?role=business_owner"
-              className="w-full sm:w-auto bg-amber-400 hover:bg-amber-300 text-slate-950 font-black px-8 py-3.5 rounded-xl shadow-lg transition-all text-xs"
+              href="/for-businesses"
+              className="btn-primary py-3.5 px-8 text-sm font-semibold w-full sm:w-auto"
             >
-              Franchise My Brand
+              Start Franchising Your Brand
+              <ArrowRight className="w-4 h-4 ml-1" />
             </Link>
             <Link
-              href="/register?role=investor"
-              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white font-bold px-8 py-3.5 rounded-xl shadow-lg transition-all text-xs"
+              href="/franchises"
+              className="btn-secondary py-3.5 px-8 text-sm font-semibold w-full sm:w-auto bg-transparent text-white border-slate-700 hover:bg-[#1C2A3E]"
             >
-              Register as Investor
+              Browse Franchise Directory
             </Link>
-          </div>
-
-          {/* Newsletter Box */}
-          <div className="pt-8 border-t border-white/[0.08] max-w-md mx-auto relative z-10">
-            <p className="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-3">
-              Subscribe to the Monthly Franchise Expansion Report
-            </p>
-            {newsletterSubscribed ? (
-              <div className="bg-emerald-950/80 border border-emerald-500 text-emerald-300 text-xs py-2.5 px-4 rounded-xl flex items-center justify-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                Thank you! You are subscribed to our monthly expansion report.
-              </div>
-            ) : (
-              <form onSubmit={handleNewsletterSubmit} className="flex gap-2">
-                <input
-                  type="email"
-                  value={newsletterEmail}
-                  onChange={(e) => setNewsletterEmail(e.target.value)}
-                  placeholder="Enter your corporate email..."
-                  required
-                  className="bg-black/50 border border-white/[0.15] text-white placeholder-slate-500 text-xs rounded-xl px-4 py-2.5 flex-1 focus:outline-none focus:border-amber-400"
-                />
-                <button
-                  type="submit"
-                  className="bg-white/[0.1] hover:bg-white/[0.18] text-white text-xs font-bold px-4 py-2.5 rounded-xl border border-white/[0.2] transition-colors"
-                >
-                  Subscribe
-                </button>
-              </form>
-            )}
           </div>
         </div>
       </section>

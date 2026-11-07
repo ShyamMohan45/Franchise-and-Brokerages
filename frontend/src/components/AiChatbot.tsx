@@ -10,7 +10,6 @@ import {
   User,
   ShieldCheck,
   ChevronDown,
-  ExternalLink,
   Minimize2,
 } from 'lucide-react';
 
@@ -112,55 +111,44 @@ export default function AiChatbot() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="flex items-center gap-3 px-5 py-3.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 text-white rounded-full shadow-2xl hover:shadow-emerald-500/30 hover:scale-105 active:scale-95 transition-all duration-200 group border border-emerald-400/40"
+          className="flex items-center gap-2.5 px-4 py-3 bg-[#14243A] hover:bg-[#315EFB] text-white rounded-full shadow-elevated transition-all duration-200 group"
         >
-          <div className="relative">
-            <Sparkles className="w-5 h-5 text-amber-300 animate-pulse" />
-            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-300 rounded-full animate-ping" />
+          <div className="w-6 h-6 rounded-full bg-[#315EFB] flex items-center justify-center text-white group-hover:bg-white group-hover:text-[#315EFB] transition-colors">
+            <Sparkles className="w-3.5 h-3.5" />
           </div>
-          <span className="font-semibold text-sm tracking-wide">Franchise AI Advisor</span>
-          <span className="bg-emerald-800/80 text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border border-emerald-400/30">
-            Live
-          </span>
+          <span className="text-xs font-semibold">AI Franchise Assistant</span>
         </button>
       )}
 
-      {/* Chatbot Window */}
+      {/* Floating Chat Modal */}
       {isOpen && (
-        <div
-          className={`bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl flex flex-col transition-all duration-300 backdrop-blur-xl ${
-            isMinimized ? 'w-80 h-16' : 'w-[420px] max-w-[calc(100vw-2rem)] h-[580px] max-h-[calc(100vh-6rem)]'
-          }`}
-        >
+        <div className="surface-card w-[380px] sm:w-[420px] shadow-dropdown flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-3 duration-200">
           {/* Header */}
-          <div className="px-4 py-3.5 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-b border-slate-700/80 rounded-t-2xl flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
-                <Bot className="w-5 h-5" />
+          <div className="bg-[#14243A] p-4 text-white flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-[#315EFB] flex items-center justify-center">
+                <Sparkles className="w-4 h-4 text-white" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-white text-sm">FranchiseBridge AI</h3>
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    Online
-                  </span>
+                <h4 className="text-xs font-bold">FranchiseBridge AI Advisor</h4>
+                <div className="flex items-center gap-1.5 text-[10px] text-slate-300">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Verified Franchise Intelligence</span>
                 </div>
-                <p className="text-[11px] text-slate-400">Readiness, FDD, SOP & Valuation Advisor</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 text-slate-300">
               <button
                 onClick={() => setIsMinimized(!isMinimized)}
-                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition"
-                title={isMinimized ? 'Expand' : 'Minimize'}
+                className="p-1 hover:text-white rounded"
+                title="Minimize"
               >
-                <Minimize2 className="w-4 h-4" />
+                <Minimize2 className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition"
+                className="p-1 hover:text-white rounded"
                 title="Close"
               >
                 <X className="w-4 h-4" />
@@ -171,94 +159,75 @@ export default function AiChatbot() {
           {!isMinimized && (
             <>
               {/* Messages Body */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 text-sm scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
-                {/* Advisory Disclaimer Notice */}
-                <div className="p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-[11px] text-emerald-300 flex items-start gap-2">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-                  <span>
-                    Knowledge-grounded in Indian Contract & IP law, US FTC 23-item FDD disclosure standards, and commercial unit economics.
-                  </span>
-                </div>
-
+              <div className="h-80 overflow-y-auto p-4 space-y-3 bg-[#F8FAFC] text-xs">
                 {messages.map((m) => (
                   <div
                     key={m.id}
-                    className={`flex items-start gap-2.5 ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                    className={`flex items-start gap-2 ${
+                      m.sender === 'user' ? 'justify-end' : 'justify-start'
+                    }`}
                   >
                     {m.sender === 'ai' && (
-                      <div className="w-7 h-7 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-emerald-400 flex-shrink-0 mt-0.5">
-                        <Sparkles className="w-3.5 h-3.5" />
+                      <div className="w-6 h-6 rounded-full bg-[#14243A] text-white flex items-center justify-center text-[10px] shrink-0 mt-0.5">
+                        AI
                       </div>
                     )}
-
                     <div
-                      className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 ${
+                      className={`max-w-[80%] p-3 rounded-xl leading-relaxed ${
                         m.sender === 'user'
-                          ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-br-none shadow-md shadow-emerald-900/30'
-                          : 'bg-slate-800/90 text-slate-200 border border-slate-700/70 rounded-bl-none'
+                          ? 'bg-[#315EFB] text-white'
+                          : 'bg-white text-[#14243A] border border-[#E7ECF2] shadow-sm'
                       }`}
                     >
-                      <p className="leading-relaxed text-[13px]">{m.text}</p>
-                      <span className="block text-[10px] mt-1 text-slate-400/80 text-right">{m.time}</span>
+                      <p>{m.text}</p>
+                      <span
+                        className={`text-[9px] block mt-1 ${
+                          m.sender === 'user' ? 'text-blue-100' : 'text-[#64748B]'
+                        }`}
+                      >
+                        {m.time}
+                      </span>
                     </div>
-
-                    {m.sender === 'user' && (
-                      <div className="w-7 h-7 rounded-lg bg-emerald-700 flex items-center justify-center text-white flex-shrink-0 mt-0.5">
-                        <User className="w-3.5 h-3.5" />
-                      </div>
-                    )}
                   </div>
                 ))}
 
                 {loading && (
-                  <div className="flex items-start gap-2.5">
-                    <div className="w-7 h-7 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-emerald-400 flex-shrink-0">
-                      <Sparkles className="w-3.5 h-3.5 animate-spin" />
-                    </div>
-                    <div className="bg-slate-800/90 border border-slate-700/70 rounded-2xl rounded-bl-none px-4 py-3 text-slate-400 text-xs flex items-center gap-2">
-                      <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                      <span>Synthesizing franchise intelligence...</span>
-                    </div>
+                  <div className="flex items-center gap-2 text-xs text-[#64748B] p-2 bg-white rounded-lg border border-[#E7ECF2] w-fit">
+                    <span className="w-2 h-2 rounded-full bg-[#315EFB] animate-ping" />
+                    <span>Analyzing franchise regulations...</span>
                   </div>
                 )}
-
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Quick Prompts */}
-              <div className="px-3 py-2 border-t border-slate-800 bg-slate-950/60 overflow-x-auto flex gap-1.5 scrollbar-none">
-                {QUICK_PROMPTS.map((prompt, idx) => (
+              {/* Quick Prompt Suggestions */}
+              <div className="p-2 bg-white border-t border-[#E7ECF2] overflow-x-auto flex gap-1.5 scrollbar-none">
+                {QUICK_PROMPTS.map((q, idx) => (
                   <button
                     key={idx}
-                    onClick={() => handleSend(prompt)}
-                    className="whitespace-nowrap px-2.5 py-1 text-[11px] rounded-full bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-700/80 transition flex-shrink-0"
+                    onClick={() => handleSend(q)}
+                    className="px-2.5 py-1 rounded-md bg-[#F8FAFC] hover:bg-[#EFF4FF] border border-[#E7ECF2] text-[10px] text-[#14243A] font-medium whitespace-nowrap transition-colors"
                   >
-                    {prompt}
+                    {q}
                   </button>
                 ))}
               </div>
 
               {/* Input Footer */}
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleSend();
-                }}
-                className="p-3 bg-slate-900 border-t border-slate-800 rounded-b-2xl flex items-center gap-2"
-              >
+              <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="p-3 bg-white border-t border-[#E7ECF2] flex gap-2">
                 <input
                   type="text"
+                  placeholder="Ask regarding FDD, SOPs, capex, or agreements..."
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
-                  placeholder="Ask about FDD, SOP, capex, legal..."
-                  className="flex-1 bg-slate-800/90 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition"
+                  className="flex-1 px-3 py-2 text-xs rounded-xl border border-[#E7ECF2] focus:outline-none focus:border-[#315EFB] text-[#14243A]"
                 />
                 <button
                   type="submit"
                   disabled={loading || !inputMessage.trim()}
-                  className="p-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:opacity-90 disabled:opacity-40 transition shadow-md shadow-emerald-700/20"
+                  className="btn-primary py-2 px-3 text-xs disabled:opacity-40"
                 >
-                  <Send className="w-4 h-4" />
+                  <Send className="w-3.5 h-3.5" />
                 </button>
               </form>
             </>
