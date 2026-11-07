@@ -1,8 +1,11 @@
+import path from 'path';
+import fs from 'fs';
 import { Request, Response } from 'express';
 import { SOPDocument } from '../models/SOPDocument';
 import { LegalDocument } from '../models/LegalDocument';
 import { DocumentVersion } from '../models/DocumentVersion';
 import { BusinessProfile } from '../models/BusinessProfile';
+import { DealRoom } from '../models/DealRoom';
 import { AuditLog } from '../models/AuditLog';
 import { sendSuccess, sendError } from '../utils/response';
 
@@ -231,4 +234,72 @@ export async function getInvestorFddPackages(req: Request, res: Response): Promi
     .sort({ fddItemNumber: 1, createdAt: -1 });
 
   return sendSuccess(res, legalDocs, 'Investor FDD packages retrieved successfully');
+}
+
+// Secure Authorized Document Download
+export async function downloadDocument(req: Request, res: Response): Promise<any> {
+  const { id } = req.params;
+  const user = req.user!;
+
+  let doc: any = await LegalDocument.findById(id).populate('business');
+  let docType = 'LegalDocument';
+  if (!doc) {
+    doc = await SOPDocument.findById(id).populate('business');
+    docType = 'SOPDocument';
+  }
+
+  if (!doc) {
+    return sendError(res, 'Document not found', 404);
+  }
+
+  const isAdmin = user.role === 'admin' || user.role === 'super_admin';
+  const isAuthor = (doc.author && doc.author.toString() === user._id.toString()) ||
+                   (doc.uploadedBy && doc.uploadedBy.toString() === user._id.toString());
+  const isBusinessOwner = doc.business && doc.business.user && doc.business.user.toString() === user._id.toString();
+
+  if (!isAdmin && !isAuthor && !isBusinessOwner) {
+    if (user.role === 'broker') {
+      // Brokers have authorized platform due diligence access
+    } else if (user.role === 'investor') {
+      if (docType === 'SOPDocument' && doc.status === 'approved') {
+        // Publicly approved SOP allowed
+      } else {
+        const deal = await DealRoom.findOne({
+          investor: user._id,
+          ndaSigned: true,
+        });
+        if (!deal && doc.status !== 'approved') {
+          return sendError(res, 'Access denied. NDA signature or authorization required.', 403);
+        }
+      }
+    } else {
+      return sendError(res, 'Access denied. You do not have permission to download this document.', 403);
+    }
+  }
+
+  const fileName = doc.fileName || doc.title || `${docType}_${doc._id}.pdf`;
+  const storageKey = doc.storageKey || (doc.fileUrl ? path.basename(doc.fileUrl) : null);
+
+  if (!storageKey) {
+    return sendError(res, 'Document file path is unavailable.', 404);
+  }
+
+  const filePath = path.isAbsolute(storageKey)
+    ? storageKey
+    : path.join(process.cwd(), 'uploads', storageKey);
+
+  if (!fs.existsSync(filePath)) {
+    return sendError(res, 'Requested file is not present on physical storage.', 404);
+  }
+
+  await AuditLog.create({
+    actor: user._id,
+    actorRole: user.role,
+    actorEmail: user.email,
+    action: 'DOCUMENT_DOWNLOADED',
+    entityType: docType,
+    entityId: doc._id.toString(),
+  });
+
+  return res.download(filePath, fileName);
 }

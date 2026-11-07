@@ -1,6 +1,15 @@
 import { Schema, model, Document, Types } from 'mongoose';
 
 export type DealStage =
+  | 'NEW_LEAD'
+  | 'CONTACTED'
+  | 'QUALIFIED'
+  | 'MEETING_SCHEDULED'
+  | 'OPPORTUNITY_PRESENTED'
+  | 'DUE_DILIGENCE'
+  | 'NEGOTIATION'
+  | 'CLOSED_WON'
+  | 'CLOSED_LOST'
   | 'lead_received'
   | 'qualification'
   | 'matching'
@@ -71,17 +80,25 @@ const brokerageDealSchema = new Schema<IBrokerageDeal>(
     stage: {
       type: String,
       enum: [
+        'NEW_LEAD',
+        'CONTACTED',
+        'QUALIFIED',
+        'MEETING_SCHEDULED',
+        'OPPORTUNITY_PRESENTED',
+        'DUE_DILIGENCE',
+        'NEGOTIATION',
+        'CLOSED_WON',
+        'CLOSED_LOST',
         'lead_received',
         'qualification',
         'matching',
         'initial_discussion',
         'documentation_review',
-        'negotiation',
         'agreement_pending',
         'deal_closed',
         'lost_cancelled',
       ],
-      default: 'lead_received',
+      default: 'NEW_LEAD',
       index: true,
     },
     dealValue: {
@@ -144,3 +161,5 @@ const brokerageDealSchema = new Schema<IBrokerageDeal>(
 );
 
 export const BrokerageDeal = model<IBrokerageDeal>('BrokerageDeal', brokerageDealSchema);
+export const Deal = BrokerageDeal;
+export type IDeal = IBrokerageDeal;

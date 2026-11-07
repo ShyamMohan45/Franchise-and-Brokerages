@@ -14,6 +14,10 @@ import costEstimatorRoutes from './costEstimatorRoutes';
 import dueDiligenceRoutes from './dueDiligenceRoutes';
 import dealRoomRoutes from './dealRoomRoutes';
 import matchingRoutes from './matchingRoutes';
+import taskRoutes from './taskRoutes';
+import reviewRoutes from './reviewRoutes';
+import notificationRoutes from './notificationRoutes';
+import crmRoutes from './crmRoutes';
 
 const router = Router();
 
@@ -32,5 +36,9 @@ router.use('/cost-estimator', costEstimatorRoutes);
 router.use('/due-diligence', dueDiligenceRoutes);
 router.use('/deal-rooms', dealRoomRoutes);
 router.use('/matching', matchingRoutes);
+router.use('/tasks', taskRoutes);
+router.use('/reviews', reviewRoutes);
+router.use('/notifications', notificationRoutes);
+router.use('/crm', crmRoutes);
 
 export default router;

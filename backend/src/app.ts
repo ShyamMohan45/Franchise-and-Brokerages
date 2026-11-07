@@ -62,19 +62,28 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 app.use('/api', limiter);
+app.use('/api/v1', limiter);
 
 // Health check endpoint
-app.get('/health', (req, res) => {
+const healthHandler = (req: express.Request, res: express.Response) => {
   res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
     environment: env.NODE_ENV,
     version: '1.0.0',
-    service: 'FranchiseBridge API Gateway',
+    service: 'FranchiseBridge Enterprise API Gateway',
+    endpoints: {
+      v1: '/api/v1',
+      legacy: '/api',
+    },
   });
-});
+};
 
-// Mount API routes
+app.get('/health', healthHandler);
+app.get('/api/v1/health', healthHandler);
+
+// Mount API routes (versioned v1 and legacy compatibility alias)
+app.use('/api/v1', routes);
 app.use('/api', routes);
 
 // Centralized error handler

@@ -183,3 +183,5 @@ const franchiseListingSchema = new Schema<IFranchiseListing>(
 franchiseListingSchema.index({ brandName: 'text', summary: 'text', industry: 'text', expansionLocations: 'text' });
 
 export const FranchiseListing = model<IFranchiseListing>('FranchiseListing', franchiseListingSchema);
+export const FranchiseOpportunity = FranchiseListing;
+export type IFranchiseOpportunity = IFranchiseListing;

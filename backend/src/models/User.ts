@@ -1,6 +1,14 @@
 import { Schema, model, Document, Types } from 'mongoose';
 
-export type UserRole = 'guest' | 'business_owner' | 'investor' | 'admin' | 'super_admin';
+export type UserRole =
+  | 'guest'
+  | 'business_owner'
+  | 'brand_owner'
+  | 'investor'
+  | 'broker'
+  | 'admin'
+  | 'super_admin';
+
 export type UserStatus = 'active' | 'pending_verification' | 'suspended';
 
 export interface IUser extends Document {
@@ -16,6 +24,10 @@ export interface IUser extends Document {
   investorProfile?: Types.ObjectId;
   lastLoginAt?: Date;
   refreshTokenHash?: string;
+  passwordResetToken?: string;
+  passwordResetExpires?: Date;
+  emailVerificationToken?: string;
+  verificationTokenExpires?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -46,7 +58,15 @@ const userSchema = new Schema<IUser>(
     },
     role: {
       type: String,
-      enum: ['guest', 'business_owner', 'investor', 'admin', 'super_admin'],
+      enum: [
+        'guest',
+        'business_owner',
+        'brand_owner',
+        'investor',
+        'broker',
+        'admin',
+        'super_admin',
+      ],
       default: 'business_owner',
       index: true,
     },
@@ -76,6 +96,24 @@ const userSchema = new Schema<IUser>(
     },
     refreshTokenHash: {
       type: String,
+      select: false,
+    },
+    passwordResetToken: {
+      type: String,
+      select: false,
+      index: true,
+    },
+    passwordResetExpires: {
+      type: Date,
+      select: false,
+    },
+    emailVerificationToken: {
+      type: String,
+      select: false,
+      index: true,
+    },
+    verificationTokenExpires: {
+      type: Date,
       select: false,
     },
   },

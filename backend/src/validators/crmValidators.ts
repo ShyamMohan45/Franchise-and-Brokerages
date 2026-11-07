@@ -38,12 +38,20 @@ export const createDealSchema = z.object({
 export const updateDealSchema = z.object({
   stage: z
     .enum([
+      'NEW_LEAD',
+      'CONTACTED',
+      'QUALIFIED',
+      'MEETING_SCHEDULED',
+      'OPPORTUNITY_PRESENTED',
+      'DUE_DILIGENCE',
+      'NEGOTIATION',
+      'CLOSED_WON',
+      'CLOSED_LOST',
       'lead_received',
       'qualification',
       'matching',
       'initial_discussion',
       'documentation_review',
-      'negotiation',
       'agreement_pending',
       'deal_closed',
       'lost_cancelled',

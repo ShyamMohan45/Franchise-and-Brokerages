@@ -8,6 +8,7 @@ import {
   updateLegalDocStatus,
   uploadDocumentFile,
   getInvestorFddPackages,
+  downloadDocument,
 } from '../controllers/documentController';
 import { requireAuth } from '../middleware/auth';
 import { requireRole } from '../middleware/rbac';
@@ -35,5 +36,7 @@ router.get('/legal', requireAuth, getLegalDocuments);
 router.get('/fdd-packages', requireAuth, getInvestorFddPackages);
 router.post('/legal', requireAuth, validate(createLegalDocumentSchema), createLegalDocument);
 router.patch('/legal/:id/status', requireAuth, requireRole('admin', 'super_admin'), validate(updateLegalDocStatusSchema), updateLegalDocStatus);
+// Authorized Document Download
+router.get('/:id/download', requireAuth, downloadDocument);
 
 export default router;

@@ -7,7 +7,14 @@ export type NotificationType =
   | 'document_review_requested'
   | 'meeting_invite'
   | 'deal_stage_changed'
-  | 'system_announcement';
+  | 'system_announcement'
+  | 'application'
+  | 'meeting'
+  | 'document'
+  | 'system'
+  | 'deal'
+  | 'task'
+  | 'TASK_ASSIGNED';
 
 export interface INotification extends Document {
   recipient: Types.ObjectId;
@@ -38,7 +45,15 @@ const notificationSchema = new Schema<INotification>(
         'meeting_invite',
         'deal_stage_changed',
         'system_announcement',
+        'application',
+        'meeting',
+        'document',
+        'system',
+        'deal',
+        'task',
+        'TASK_ASSIGNED',
       ],
+      default: 'system',
       required: true,
     },
     title: {

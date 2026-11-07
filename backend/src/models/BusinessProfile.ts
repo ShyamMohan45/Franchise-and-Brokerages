@@ -160,3 +160,5 @@ const businessProfileSchema = new Schema<IBusinessProfile>(
 );
 
 export const BusinessProfile = model<IBusinessProfile>('BusinessProfile', businessProfileSchema);
+export const BrandProfile = BusinessProfile;
+export type IBrandProfile = IBusinessProfile;

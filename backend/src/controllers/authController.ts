@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import crypto from 'crypto';
 import { User } from '../models/User';
 import { BusinessProfile } from '../models/BusinessProfile';
 import { InvestorProfile } from '../models/InvestorProfile';
@@ -7,6 +8,7 @@ import { generateToken, generateRefreshToken, verifyRefreshToken } from '../util
 import { sendSuccess, sendError } from '../utils/response';
 import { AuditLog } from '../models/AuditLog';
 import { env } from '../config/env';
+import { EmailService } from '../services/emailService';
 
 export async function register(req: Request, res: Response): Promise<any> {
   const { email, password, fullName, phone, role } = req.body;
@@ -17,6 +19,9 @@ export async function register(req: Request, res: Response): Promise<any> {
   }
 
   const passwordHash = await hashPassword(password);
+  const emailVerificationToken = crypto.randomBytes(32).toString('hex');
+  const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
   const user = await User.create({
     email,
     passwordHash,
@@ -24,7 +29,9 @@ export async function register(req: Request, res: Response): Promise<any> {
     phone,
     role: role || 'business_owner',
     status: 'active',
-    emailVerified: true,
+    emailVerified: false,
+    emailVerificationToken,
+    verificationTokenExpires,
   });
 
   const token = generateToken({
@@ -46,6 +53,10 @@ export async function register(req: Request, res: Response): Promise<any> {
     maxAge: 24 * 60 * 60 * 1000,
   });
 
+  // Send verification email
+  const verifyUrl = `${env.CLIENT_URL}/verify-email?token=${emailVerificationToken}`;
+  await EmailService.sendVerificationEmail(user.email, verifyUrl);
+
   await AuditLog.create({
     actor: user._id,
     actorRole: user.role,
@@ -66,11 +77,12 @@ export async function register(req: Request, res: Response): Promise<any> {
         phone: user.phone,
         role: user.role,
         status: user.status,
+        emailVerified: user.emailVerified,
       },
       token,
       refreshToken,
     },
-    'Registration successful',
+    'Registration successful. Please verify your email.',
     201
   );
 }
@@ -133,6 +145,7 @@ export async function login(req: Request, res: Response): Promise<any> {
         phone: user.phone,
         role: user.role,
         status: user.status,
+        emailVerified: user.emailVerified,
       },
       token,
       refreshToken,
@@ -158,11 +171,20 @@ export async function getMe(req: Request, res: Response): Promise<any> {
   let businessProfile = null;
   let investorProfile = null;
 
-  if (req.user.role === 'business_owner' || req.user.role === 'admin' || req.user.role === 'super_admin') {
+  if (
+    req.user.role === 'business_owner' ||
+    req.user.role === 'brand_owner' ||
+    req.user.role === 'admin' ||
+    req.user.role === 'super_admin'
+  ) {
     businessProfile = await BusinessProfile.findOne({ user: req.user._id });
   }
 
-  if (req.user.role === 'investor' || req.user.role === 'admin' || req.user.role === 'super_admin') {
+  if (
+    req.user.role === 'investor' ||
+    req.user.role === 'admin' ||
+    req.user.role === 'super_admin'
+  ) {
     investorProfile = await InvestorProfile.findOne({ user: req.user._id });
   }
 
@@ -213,4 +235,143 @@ export async function refreshSession(req: Request, res: Response): Promise<any> 
   } catch (err) {
     return sendError(res, 'Expired or invalid refresh token', 401);
   }
+}
+
+export async function forgotPassword(req: Request, res: Response): Promise<any> {
+  const { email } = req.body;
+  if (!email) {
+    return sendError(res, 'Email address is required', 400);
+  }
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    // For security, do not disclose whether user exists
+    return sendSuccess(res, null, 'If that email is registered, a password reset link has been sent.');
+  }
+
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+  user.passwordResetToken = tokenHash;
+  user.passwordResetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+  await user.save();
+
+  const resetUrl = `${env.CLIENT_URL}/reset-password?token=${resetToken}`;
+  await EmailService.sendPasswordResetEmail(user.email, resetUrl);
+
+  await AuditLog.create({
+    actor: user._id,
+    actorRole: user.role,
+    actorEmail: user.email,
+    action: 'PASSWORD_RESET_REQUESTED',
+    entityType: 'User',
+    entityId: user._id.toString(),
+    ipAddress: req.ip,
+  });
+
+  return sendSuccess(res, null, 'If that email is registered, a password reset link has been sent.');
+}
+
+export async function resetPassword(req: Request, res: Response): Promise<any> {
+  const { token, newPassword } = req.body;
+  if (!token || !newPassword) {
+    return sendError(res, 'Token and new password are required', 400);
+  }
+
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+  const user = await User.findOne({
+    passwordResetToken: tokenHash,
+    passwordResetExpires: { $gt: new Date() },
+  });
+
+  if (!user) {
+    return sendError(res, 'Password reset token is invalid or has expired', 400);
+  }
+
+  user.passwordHash = await hashPassword(newPassword);
+  user.passwordResetToken = undefined;
+  user.passwordResetExpires = undefined;
+  await user.save();
+
+  await AuditLog.create({
+    actor: user._id,
+    actorRole: user.role,
+    actorEmail: user.email,
+    action: 'PASSWORD_RESET_COMPLETED',
+    entityType: 'User',
+    entityId: user._id.toString(),
+    ipAddress: req.ip,
+  });
+
+  return sendSuccess(res, null, 'Password has been reset successfully. You may now log in.');
+}
+
+export async function verifyEmail(req: Request, res: Response): Promise<any> {
+  const { token } = req.params;
+  if (!token) {
+    return sendError(res, 'Verification token is required', 400);
+  }
+
+  const user = await User.findOne({
+    emailVerificationToken: token,
+    verificationTokenExpires: { $gt: new Date() },
+  });
+
+  if (!user) {
+    return sendError(res, 'Verification token is invalid or has expired', 400);
+  }
+
+  user.emailVerified = true;
+  user.emailVerificationToken = undefined;
+  user.verificationTokenExpires = undefined;
+  await user.save();
+
+  await AuditLog.create({
+    actor: user._id,
+    actorRole: user.role,
+    actorEmail: user.email,
+    action: 'EMAIL_VERIFIED',
+    entityType: 'User',
+    entityId: user._id.toString(),
+    ipAddress: req.ip,
+  });
+
+  return sendSuccess(res, null, 'Email verified successfully.');
+}
+
+export async function changePassword(req: Request, res: Response): Promise<any> {
+  if (!req.user) {
+    return sendError(res, 'Authentication required', 401);
+  }
+
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) {
+    return sendError(res, 'Current and new password are required', 400);
+  }
+
+  const user = await User.findById(req.user._id).select('+passwordHash');
+  if (!user) {
+    return sendError(res, 'User not found', 404);
+  }
+
+  const isMatch = await comparePassword(currentPassword, user.passwordHash);
+  if (!isMatch) {
+    return sendError(res, 'Current password does not match', 400);
+  }
+
+  user.passwordHash = await hashPassword(newPassword);
+  await user.save();
+
+  await AuditLog.create({
+    actor: user._id,
+    actorRole: user.role,
+    actorEmail: user.email,
+    action: 'PASSWORD_CHANGED',
+    entityType: 'User',
+    entityId: user._id.toString(),
+    ipAddress: req.ip,
+  });
+
+  return sendSuccess(res, null, 'Password changed successfully');
 }
