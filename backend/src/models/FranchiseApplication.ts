@@ -1,6 +1,13 @@
 import { Schema, model, Document, Types } from 'mongoose';
 
 export type ApplicationStatus =
+  | 'NEW'
+  | 'ASSIGNED'
+  | 'CONTACTED'
+  | 'QUALIFIED'
+  | 'IN_PROGRESS'
+  | 'CONVERTED'
+  | 'CLOSED'
   | 'submitted'
   | 'under_review'
   | 'vetted_by_broker'
@@ -14,7 +21,10 @@ export type ApplicationStatus =
   | 'withdrawn';
 
 export interface IFranchiseApplication extends Document {
+  referenceNumber: string;
   franchise: Types.ObjectId;
+  brandName?: string;
+  opportunityTitle?: string;
   investorUser: Types.ObjectId;
   investorProfile: Types.ObjectId;
   businessOwnerUser: Types.ObjectId;
@@ -22,7 +32,9 @@ export interface IFranchiseApplication extends Document {
   proposedLocationState?: string;
   unitsInterested: number;
   investmentBudget: number;
+  investmentBudgetPaise: number;
   availableLiquidCapital: number;
+  availableLiquidCapitalPaise: number;
   timeline: string;
   businessBackgroundSummary: string;
   additionalMessage?: string;
@@ -34,6 +46,7 @@ export interface IFranchiseApplication extends Document {
     timestamp: Date;
   }>;
   brokerNotes?: string;
+  internalNotes?: string;
   assignedBroker?: Types.ObjectId;
   ownerFeedbackNotes?: string;
   privacyConsentGiven: boolean;
@@ -44,11 +57,24 @@ export interface IFranchiseApplication extends Document {
 
 const franchiseApplicationSchema = new Schema<IFranchiseApplication>(
   {
+    referenceNumber: {
+      type: String,
+      unique: true,
+      index: true,
+    },
     franchise: {
       type: Schema.Types.ObjectId,
       ref: 'FranchiseListing',
       required: true,
       index: true,
+    },
+    brandName: {
+      type: String,
+      trim: true,
+    },
+    opportunityTitle: {
+      type: String,
+      trim: true,
     },
     investorUser: {
       type: Schema.Types.ObjectId,
@@ -85,9 +111,17 @@ const franchiseApplicationSchema = new Schema<IFranchiseApplication>(
       type: Number,
       required: true,
     },
+    investmentBudgetPaise: {
+      type: Number,
+      default: 0,
+    },
     availableLiquidCapital: {
       type: Number,
       required: true,
+    },
+    availableLiquidCapitalPaise: {
+      type: Number,
+      default: 0,
     },
     timeline: {
       type: String,
@@ -103,6 +137,13 @@ const franchiseApplicationSchema = new Schema<IFranchiseApplication>(
     status: {
       type: String,
       enum: [
+        'NEW',
+        'ASSIGNED',
+        'CONTACTED',
+        'QUALIFIED',
+        'IN_PROGRESS',
+        'CONVERTED',
+        'CLOSED',
         'submitted',
         'under_review',
         'vetted_by_broker',
@@ -115,7 +156,7 @@ const franchiseApplicationSchema = new Schema<IFranchiseApplication>(
         'rejected',
         'withdrawn',
       ],
-      default: 'submitted',
+      default: 'NEW',
       index: true,
     },
     statusHistory: [
@@ -127,7 +168,8 @@ const franchiseApplicationSchema = new Schema<IFranchiseApplication>(
       },
     ],
     brokerNotes: { type: String },
-    assignedBroker: { type: Schema.Types.ObjectId, ref: 'User' },
+    internalNotes: { type: String },
+    assignedBroker: { type: Schema.Types.ObjectId, ref: 'User', index: true },
     ownerFeedbackNotes: { type: String },
     privacyConsentGiven: { type: Boolean, default: true },
     ndaSigned: { type: Boolean, default: false },
@@ -139,4 +181,21 @@ const franchiseApplicationSchema = new Schema<IFranchiseApplication>(
 
 franchiseApplicationSchema.index({ franchise: 1, investorUser: 1 });
 
+franchiseApplicationSchema.pre('save', function (next) {
+  if (!this.referenceNumber) {
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
+    this.referenceNumber = `ENQ-${today}-${rand}`;
+  }
+  if (this.investmentBudget !== undefined) {
+    this.investmentBudgetPaise = Math.round(Number(this.investmentBudget) * 100);
+  }
+  if (this.availableLiquidCapital !== undefined) {
+    this.availableLiquidCapitalPaise = Math.round(Number(this.availableLiquidCapital) * 100);
+  }
+  next();
+});
+
 export const FranchiseApplication = model<IFranchiseApplication>('FranchiseApplication', franchiseApplicationSchema);
+export const Enquiry = FranchiseApplication;
+export type IEnquiry = IFranchiseApplication;

@@ -11,17 +11,92 @@ export async function getInvestorProfile(req: Request, res: Response): Promise<a
 
 export async function updateInvestorProfile(req: Request, res: Response): Promise<any> {
   const userId = req.user!._id;
+  const {
+    fullName,
+    email,
+    phone,
+    city,
+    state,
+    country,
+    investmentBudgetMin,
+    investmentBudgetMax,
+    liquidCapital,
+    preferredIndustries,
+    preferredStates,
+    preferredCities,
+    preferredLocations,
+    investmentExperience,
+    businessExperienceYears,
+    pastFranchiseExperience,
+    interestType,
+    preferredBusinessModel,
+    operationPreference,
+    proposedOutlets,
+    investmentTimeline,
+    additionalRequirements,
+    currentOccupation,
+    companyName,
+  } = req.body;
+
+  if (investmentBudgetMin !== undefined && investmentBudgetMax !== undefined) {
+    if (Number(investmentBudgetMin) > Number(investmentBudgetMax)) {
+      return sendError(res, 'Minimum investment budget cannot exceed maximum investment budget', 400);
+    }
+  }
+
   let profile = await InvestorProfile.findOne({ user: userId });
 
+  const profileData: any = {
+    user: userId,
+    fullName: fullName || req.user!.fullName,
+    email: email || req.user!.email,
+    phone: phone || req.user!.phone || '',
+    city: city || 'Mumbai',
+    state: state || '',
+    country: country || 'India',
+    investmentBudgetMin: investmentBudgetMin !== undefined ? Number(investmentBudgetMin) : 2500000,
+    investmentBudgetMinPaise: Math.round(Number(investmentBudgetMin || 2500000) * 100),
+    investmentBudgetMax: investmentBudgetMax !== undefined ? Number(investmentBudgetMax) : 5000000,
+    investmentBudgetMaxPaise: Math.round(Number(investmentBudgetMax || 5000000) * 100),
+    liquidCapital: liquidCapital !== undefined ? Number(liquidCapital) : 3500000,
+    liquidCapitalPaise: Math.round(Number(liquidCapital || 3500000) * 100),
+    preferredIndustries: Array.isArray(preferredIndustries)
+      ? preferredIndustries
+      : typeof preferredIndustries === 'string'
+      ? preferredIndustries.split(',').map((s) => s.trim()).filter(Boolean)
+      : ['Food & Beverage'],
+    preferredStates: Array.isArray(preferredStates)
+      ? preferredStates
+      : typeof preferredStates === 'string'
+      ? preferredStates.split(',').map((s) => s.trim()).filter(Boolean)
+      : [],
+    preferredCities: Array.isArray(preferredCities)
+      ? preferredCities
+      : typeof preferredCities === 'string'
+      ? preferredCities.split(',').map((s) => s.trim()).filter(Boolean)
+      : [],
+    preferredLocations: Array.isArray(preferredLocations)
+      ? preferredLocations
+      : typeof preferredLocations === 'string'
+      ? preferredLocations.split(',').map((s) => s.trim()).filter(Boolean)
+      : ['Mumbai', 'Pune', 'Bengaluru'],
+    investmentExperience: investmentExperience || 'Intermediate investor with multi-unit expansion goals',
+    businessExperienceYears: businessExperienceYears !== undefined ? Number(businessExperienceYears) : 3,
+    pastFranchiseExperience: Boolean(pastFranchiseExperience),
+    interestType: interestType || 'multi_unit',
+    preferredBusinessModel: preferredBusinessModel || 'FOFO',
+    operationPreference: operationPreference || 'flexible',
+    proposedOutlets: proposedOutlets !== undefined ? Number(proposedOutlets) : 2,
+    investmentTimeline: investmentTimeline || '1_to_3_months',
+    additionalRequirements: additionalRequirements || '',
+    currentOccupation: currentOccupation || '',
+    companyName: companyName || '',
+  };
+
   if (!profile) {
-    profile = await InvestorProfile.create({
-      ...req.body,
-      user: userId,
-      fullName: req.body.fullName || req.user!.fullName,
-      phone: req.body.phone || req.user!.phone || '',
-    });
+    profile = await InvestorProfile.create(profileData);
   } else {
-    Object.assign(profile, req.body);
+    Object.assign(profile, profileData);
     await profile.save();
   }
 

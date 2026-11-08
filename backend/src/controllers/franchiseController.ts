@@ -49,14 +49,24 @@ export async function getFranchises(req: Request, res: Response): Promise<any> {
   }
 
   if (modelType && modelType !== 'All') {
-    filter.franchiseModelType = { $in: [modelType, 'both'] };
+    filter.$and = filter.$and || [];
+    filter.$and.push({
+      $or: [
+        { franchiseModelType: { $in: [modelType, 'both'] } },
+        { businessModel: { $regex: modelType, $options: 'i' } },
+      ],
+    });
   }
 
   if (location && location !== 'All') {
-    filter.$or = [
-      { expansionLocations: { $regex: location, $options: 'i' } },
-      { targetLocations: { $regex: location, $options: 'i' } },
-    ];
+    filter.$and = filter.$and || [];
+    filter.$and.push({
+      $or: [
+        { expansionLocations: { $regex: location, $options: 'i' } },
+        { targetLocations: { $regex: location, $options: 'i' } },
+        { availableTerritories: { $regex: location, $options: 'i' } },
+      ],
+    });
   }
 
   if (!isNaN(minInvestment) || !isNaN(maxInvestment)) {
@@ -87,9 +97,12 @@ export async function getFranchises(req: Request, res: Response): Promise<any> {
 
 export async function getFranchiseBySlug(req: Request, res: Response): Promise<any> {
   const { slug } = req.params;
-  const listing = await FranchiseListing.findOne({ slug }).populate(
+  const isObjectId = /^[0-9a-fA-F]{24}$/.test(slug);
+  const query = isObjectId ? { $or: [{ slug }, { _id: slug }] } : { slug };
+
+  const listing = await FranchiseListing.findOne(query).populate(
     'business',
-    'businessName legalBusinessName founderName headquarters numberOfOutlets establishedYear category logoUrl'
+    'businessName legalBusinessName founderName headquarters numberOfOutlets establishedYear category logoUrl description operatingLocations'
   );
 
   if (!listing) {
@@ -98,7 +111,7 @@ export async function getFranchiseBySlug(req: Request, res: Response): Promise<a
 
   // If not published, only owner or admin can view
   const isOwner = req.user && listing.ownerUser.toString() === req.user._id.toString();
-  const isAdmin = req.user && (req.user.role === 'admin' || req.user.role === 'super_admin');
+  const isAdmin = req.user && (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'broker');
   const isPublished = listing.status === 'published' || listing.status === 'PUBLISHED';
 
   if (!isPublished && !isOwner && !isAdmin) {
@@ -106,7 +119,7 @@ export async function getFranchiseBySlug(req: Request, res: Response): Promise<a
   }
 
   // Increment view counter
-  listing.viewsCount += 1;
+  listing.viewsCount = (listing.viewsCount || 0) + 1;
   await listing.save();
 
   let isSaved = false;

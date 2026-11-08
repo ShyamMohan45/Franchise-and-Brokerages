@@ -20,6 +20,8 @@ export function StatusBadge({ status, className, showDot = true }: StatusBadgePr
     case "certified_ready":
     case "active":
     case "paid":
+    case "converted":
+    case "closed":
       badgeClasses = "bg-emerald-50 text-emerald-800 border-emerald-200/80 shadow-[0_1px_2px_rgba(16,185,129,0.06)]";
       dotClasses = "bg-emerald-500 animate-pulse";
       break;
@@ -31,12 +33,15 @@ export function StatusBadge({ status, className, showDot = true }: StatusBadgePr
     case "in_discussion":
     case "documentation_review":
     case "negotiation":
+    case "in_progress":
+    case "contacted":
       badgeClasses = "bg-amber-50 text-amber-800 border-amber-200/80 shadow-[0_1px_2px_rgba(245,158,11,0.06)]";
       dotClasses = "bg-amber-500";
       break;
 
     case "draft":
     case "self_assessment":
+    case "new":
       badgeClasses = "bg-blue-50 text-blue-800 border-blue-200/80";
       dotClasses = "bg-blue-500";
       break;
@@ -51,6 +56,8 @@ export function StatusBadge({ status, className, showDot = true }: StatusBadgePr
 
     case "vetted_by_broker":
     case "introduced_to_owner":
+    case "assigned":
+    case "qualified":
       badgeClasses = "bg-indigo-50 text-indigo-800 border-indigo-200/80 shadow-[0_1px_2px_rgba(99,102,241,0.06)]";
       dotClasses = "bg-indigo-500";
       break;

@@ -27,6 +27,7 @@ import {
   Target,
   CheckSquare,
   Award,
+  Trash2,
 } from "lucide-react";
 import { useAuth } from "@/providers/AuthProvider";
 import { api } from "@/lib/api";
@@ -50,20 +51,35 @@ export default function InvestorDashboardPage() {
   const [savedFranchises, setSavedFranchises] = useState<any[]>([]);
   const [meetings, setMeetings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // Profile edit state
+  // Profile edit state (Milestone 4 Enhanced)
   const [profileForm, setProfileForm] = useState({
-    city: "Bengaluru",
-    budgetMin: 3000000,
-    budgetMax: 8000000,
-    liquidCapital: 6000000,
+    fullName: "",
+    phone: "",
+    email: "",
+    city: "Mumbai",
+    state: "Maharashtra",
+    country: "India",
+    budgetMin: 2500000,
+    budgetMax: 5000000,
+    liquidCapital: 3500000,
     interestType: "multi_unit",
     proposedOutlets: 2,
     timeline: "1_to_3_months",
-    industries: "Food & Beverage, Health & Wellness",
-    locations: "Bengaluru, Hyderabad, Pune",
+    industries: "Food & Beverage, Retail",
+    locations: "Mumbai, Pune, Bengaluru",
+    preferredBusinessModel: "FOFO",
+    operationPreference: "flexible",
+    investmentExperience: "Prior retail business management experience",
+    additionalRequirements: "Seeking high footfall territory with turnkey launch assistance",
   });
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  const showFeedback = (type: "success" | "error", text: string) => {
+    setFeedback({ type, text });
+    setTimeout(() => setFeedback(null), 6000);
+  };
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -85,17 +101,27 @@ export default function InvestorDashboardPage() {
         ]);
 
         if (profRes.success && profRes.data) {
-          setProfile(profRes.data);
+          const d = profRes.data;
+          setProfile(d);
           setProfileForm({
-            city: profRes.data.city || "Bengaluru",
-            budgetMin: profRes.data.investmentBudgetMin || 3000000,
-            budgetMax: profRes.data.investmentBudgetMax || 8000000,
-            liquidCapital: profRes.data.liquidCapital || 6000000,
-            interestType: profRes.data.interestType || "multi_unit",
-            proposedOutlets: profRes.data.proposedOutlets || 2,
-            timeline: profRes.data.investmentTimeline || "1_to_3_months",
-            industries: profRes.data.preferredIndustries?.join(", ") || "Food & Beverage",
-            locations: profRes.data.preferredLocations?.join(", ") || "Bengaluru",
+            fullName: d.fullName || user?.fullName || "",
+            phone: d.phone || user?.phone || "",
+            email: d.email || user?.email || "",
+            city: d.city || "Mumbai",
+            state: d.state || "Maharashtra",
+            country: d.country || "India",
+            budgetMin: d.investmentBudgetMin || 2500000,
+            budgetMax: d.investmentBudgetMax || 5000000,
+            liquidCapital: d.liquidCapital || 3500000,
+            interestType: d.interestType || "multi_unit",
+            proposedOutlets: d.proposedOutlets || 2,
+            timeline: d.investmentTimeline || "1_to_3_months",
+            industries: d.preferredIndustries?.join(", ") || "Food & Beverage, Retail",
+            locations: d.preferredLocations?.join(", ") || "Mumbai, Pune",
+            preferredBusinessModel: d.preferredBusinessModel || "FOFO",
+            operationPreference: d.operationPreference || "flexible",
+            investmentExperience: d.investmentExperience || "Prior retail business management experience",
+            additionalRequirements: d.additionalRequirements || "",
           });
         }
         if (recRes.success && recRes.data) setRecommendations(recRes.data);
@@ -116,34 +142,59 @@ export default function InvestorDashboardPage() {
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (profileForm.budgetMin > profileForm.budgetMax) {
+      showFeedback("error", "Minimum budget cannot exceed maximum budget.");
+      return;
+    }
+
     setIsSavingProfile(true);
     try {
-      const preferredIndustries = profileForm.industries.split(",").map((s) => s.trim());
-      const preferredLocations = profileForm.locations.split(",").map((s) => s.trim());
+      const preferredIndustries = profileForm.industries.split(",").map((s) => s.trim()).filter(Boolean);
+      const preferredLocations = profileForm.locations.split(",").map((s) => s.trim()).filter(Boolean);
 
-      const res = await api.patch("/investors/profile", {
+      const res = await api.patch<any>("/investors/profile", {
+        fullName: profileForm.fullName,
+        phone: profileForm.phone,
+        email: profileForm.email,
         city: profileForm.city,
-        investmentBudgetMin: profileForm.budgetMin,
-        investmentBudgetMax: profileForm.budgetMax,
-        liquidCapital: profileForm.liquidCapital,
+        state: profileForm.state,
+        country: profileForm.country,
+        investmentBudgetMin: Number(profileForm.budgetMin),
+        investmentBudgetMax: Number(profileForm.budgetMax),
+        liquidCapital: Number(profileForm.liquidCapital),
         interestType: profileForm.interestType,
-        proposedOutlets: profileForm.proposedOutlets,
+        proposedOutlets: Number(profileForm.proposedOutlets),
         investmentTimeline: profileForm.timeline,
         preferredIndustries,
         preferredLocations,
+        preferredBusinessModel: profileForm.preferredBusinessModel,
+        operationPreference: profileForm.operationPreference,
+        investmentExperience: profileForm.investmentExperience,
+        additionalRequirements: profileForm.additionalRequirements,
       });
 
       if (res.success && res.data) {
         setProfile(res.data);
-        // Refresh recommendations
+        showFeedback("success", "Investment criteria profile updated successfully!");
         const recRes = await api.get<any[]>("/investors/recommendations");
         if (recRes.success && recRes.data) setRecommendations(recRes.data);
-        alert("Investor profile updated successfully!");
       }
     } catch (err: any) {
-      alert(err.message || "Failed to update profile");
+      showFeedback("error", err.message || "Failed to update profile");
     } finally {
       setIsSavingProfile(false);
+    }
+  };
+
+  const handleRemoveSaved = async (franchiseId: string) => {
+    try {
+      const res = await api.post<any>(`/franchises/${franchiseId}/save`);
+      if (res.success) {
+        setSavedFranchises((prev) => prev.filter((item) => (item.franchise?._id || item.franchise) !== franchiseId));
+        showFeedback("success", "Opportunity removed from saved portfolio.");
+      }
+    } catch (err: any) {
+      showFeedback("error", err.message || "Failed to remove saved opportunity");
     }
   };
 
@@ -166,11 +217,10 @@ export default function InvestorDashboardPage() {
             Franchise Investor Portal
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Welcome, {user?.fullName || "Investor"}
+            Welcome, {profile?.fullName || user?.fullName || "Investor"}
           </h1>
           <p className="text-slate-300 text-xs sm:text-sm max-w-xl">
-            Track your multi-unit franchise applications, browse algorithmically scored brand recommendations, and
-            coordinate with platform advisors.
+            Track your multi-unit franchise enquiries, calibrate investment criteria, and access verified brand disclosures.
           </p>
         </div>
 
@@ -181,6 +231,73 @@ export default function InvestorDashboardPage() {
           >
             Browse Marketplace &rarr;
           </Link>
+        </div>
+      </div>
+
+      {/* Global Feedback Banner */}
+      {feedback && (
+        <div
+          className={`p-4 rounded-2xl flex items-center gap-3 text-xs font-semibold border ${
+            feedback.type === "success"
+              ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+              : "bg-rose-50 border-rose-200 text-rose-800"
+          }`}
+        >
+          {feedback.type === "success" ? (
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+          ) : (
+            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+          )}
+          <span>{feedback.text}</span>
+        </div>
+      )}
+
+      {/* Profile Completion Card */}
+      <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-bold text-navy-900">Investor Profile Readiness</h3>
+              <span className="text-xs bg-amber-50 text-amber-700 font-bold px-2.5 py-0.5 rounded-full border border-amber-200">
+                {profile?.profileCompletion || 75}% Complete
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Complete your criteria to receive higher priority in franchise territory allocations.
+            </p>
+          </div>
+          <button
+            onClick={() => setActiveTab("profile")}
+            className="text-xs font-bold text-amber-600 hover:text-amber-700 bg-amber-50 px-4 py-2 rounded-xl border border-amber-200 shrink-0 transition-colors"
+          >
+            Edit Investment Criteria &rarr;
+          </button>
+        </div>
+
+        <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+          <div
+            className="h-full bg-amber-500 rounded-full transition-all duration-500"
+            style={{ width: `${profile?.profileCompletion || 75}%` }}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1 text-[11px] text-slate-600">
+          <div className="flex items-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+            <span>Budget: ₹{((profile?.investmentBudgetMin || 2500000) / 100000).toFixed(0)}L - ₹{((profile?.investmentBudgetMax || 5000000) / 100000).toFixed(0)}L</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+            <span>Format: {profile?.interestType?.replace(/_/g, " ") || "Multi-unit"}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+            <span>Model: {profile?.preferredBusinessModel || "FOFO"}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+            <span>City: {profile?.city || "Mumbai"}</span>
+          </div>
         </div>
       </div>
 
@@ -533,17 +650,44 @@ export default function InvestorDashboardPage() {
               </div>
             ) : (
               applications.map((app) => (
-                <div key={app._id} className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4 shadow-sm">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                <div key={app._id} className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4 shadow-sm hover:border-slate-300 transition-all">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
                     <div>
-                      <h4 className="text-base font-bold text-navy-900">
-                        Brand: {app.franchise?.brandName || "Franchise Opportunity"}
-                      </h4>
-                      <span className="text-xs text-slate-500">
-                        Target: {app.proposedLocationCity} • {app.unitsInterested} Unit(s)
-                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="text-base font-bold text-navy-900">
+                          {app.franchise?.brandName || app.brandName || "Franchise Opportunity"}
+                        </h4>
+                        {app.referenceNumber && (
+                          <span className="font-mono text-xs px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-bold border border-blue-200">
+                            Ref: {app.referenceNumber}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-500">
+                        <span>Target: <strong className="text-slate-700">{app.proposedLocationCity || "Unspecified"}</strong></span>
+                        <span>•</span>
+                        <span>{app.unitsInterested || 1} Unit(s)</span>
+                        {app.assignedBroker && (
+                          <>
+                            <span>•</span>
+                            <span className="text-blue-700 font-medium">
+                              Assigned Advisor: {app.assignedBroker.name || app.assignedBroker.email}
+                            </span>
+                          </>
+                        )}
+                      </div>
                     </div>
-                    <StatusBadge status={app.status} />
+                    <div className="flex items-center gap-3">
+                      <StatusBadge status={app.status} />
+                      {(app.franchise?.slug || app.franchise?._id) && (
+                        <Link
+                          href={`/franchises/${app.franchise?.slug || app.franchise?._id}`}
+                          className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
+                        >
+                          View Listing <ExternalLink className="w-3.5 h-3.5" />
+                        </Link>
+                      )}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
@@ -562,7 +706,7 @@ export default function InvestorDashboardPage() {
                     <div>
                       <span className="text-slate-400 block font-medium">Expected Timeline</span>
                       <span className="font-bold text-navy-900 mt-0.5 block capitalize">
-                        {app.timeline?.replace(/_/g, " ")}
+                        {app.timeline?.replace(/_/g, " ") || "Flexible"}
                       </span>
                     </div>
                     <div>
@@ -577,13 +721,21 @@ export default function InvestorDashboardPage() {
                       Deal Progress History:
                     </span>
                     <div className="space-y-1.5">
-                      {app.statusHistory?.map((step: any, idx: number) => (
-                        <div key={idx} className="flex items-center gap-2 text-slate-600">
+                      {app.statusHistory && app.statusHistory.length > 0 ? (
+                        app.statusHistory.map((step: any, idx: number) => (
+                          <div key={idx} className="flex items-center gap-2 text-slate-600">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                            <span className="font-semibold capitalize">{step.status?.replace(/_/g, " ")}</span>
+                            <span className="text-slate-400 text-[11px]">— {step.note || "Updated"}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="flex items-center gap-2 text-slate-600">
                           <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                          <span className="font-semibold capitalize">{step.status?.replace(/_/g, " ")}</span>
-                          <span className="text-slate-400 text-[11px]">— {step.note || "Updated"}</span>
+                          <span className="font-semibold capitalize">{app.status?.replace(/_/g, " ")}</span>
+                          <span className="text-slate-400 text-[11px]">— Initial Enquiry Submitted</span>
                         </div>
-                      ))}
+                      )}
                     </div>
                   </div>
                 </div>
@@ -749,126 +901,396 @@ export default function InvestorDashboardPage() {
       {/* TAB 3: SAVED FRANCHISES */}
       {activeTab === "saved" && (
         <div className="space-y-6">
-          <div className="border-b border-slate-100 pb-3">
-            <h3 className="text-lg font-bold text-navy-900">Saved Franchise Opportunities</h3>
-            <p className="text-xs text-slate-500">Franchises bookmarked for review and capital allocation</p>
+          <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h3 className="text-lg font-bold text-navy-900">Saved Franchise Opportunities</h3>
+              <p className="text-xs text-slate-500">Franchises bookmarked for review, comparison, and capital allocation</p>
+            </div>
+            <Link
+              href="/franchises"
+              className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1.5 self-start sm:self-auto"
+            >
+              Browse Marketplace &rarr;
+            </Link>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {savedFranchises.map((s) => {
-              const f = s.franchise;
-              if (!f) return null;
-              return (
-                <div key={s._id} className="bg-white rounded-2xl border border-slate-200 p-6 space-y-3 shadow-sm">
-                  <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded">
-                    {f.industry}
-                  </span>
-                  <h4 className="text-base font-bold text-navy-900">{f.brandName}</h4>
-                  <p className="text-xs text-slate-500 line-clamp-2">{f.summary}</p>
-                  <div className="pt-2 flex justify-between items-center text-xs">
-                    <span className="font-bold text-navy-900">{formatCurrency(f.totalInvestmentMin)}</span>
-                    <Link href={`/franchises/${f.slug}`} className="text-blue-600 font-bold hover:underline">
-                      View Details &rarr;
-                    </Link>
+          {savedFranchises.length === 0 ? (
+            <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center space-y-3">
+              <Bookmark className="w-10 h-10 text-slate-300 mx-auto" />
+              <h4 className="text-base font-bold text-navy-900">No Saved Opportunities</h4>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                You haven't bookmarked any franchise brands yet. Browse the marketplace and tap the bookmark icon to save opportunities here.
+              </p>
+              <div className="pt-2">
+                <Link
+                  href="/franchises"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition-all"
+                >
+                  Explore Franchise Opportunities
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {savedFranchises.map((s) => {
+                const f = s.franchise;
+                if (!f) return null;
+                const fid = f._id || s.franchiseId || s._id;
+                return (
+                  <div
+                    key={s._id}
+                    className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-100">
+                          {f.industry || "Franchise"}
+                        </span>
+                        <button
+                          onClick={() => handleRemoveSaved(fid)}
+                          className="text-slate-400 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition-colors"
+                          title="Remove from saved portfolio"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div>
+                        <h4 className="text-base font-bold text-navy-900 line-clamp-1">{f.brandName}</h4>
+                        <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                          {f.summary || f.description || "Leading franchise opportunity with verified unit economics."}
+                        </p>
+                      </div>
+
+                      <div className="bg-slate-50 rounded-xl p-3 grid grid-cols-2 gap-2 text-xs border border-slate-100">
+                        <div>
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block">Investment</span>
+                          <span className="font-bold text-navy-900 mt-0.5 block">
+                            {formatCurrency(f.totalInvestmentMin)} - {formatCurrency(f.totalInvestmentMax)}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block">Model</span>
+                          <span className="font-bold text-navy-900 mt-0.5 block">
+                            {f.franchiseModelType || f.businessModel || "FOFO"}
+                          </span>
+                        </div>
+                        {f.spaceRequiredMin && (
+                          <div className="col-span-2 pt-1 border-t border-slate-200/60">
+                            <span className="text-[10px] uppercase font-bold text-slate-400 block">Space Required</span>
+                            <span className="font-semibold text-slate-700 mt-0.5 block">
+                              {f.spaceRequiredMin} - {f.spaceRequiredMax || f.spaceRequiredMin} sq.ft
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                      <Link
+                        href={`/franchises/${f.slug || f._id}`}
+                        className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 hover:underline"
+                      >
+                        View Full Details &rarr;
+                      </Link>
+                      <button
+                        onClick={() => handleRemoveSaved(fid)}
+                        className="text-xs text-slate-400 hover:text-rose-600 font-medium"
+                      >
+                        Remove
+                      </button>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
       {/* TAB 4: INVESTMENT CRITERIA PROFILE */}
       {activeTab === "profile" && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-8 space-y-6 shadow-sm max-w-2xl">
-          <div className="border-b border-slate-100 pb-3">
-            <h3 className="text-lg font-bold text-navy-900">Your Investment Criteria Profile</h3>
-            <p className="text-xs text-slate-500">
-              Update parameters to calibrate our multi-unit matching algorithms
+        <div className="bg-white rounded-3xl border border-slate-200 p-8 space-y-8 shadow-sm max-w-4xl">
+          <div className="border-b border-slate-100 pb-4">
+            <h3 className="text-xl font-extrabold text-navy-900">Your Investment Criteria Profile</h3>
+            <p className="text-xs text-slate-500 mt-1">
+              Calibrate your capital parameters, target geographies, and operating preference to receive verified brand matches.
             </p>
           </div>
 
-          <form onSubmit={handleSaveProfile} className="space-y-4 text-xs">
-            <div className="grid grid-cols-2 gap-4">
+          <form onSubmit={handleSaveProfile} className="space-y-6 text-xs">
+            {/* Identity & Contact Section */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                1. Investor Contact & Identity
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Full Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={profileForm.fullName}
+                    onChange={(e) => setProfileForm({ ...profileForm, fullName: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                    placeholder="e.g. Shyam Mohan"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Phone Number *</label>
+                  <input
+                    type="tel"
+                    required
+                    value={profileForm.phone}
+                    onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                    placeholder="e.g. +91 9876543210"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    value={profileForm.email}
+                    onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                    placeholder="e.g. investor@example.com"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Geographical Base */}
+            <div className="space-y-3 pt-2 border-t border-slate-100">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                2. Base Location & Target Territories
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Primary Base City *</label>
+                  <input
+                    type="text"
+                    required
+                    value={profileForm.city}
+                    onChange={(e) => setProfileForm({ ...profileForm, city: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                    placeholder="e.g. Mumbai"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">State / Province *</label>
+                  <input
+                    type="text"
+                    required
+                    value={profileForm.state}
+                    onChange={(e) => setProfileForm({ ...profileForm, state: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                    placeholder="e.g. Maharashtra"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Country *</label>
+                  <input
+                    type="text"
+                    required
+                    value={profileForm.country}
+                    onChange={(e) => setProfileForm({ ...profileForm, country: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                    placeholder="e.g. India"
+                  />
+                </div>
+              </div>
+
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Primary Base City *</label>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  Preferred Target Expansion Locations (comma separated) *
+                </label>
                 <input
                   type="text"
                   required
-                  value={profileForm.city}
-                  onChange={(e) => setProfileForm({ ...profileForm, city: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1">Single or Multi-Unit Intent *</label>
-                <select
-                  value={profileForm.interestType}
-                  onChange={(e) => setProfileForm({ ...profileForm, interestType: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
-                >
-                  <option value="single_unit">Single-Unit Franchise</option>
-                  <option value="multi_unit">Multi-Unit Development</option>
-                  <option value="area_developer">Area Developer</option>
-                  <option value="master_franchise">Master Franchisee</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1">Investment Budget Max (₹) *</label>
-                <input
-                  type="number"
-                  required
-                  value={profileForm.budgetMax}
-                  onChange={(e) => setProfileForm({ ...profileForm, budgetMax: parseFloat(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 border rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1">Liquid Capital (₹) *</label>
-                <input
-                  type="number"
-                  required
-                  value={profileForm.liquidCapital}
-                  onChange={(e) =>
-                    setProfileForm({ ...profileForm, liquidCapital: parseFloat(e.target.value) || 0 })
-                  }
-                  className="w-full px-3 py-2 border rounded-lg"
+                  value={profileForm.locations}
+                  onChange={(e) => setProfileForm({ ...profileForm, locations: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  placeholder="e.g. Mumbai, Pune, Thane, Bengaluru"
                 />
               </div>
             </div>
 
-            <div>
-              <label className="block text-slate-700 font-semibold mb-1">Target Industries (comma separated) *</label>
-              <input
-                type="text"
-                required
-                value={profileForm.industries}
-                onChange={(e) => setProfileForm({ ...profileForm, industries: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg"
-              />
+            {/* Capital & Financial Allocation */}
+            <div className="space-y-3 pt-2 border-t border-slate-100">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                3. Financial Capacity & Budget (in INR ₹)
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Min Budget (₹) *</label>
+                  <input
+                    type="number"
+                    required
+                    min={0}
+                    step={50000}
+                    value={profileForm.budgetMin}
+                    onChange={(e) => setProfileForm({ ...profileForm, budgetMin: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    {formatCurrency(profileForm.budgetMin)}
+                  </span>
+                </div>
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Max Budget (₹) *</label>
+                  <input
+                    type="number"
+                    required
+                    min={profileForm.budgetMin || 0}
+                    step={50000}
+                    value={profileForm.budgetMax}
+                    onChange={(e) => setProfileForm({ ...profileForm, budgetMax: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    {formatCurrency(profileForm.budgetMax)}
+                  </span>
+                </div>
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Available Liquid Capital (₹) *</label>
+                  <input
+                    type="number"
+                    required
+                    min={0}
+                    step={50000}
+                    value={profileForm.liquidCapital}
+                    onChange={(e) =>
+                      setProfileForm({ ...profileForm, liquidCapital: parseFloat(e.target.value) || 0 })
+                    }
+                    className="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    {formatCurrency(profileForm.liquidCapital)}
+                  </span>
+                </div>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-slate-700 font-semibold mb-1">Preferred Locations (comma separated) *</label>
-              <input
-                type="text"
-                required
-                value={profileForm.locations}
-                onChange={(e) => setProfileForm({ ...profileForm, locations: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg"
-              />
+            {/* Franchise Business Model & Industry Preferences */}
+            <div className="space-y-3 pt-2 border-t border-slate-100">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                4. Industry & Operational Preferences
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">
+                    Target Industries (comma separated) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={profileForm.industries}
+                    onChange={(e) => setProfileForm({ ...profileForm, industries: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                    placeholder="e.g. Food & Beverage, Quick Service Restaurant, Retail"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Preferred Business Model *</label>
+                  <select
+                    value={profileForm.preferredBusinessModel}
+                    onChange={(e) => setProfileForm({ ...profileForm, preferredBusinessModel: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-xl bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  >
+                    <option value="FOFO">FOFO (Franchise Owned, Franchise Operated)</option>
+                    <option value="FOCO">FOCO (Franchise Owned, Company Operated)</option>
+                    <option value="COCO">COCO (Company Owned, Company Operated)</option>
+                    <option value="Master">Master Franchise / Regional Rights</option>
+                    <option value="flexible">Flexible / Any Viable Model</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Operational Model Preference *</label>
+                  <select
+                    value={profileForm.operationPreference}
+                    onChange={(e) => setProfileForm({ ...profileForm, operationPreference: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-xl bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  >
+                    <option value="self_operated">Self-Operated (Hands-on founder)</option>
+                    <option value="manager_operated">Manager-Operated (Investor/Semi-absentee)</option>
+                    <option value="flexible">Flexible / Either</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Investment Intent *</label>
+                  <select
+                    value={profileForm.interestType}
+                    onChange={(e) => setProfileForm({ ...profileForm, interestType: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-xl bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  >
+                    <option value="single_unit">Single-Unit Franchise</option>
+                    <option value="multi_unit">Multi-Unit Development</option>
+                    <option value="area_developer">Area Developer</option>
+                    <option value="master_franchise">Master Franchisee</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Target Timeline *</label>
+                  <select
+                    value={profileForm.timeline}
+                    onChange={(e) => setProfileForm({ ...profileForm, timeline: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-xl bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  >
+                    <option value="immediate">Immediate (&lt; 30 Days)</option>
+                    <option value="1_to_3_months">1 to 3 Months</option>
+                    <option value="3_to_6_months">3 to 6 Months</option>
+                    <option value="flexible">Flexible</option>
+                  </select>
+                </div>
+              </div>
             </div>
 
-            <div className="pt-2">
+            {/* Experience & Additional Notes */}
+            <div className="space-y-3 pt-2 border-t border-slate-100">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                5. Background & Custom Requirements
+              </h4>
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  Business & Investment Experience
+                </label>
+                <textarea
+                  rows={2}
+                  value={profileForm.investmentExperience}
+                  onChange={(e) => setProfileForm({ ...profileForm, investmentExperience: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  placeholder="Detail previous business management, hospitality experience, commercial property ownership, or capital allocation track record..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  Additional Criteria or Special Requests
+                </label>
+                <textarea
+                  rows={2}
+                  value={profileForm.additionalRequirements}
+                  onChange={(e) => setProfileForm({ ...profileForm, additionalRequirements: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  placeholder="e.g. Requirement for dedicated franchisor operations trainer on-site for first 45 days, exclusive master rights in Western suburbs..."
+                />
+              </div>
+            </div>
+
+            <div className="pt-4 flex items-center justify-between border-t border-slate-100">
+              <div className="text-xs text-slate-500">
+                Profile completion automatically recalibrates upon saving.
+              </div>
               <button
                 type="submit"
                 disabled={isSavingProfile}
-                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-6 py-2.5 rounded-xl shadow transition-all disabled:opacity-50"
+                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-8 py-3 rounded-xl shadow-md transition-all disabled:opacity-50 flex items-center gap-2"
               >
-                {isSavingProfile ? "Saving..." : "Save Investment Criteria"}
+                {isSavingProfile ? "Saving Profile..." : "Save Investment Criteria"}
               </button>
             </div>
           </form>

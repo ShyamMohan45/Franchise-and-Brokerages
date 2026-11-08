@@ -1,0 +1,28 @@
+import { z } from 'zod';
+
+export const updateInvestorProfileSchema = z.object({
+  fullName: z.string().min(2, 'Full name must be at least 2 characters').optional(),
+  email: z.string().email('Invalid email address').optional(),
+  phone: z.string().min(6, 'Valid phone number is required').optional(),
+  city: z.string().min(2, 'City is required').optional(),
+  state: z.string().optional(),
+  country: z.string().default('India').optional(),
+  investmentBudgetMin: z.number().min(0, 'Minimum budget must be a positive number').optional(),
+  investmentBudgetMax: z.number().min(0, 'Maximum budget must be a positive number').optional(),
+  liquidCapital: z.number().min(0).optional(),
+  preferredIndustries: z.array(z.string()).optional(),
+  preferredStates: z.array(z.string()).optional(),
+  preferredCities: z.array(z.string()).optional(),
+  preferredLocations: z.array(z.string()).optional(),
+  investmentExperience: z.string().optional(),
+  businessExperienceYears: z.number().min(0).optional(),
+  pastFranchiseExperience: z.boolean().optional(),
+  interestType: z.enum(['single_unit', 'multi_unit', 'area_developer', 'master_franchise']).optional(),
+  preferredBusinessModel: z.enum(['FOFO', 'FOCO', 'COCO', 'Master Franchise', 'flexible']).optional(),
+  operationPreference: z.enum(['self_operated', 'manager_operated', 'flexible']).optional(),
+  proposedOutlets: z.number().int().min(1).optional(),
+  investmentTimeline: z.enum(['immediate', '1_to_3_months', '3_to_6_months', '6_plus_months']).optional(),
+  additionalRequirements: z.string().optional(),
+  currentOccupation: z.string().optional(),
+  companyName: z.string().optional(),
+});

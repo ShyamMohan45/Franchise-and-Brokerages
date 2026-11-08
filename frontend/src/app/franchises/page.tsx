@@ -24,6 +24,7 @@ import { api } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useAuth } from "@/providers/AuthProvider";
+import { Bookmark, BookmarkCheck } from "lucide-react";
 
 export default function FranchisesMarketplacePage() {
   const { user } = useAuth();
@@ -32,22 +33,66 @@ export default function FranchisesMarketplacePage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [industry, setIndustry] = useState("All");
   const [modelType, setModelType] = useState("All");
+  const [locationFilter, setLocationFilter] = useState("All");
+  const [budgetFilter, setBudgetFilter] = useState("All");
   const [sort, setSort] = useState("recent");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const [compareIds, setCompareIds] = useState<string[]>([]);
+
+  // Load saved bookmarks if logged in
+  useEffect(() => {
+    async function loadSaved() {
+      if (!user) return;
+      try {
+        const res = await api.get<any[]>("/franchises/saved");
+        if (res.success && res.data) {
+          const ids = new Set<string>(res.data.map((item: any) => item.franchise?._id || item.franchise));
+          setSavedIds(ids);
+        }
+      } catch (err) {
+        console.error("Failed to load saved franchises", err);
+      }
+    }
+    loadSaved();
+  }, [user]);
 
   const fetchListings = async () => {
     setLoading(true);
     try {
-      const res = await api.get<any[]>("/franchises", {
+      let minInvestment: number | undefined;
+      let maxInvestment: number | undefined;
+
+      if (budgetFilter === "under_25l") {
+        maxInvestment = 2500000;
+      } else if (budgetFilter === "25l_50l") {
+        minInvestment = 2500000;
+        maxInvestment = 5000000;
+      } else if (budgetFilter === "50l_1cr") {
+        minInvestment = 5000000;
+        maxInvestment = 10000000;
+      } else if (budgetFilter === "above_1cr") {
+        minInvestment = 10000000;
+      }
+
+      const queryParams: any = {
         search: searchTerm,
         industry,
         modelType,
         sort,
         page,
         limit: 9,
-      });
+      };
+
+      if (locationFilter && locationFilter !== "All") {
+        queryParams.location = locationFilter;
+      }
+      if (minInvestment !== undefined) queryParams.minInvestment = minInvestment;
+      if (maxInvestment !== undefined) queryParams.maxInvestment = maxInvestment;
+
+      const res = await api.get<any[]>("/franchises", queryParams);
 
       if (res.success && res.data) {
         setListings(res.data);
@@ -65,7 +110,7 @@ export default function FranchisesMarketplacePage() {
 
   useEffect(() => {
     fetchListings();
-  }, [industry, modelType, sort, page]);
+  }, [industry, modelType, locationFilter, budgetFilter, sort, page]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,13 +118,48 @@ export default function FranchisesMarketplacePage() {
     fetchListings();
   };
 
+  const handleToggleSave = async (id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) {
+      alert("Please login as an investor to bookmark opportunities");
+      return;
+    }
+    try {
+      const res = await api.post<{ isSaved: boolean }>(`/franchises/${id}/save`);
+      if (res.success && res.data) {
+        setSavedIds((prev) => {
+          const next = new Set(prev);
+          if (res.data!.isSaved) next.add(id);
+          else next.delete(id);
+          return next;
+        });
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to toggle bookmark");
+    }
+  };
+
+  const toggleCompare = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCompareIds((prev) => {
+      if (prev.includes(id)) return prev.filter((item) => item !== id);
+      if (prev.length >= 3) {
+        alert("You can compare up to 3 franchise brands simultaneously");
+        return prev;
+      }
+      return [...prev, id];
+    });
+  };
+
   const industries = [
     "All",
     "Food & Beverage",
+    "Retail",
     "Health & Wellness",
-    "Fast Casual Dining",
     "Education & EdTech",
-    "Health & Beauty",
+    "Beauty & Salon",
+    "Fast Casual Dining",
   ];
 
   return (
@@ -96,11 +176,20 @@ export default function FranchisesMarketplacePage() {
               Franchise Opportunities Marketplace
             </h1>
             <p className="text-[#64748B] text-sm max-w-2xl leading-relaxed">
-              Explore audited franchise brand opportunities with standardized SOP packaging, disclosed unit economics, and protected multi-unit territories.
+              Explore audited franchise opportunities with verified unit economics, standardized operational SOPs, and multi-unit territory exclusivity.
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            {compareIds.length > 0 && (
+              <Link
+                href="/compare"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 px-4 text-xs font-bold rounded-xl shadow transition-colors flex items-center gap-1.5"
+              >
+                <Scale className="w-4 h-4" />
+                Compare ({compareIds.length}) Brands
+              </Link>
+            )}
             <Link
               href="/compare"
               className="btn-secondary py-2.5 px-4 text-xs font-semibold flex items-center gap-1.5"
@@ -120,7 +209,7 @@ export default function FranchisesMarketplacePage() {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by brand name, industry, or expansion city (e.g. Coffee, Gym, Delhi)..."
+                placeholder="Search by brand name, opportunity title, or category (e.g. Chai, Coffee, Fitness)..."
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[#E7ECF2] text-sm text-[#14243A] placeholder-[#64748B] focus:outline-none focus:border-[#315EFB] bg-white"
               />
             </div>
@@ -130,71 +219,123 @@ export default function FranchisesMarketplacePage() {
             </button>
           </form>
 
-          {/* Industry Filter Pills & Format Selectors */}
-          <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-[#E7ECF2] text-xs">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[#64748B] font-semibold mr-1">Industry:</span>
-              {industries.map((ind) => (
-                <button
-                  key={ind}
-                  onClick={() => {
-                    setIndustry(ind);
-                    setPage(1);
-                  }}
-                  className={`px-3 py-1.5 rounded-lg font-semibold transition-colors text-xs ${
-                    industry === ind
-                      ? "bg-[#14243A] text-white shadow-sm"
-                      : "bg-[#F8FAFC] text-[#64748B] hover:text-[#14243A] hover:bg-[#EFF4FF] border border-[#E7ECF2]"
-                  }`}
-                >
-                  {ind}
-                </button>
-              ))}
+          {/* Industry Filter Pills */}
+          <div className="flex flex-wrap items-center gap-1.5 pt-2 text-xs">
+            <span className="text-[#64748B] font-semibold mr-1">Industry:</span>
+            {industries.map((ind) => (
+              <button
+                key={ind}
+                onClick={() => {
+                  setIndustry(ind);
+                  setPage(1);
+                }}
+                className={`px-3 py-1.5 rounded-lg font-semibold transition-colors text-xs ${
+                  industry === ind
+                    ? "bg-[#14243A] text-white shadow-sm"
+                    : "bg-[#F8FAFC] text-[#64748B] hover:text-[#14243A] hover:bg-[#EFF4FF] border border-[#E7ECF2]"
+                }`}
+              >
+                {ind}
+              </button>
+            ))}
+          </div>
+
+          {/* Multi-Dimensional Dropdown Selectors */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-[#E7ECF2] text-xs">
+            {/* Budget Selector */}
+            <div>
+              <label className="block text-[#64748B] font-medium mb-1">Investment Budget</label>
+              <select
+                value={budgetFilter}
+                onChange={(e) => {
+                  setBudgetFilter(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full bg-white border border-[#E7ECF2] text-[#14243A] rounded-lg px-3 py-2 text-xs font-medium focus:outline-none focus:border-[#315EFB]"
+              >
+                <option value="All">All Investment Budgets</option>
+                <option value="under_25l">Under ₹25 Lakhs</option>
+                <option value="25l_50l">₹25 Lakhs – ₹50 Lakhs</option>
+                <option value="50l_1cr">₹50 Lakhs – ₹1 Crore</option>
+                <option value="above_1cr">Above ₹1 Crore</option>
+              </select>
             </div>
 
-            {/* Model & Sorting Dropdowns */}
-            <div className="flex items-center gap-2.5">
+            {/* Location Selector */}
+            <div>
+              <label className="block text-[#64748B] font-medium mb-1">Target Geography</label>
+              <select
+                value={locationFilter}
+                onChange={(e) => {
+                  setLocationFilter(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full bg-white border border-[#E7ECF2] text-[#14243A] rounded-lg px-3 py-2 text-xs font-medium focus:outline-none focus:border-[#315EFB]"
+              >
+                <option value="All">All Locations & States</option>
+                <option value="Mumbai">Mumbai / Maharashtra</option>
+                <option value="Delhi">Delhi NCR</option>
+                <option value="Bengaluru">Bengaluru / Karnataka</option>
+                <option value="Pune">Pune</option>
+                <option value="Hyderabad">Hyderabad / Telangana</option>
+                <option value="Chennai">Chennai / Tamil Nadu</option>
+              </select>
+            </div>
+
+            {/* Model Type Selector */}
+            <div>
+              <label className="block text-[#64748B] font-medium mb-1">Business Model</label>
               <select
                 value={modelType}
                 onChange={(e) => {
                   setModelType(e.target.value);
                   setPage(1);
                 }}
-                className="bg-white border border-[#E7ECF2] text-[#14243A] rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-[#315EFB]"
+                className="w-full bg-white border border-[#E7ECF2] text-[#14243A] rounded-lg px-3 py-2 text-xs font-medium focus:outline-none focus:border-[#315EFB]"
               >
-                <option value="All">All Unit Formats</option>
-                <option value="single_unit">Single-Unit Only</option>
-                <option value="multi_unit">Multi-Unit Available</option>
-                <option value="both">Both Formats</option>
+                <option value="All">All Business Models</option>
+                <option value="FOFO">FOFO (Franchise Owned)</option>
+                <option value="FOCO">FOCO (Company Operated)</option>
+                <option value="COCO">COCO</option>
+                <option value="Master Franchise">Master Franchise</option>
               </select>
+            </div>
 
-              <select
-                value={sort}
-                onChange={(e) => {
-                  setSort(e.target.value);
-                  setPage(1);
-                }}
-                className="bg-white border border-[#E7ECF2] text-[#14243A] rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-[#315EFB]"
-              >
-                <option value="recent">Recently Added</option>
-                <option value="popular">Most Inquired</option>
-                <option value="investment_asc">Capital: Low to High</option>
-                <option value="investment_desc">Capital: High to Low</option>
-              </select>
-
-              {(searchTerm || industry !== "All" || modelType !== "All") && (
-                <button
-                  onClick={() => {
-                    setSearchTerm("");
-                    setIndustry("All");
-                    setModelType("All");
+            {/* Sort Dropdown */}
+            <div>
+              <label className="block text-[#64748B] font-medium mb-1">Sort By</label>
+              <div className="flex gap-2">
+                <select
+                  value={sort}
+                  onChange={(e) => {
+                    setSort(e.target.value);
                     setPage(1);
                   }}
-                  className="text-xs text-rose-600 hover:text-rose-700 font-semibold flex items-center gap-1 px-2 py-1 rounded-md hover:bg-rose-50 transition-colors"
+                  className="w-full bg-white border border-[#E7ECF2] text-[#14243A] rounded-lg px-3 py-2 text-xs font-medium focus:outline-none focus:border-[#315EFB]"
                 >
-                  <RotateCcw className="w-3 h-3" /> Reset
-                </button>
-              )}
+                  <option value="recent">Recently Added</option>
+                  <option value="popular">Most Inquired</option>
+                  <option value="investment_asc">Capital: Low to High</option>
+                  <option value="investment_desc">Capital: High to Low</option>
+                </select>
+
+                {(searchTerm || industry !== "All" || modelType !== "All" || locationFilter !== "All" || budgetFilter !== "All") && (
+                  <button
+                    onClick={() => {
+                      setSearchTerm("");
+                      setIndustry("All");
+                      setModelType("All");
+                      setLocationFilter("All");
+                      setBudgetFilter("All");
+                      setPage(1);
+                    }}
+                    title="Reset filters"
+                    className="p-2 text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors shrink-0"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -265,8 +406,23 @@ export default function FranchisesMarketplacePage() {
                       </span>
                     </div>
 
-                    <div className="absolute top-3 right-3">
+                    <div className="absolute top-3 right-3 flex items-center gap-1.5">
                       <StatusBadge status={item.status} />
+                      <button
+                        onClick={(e) => handleToggleSave(item._id, e)}
+                        title={savedIds.has(item._id) ? "Remove from saved" : "Save opportunity"}
+                        className={`p-1.5 rounded-lg backdrop-blur-sm transition-all border ${
+                          savedIds.has(item._id)
+                            ? "bg-amber-400 text-slate-950 border-amber-300 shadow"
+                            : "bg-white/80 text-slate-600 border-white/60 hover:bg-white hover:text-slate-900"
+                        }`}
+                      >
+                        {savedIds.has(item._id) ? (
+                          <BookmarkCheck className="w-4 h-4 text-slate-950" />
+                        ) : (
+                          <Bookmark className="w-4 h-4" />
+                        )}
+                      </button>
                     </div>
 
                     {/* Logo & ROI Overlay */}
@@ -297,11 +453,16 @@ export default function FranchisesMarketplacePage() {
                   {/* Card Body Details */}
                   <div className="p-5 space-y-3">
                     <div>
-                      <h3 className="text-base font-bold text-[#14243A] group-hover:text-[#315EFB] transition-colors">
-                        <Link href={`/franchises/${item.slug}`}>{item.brandName}</Link>
-                      </h3>
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="text-base font-bold text-[#14243A] group-hover:text-[#315EFB] transition-colors truncate">
+                          <Link href={`/franchises/${item.slug || item._id}`}>{item.brandName}</Link>
+                        </h3>
+                        <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                          {item.businessModel || item.franchiseModelType || "FOFO"}
+                        </span>
+                      </div>
                       <p className="text-xs text-[#315EFB] font-medium mt-0.5 line-clamp-1">
-                        {item.tagline}
+                        {item.opportunityTitle || item.tagline}
                       </p>
                       <p className="text-xs text-[#64748B] line-clamp-2 leading-relaxed mt-1">
                         {item.summary}
@@ -313,13 +474,13 @@ export default function FranchisesMarketplacePage() {
                       <div className="bg-[#F8FAFC] p-2.5 rounded-lg border border-[#E7ECF2]">
                         <span className="text-[#64748B] text-[10px] block font-medium">Est. Capital</span>
                         <div className="font-bold text-[#14243A] text-xs sm:text-sm mt-0.5">
-                          {formatCurrency(item.totalInvestmentMin)} - {formatCurrency(item.totalInvestmentMax)}
+                          ₹{((item.totalInvestmentMin || 0) / 100000).toFixed(1)}L - ₹{((item.totalInvestmentMax || 0) / 100000).toFixed(1)}L
                         </div>
                       </div>
                       <div className="bg-[#F8FAFC] p-2.5 rounded-lg border border-[#E7ECF2]">
                         <span className="text-[#64748B] text-[10px] block font-medium">Franchise Fee</span>
                         <div className="font-bold text-[#14243A] text-xs sm:text-sm mt-0.5">
-                          {formatCurrency(item.initialFranchiseFee)}
+                          ₹{((item.initialFranchiseFee || 0) / 100000).toFixed(1)}L
                         </div>
                       </div>
                     </div>
@@ -329,13 +490,13 @@ export default function FranchisesMarketplacePage() {
                       <div className="flex items-center gap-1.5">
                         <MapPin className="w-3.5 h-3.5 text-[#315EFB] shrink-0" />
                         <span className="truncate">
-                          Cities: {item.expansionLocations?.slice(0, 3).join(", ") || "Nationwide"}
+                          Cities: {item.targetLocations?.slice(0, 3).join(", ") || item.expansionLocations?.slice(0, 3).join(", ") || "Pan-India"}
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <Clock className="w-3.5 h-3.5 text-[#315EFB] shrink-0" />
                         <span>
-                          Space: {item.commercialSpaceMinSqFt} - {item.commercialSpaceMaxSqFt} Sq Ft
+                          Space: {item.commercialSpaceMinSqFt || 300} - {item.commercialSpaceMaxSqFt || 800} Sq Ft
                         </span>
                       </div>
                     </div>
@@ -343,12 +504,23 @@ export default function FranchisesMarketplacePage() {
                 </div>
 
                 {/* Bottom Action */}
-                <div className="p-5 pt-0">
-                  <Link
-                    href={`/franchises/${item.slug}`}
-                    className="btn-primary w-full py-2.5 text-xs font-semibold justify-center"
+                <div className="p-5 pt-0 flex items-center gap-2">
+                  <button
+                    onClick={(e) => toggleCompare(item._id, e)}
+                    className={`p-2.5 rounded-xl border text-xs font-semibold transition-all shrink-0 ${
+                      compareIds.includes(item._id)
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+                        : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                    }`}
+                    title="Compare this brand"
                   >
-                    View Details & Apply
+                    <Scale className="w-4 h-4" />
+                  </button>
+                  <Link
+                    href={`/franchises/${item.slug || item._id}`}
+                    className="btn-primary flex-1 py-2.5 text-xs font-semibold justify-center"
+                  >
+                    View Details & Enquire
                     <ArrowRight className="w-3.5 h-3.5 ml-1" />
                   </Link>
                 </div>

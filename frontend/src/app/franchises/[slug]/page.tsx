@@ -63,6 +63,7 @@ export default function FranchiseDetailPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [submittedRef, setSubmittedRef] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -126,12 +127,13 @@ export default function FranchiseDetailPage() {
     setSubmitError(null);
 
     try {
-      const res = await api.post("/applications", {
+      const res = await api.post<any>("/applications", {
         franchiseId: listing._id,
         ...appForm,
       });
 
-      if (res.success) {
+      if (res.success && res.data) {
+        setSubmittedRef(res.data.referenceNumber || null);
         setSubmitSuccess(true);
       } else {
         setSubmitError(res.message || "Submission failed");
@@ -531,21 +533,38 @@ export default function FranchiseDetailPage() {
             </div>
 
             {submitSuccess ? (
-              <div className="text-center py-6 space-y-3">
-                <CheckCircle2 className="w-12 h-12 text-[#159D8B] mx-auto" />
-                <h4 className="text-lg font-bold text-[#14243A]">Application Submitted Successfully</h4>
-                <p className="text-xs text-[#64748B] max-w-sm mx-auto">
-                  Your application and due diligence request have been logged. The brand manager will contact you within 24 hours.
-                </p>
-                <button
-                  onClick={() => {
-                    setIsModalOpen(false);
-                    setSubmitSuccess(false);
-                  }}
-                  className="btn-primary py-2 px-6 text-xs mt-3"
-                >
-                  Close Window
-                </button>
+              <div className="text-center py-6 space-y-4">
+                <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto border border-emerald-200">
+                  <CheckCircle2 className="w-8 h-8" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-lg font-bold text-[#14243A]">Franchise Enquiry Registered</h4>
+                  {submittedRef && (
+                    <div className="inline-block bg-slate-100 px-3 py-1 rounded-full text-xs font-mono font-bold text-slate-800 border border-slate-200 mt-1">
+                      Ref #{submittedRef}
+                    </div>
+                  )}
+                  <p className="text-xs text-[#64748B] max-w-sm mx-auto pt-2">
+                    Your enquiry and territory interest have been recorded in MongoDB. The brokerage advisory team and brand franchisor have been notified.
+                  </p>
+                </div>
+                <div className="flex justify-center gap-3 pt-2">
+                  <Link
+                    href="/dashboard/investor"
+                    className="btn-primary py-2 px-5 text-xs font-semibold"
+                  >
+                    View Status in Dashboard &rarr;
+                  </Link>
+                  <button
+                    onClick={() => {
+                      setIsModalOpen(false);
+                      setSubmitSuccess(false);
+                    }}
+                    className="btn-secondary py-2 px-4 text-xs font-semibold"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             ) : (
               <form onSubmit={handleApplicationSubmit} className="space-y-4 text-xs">

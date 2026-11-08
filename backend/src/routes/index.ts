@@ -25,6 +25,7 @@ router.use('/auth', authRoutes);
 router.use('/businesses', businessRoutes);
 router.use('/franchises', franchiseRoutes);
 router.use('/applications', applicationRoutes);
+router.use('/enquiries', applicationRoutes);
 router.use('/investors', investorRoutes);
 router.use('/documents', documentRoutes);
 router.use('/admin', adminRoutes);

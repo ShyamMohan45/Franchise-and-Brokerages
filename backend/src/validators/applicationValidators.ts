@@ -17,6 +17,13 @@ export const createApplicationSchema = z.object({
 
 export const updateApplicationStatusSchema = z.object({
   status: z.enum([
+    'NEW',
+    'ASSIGNED',
+    'CONTACTED',
+    'QUALIFIED',
+    'IN_PROGRESS',
+    'CONVERTED',
+    'CLOSED',
     'submitted',
     'under_review',
     'vetted_by_broker',
@@ -31,4 +38,7 @@ export const updateApplicationStatusSchema = z.object({
   ]),
   note: z.string().optional(),
   brokerNotes: z.string().optional(),
+  internalNotes: z.string().optional(),
+  assignedBrokerId: z.string().optional(),
 });
+
