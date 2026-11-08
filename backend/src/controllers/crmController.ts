@@ -488,7 +488,11 @@ export async function getDealById(req: Request, res: Response): Promise<any> {
     return sendError(res, 'Deal not found', 404);
   }
 
-  if (user.role === 'broker' && deal.assignedBroker._id.toString() !== user._id.toString()) {
+  if (
+    user.role === 'broker' &&
+    deal.assignedBroker &&
+    deal.assignedBroker._id?.toString() !== user._id.toString()
+  ) {
     return sendError(res, 'Unauthorized to view this deal', 403);
   }
 
@@ -597,6 +601,10 @@ export async function convertLeadToDeal(req: Request, res: Response): Promise<an
     return sendError(res, 'Lead not found', 404);
   }
 
+  if (lead.convertedToDeal) {
+    return sendError(res, 'This lead has already been converted into an active deal', 400);
+  }
+
   const franchise = await FranchiseListing.findById(franchiseListingId);
   if (!franchise) {
     return sendError(res, 'Franchise listing not found', 404);
@@ -693,6 +701,10 @@ export async function updateDealStage(req: Request, res: Response): Promise<any>
   const deal = await BrokerageDeal.findById(id);
   if (!deal) {
     return sendError(res, 'Deal not found', 404);
+  }
+
+  if (user.role === 'broker' && deal.assignedBroker && deal.assignedBroker.toString() !== user._id.toString()) {
+    return sendError(res, 'Unauthorized to modify this deal record', 403);
   }
 
   const oldStage = deal.stage;
