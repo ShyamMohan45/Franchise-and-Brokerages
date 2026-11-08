@@ -22,3 +22,4 @@ export * from './PlatformSettings';
 export * from './ContactEnquiry';
 export * from './BlogPost';
 export * from './FranchiseReadinessAssessment';
+export * from './SavedFranchise';
