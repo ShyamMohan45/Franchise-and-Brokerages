@@ -25,6 +25,15 @@ import {
   Compass,
   MapPin,
   Check,
+  Briefcase,
+  Send,
+  Edit3,
+  XCircle,
+  Info,
+  Layers,
+  IndianRupee,
+  Eye,
+  CheckCircle,
 } from "lucide-react";
 import { useAuth } from "@/providers/AuthProvider";
 import { api } from "@/lib/api";
@@ -36,10 +45,12 @@ export default function BusinessDashboardPage() {
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<
-    "overview" | "readiness" | "outlets" | "roadmap" | "sops" | "legal" | "applications" | "meetings"
+    "overview" | "opportunities" | "readiness" | "outlets" | "roadmap" | "sops" | "legal" | "applications" | "meetings"
   >("overview");
   const [businessData, setBusinessData] = useState<any | null>(null);
+  const [profileCompletion, setProfileCompletion] = useState<number>(0);
   const [assessment, setAssessment] = useState<any | null>(null);
+  const [opportunities, setOpportunities] = useState<any[]>([]);
   const [applications, setApplications] = useState<any[]>([]);
   const [sops, setSops] = useState<any[]>([]);
   const [legalDocs, setLegalDocs] = useState<any[]>([]);
@@ -47,6 +58,9 @@ export default function BusinessDashboardPage() {
   const [outlets, setOutlets] = useState<any[]>([]);
   const [expansionPlan, setExpansionPlan] = useState<any | null>(null);
   const [isAddOutletOpen, setIsAddOutletOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [feedbackMessage, setFeedbackMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
   const [newOutlet, setNewOutlet] = useState({
     outletName: "",
     unitCode: "",
@@ -61,9 +75,8 @@ export default function BusinessDashboardPage() {
     status: "operating",
     fitoutProgressPercent: 100,
   });
-  const [loading, setLoading] = useState(true);
 
-  // New SOP Modal state & PDF file upload
+  // SOP Modal state & PDF file upload
   const [isSopModalOpen, setIsSopModalOpen] = useState(false);
   const [selectedPdf, setSelectedPdf] = useState<File | null>(null);
   const [isUploadingSop, setIsUploadingSop] = useState(false);
@@ -76,23 +89,78 @@ export default function BusinessDashboardPage() {
     checklist3: "",
   });
 
-  // New Profile Form state
+  // Profile Form state (Milestone 3 Enhanced)
   const [profileForm, setProfileForm] = useState({
     businessName: "",
+    legalBusinessName: "",
+    brandName: "",
+    logoUrl: "",
     category: "Food & Beverage",
+    industry: "Quick Service Restaurant",
     founderName: "",
+    contactPerson: "",
     contactEmail: "",
     contactPhone: "",
-    establishedYear: 2022,
+    websiteUrl: "",
+    establishedYear: 2021,
+    street: "",
     city: "",
+    state: "",
+    postalCode: "",
+    country: "India",
+    operatingLocations: "Mumbai, Pune",
     numberOfOutlets: 2,
+    outletsSummary: "",
     description: "",
-    businessModel: "",
+    businessModel: "FOCO / FOFO",
     expansionGoals: "",
-    estimatedInvestmentMin: 3000000,
+    estimatedInvestmentMin: 2500000,
     estimatedInvestmentMax: 5000000,
   });
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileSubmitting, setProfileSubmitting] = useState(false);
+
+  // Franchise Opportunity Modal state (Milestone 3)
+  const [isCreateOppModalOpen, setIsCreateOppModalOpen] = useState(false);
+  const [isEditingOpp, setIsEditingOpp] = useState(false);
+  const [selectedOppId, setSelectedOppId] = useState<string | null>(null);
+  const [oppSubmitting, setOppSubmitting] = useState(false);
+
+  const defaultOppForm = {
+    opportunityTitle: "",
+    brandName: "",
+    category: "Food & Beverage",
+    industry: "Quick Service Restaurant",
+    businessModel: "FOFO",
+    totalInvestmentMin: 2500000,
+    totalInvestmentMax: 4500000,
+    initialFranchiseFee: 500000,
+    setupCosts: 1200000,
+    equipmentCosts: 600000,
+    workingCapitalEstimate: 200000,
+    royaltyPercentage: 6,
+    royaltyDescription: "6% monthly gross revenue royalty",
+    commercialSpaceMinSqFt: 350,
+    commercialSpaceMaxSqFt: 800,
+    staffRequiredMin: 3,
+    staffRequiredMax: 6,
+    trainingDurationWeeks: 2,
+    trainingSupportDetails: "2-week comprehensive staff, kitchen, ERP and store manager training",
+    targetLocations: "Mumbai, Pune, Bengaluru",
+    availableTerritories: "West Zone, South Zone",
+    expectedOpeningTimelineMonths: 2,
+    idealFranchiseeProfile: "Motivated entrepreneur with retail or F&B experience and ₹30L+ liquid investment capacity",
+    summary: "Proven high-volume franchise model with standardized operational SOPs and rapid ROI",
+    brandStory: "A celebrated brand delivering consistent quality, high repeat customers, and unit economics",
+    status: "DRAFT" as "DRAFT" | "SUBMITTED",
+  };
+
+  const [oppForm, setOppForm] = useState(defaultOppForm);
+
+  const showFeedback = (type: "success" | "error", text: string) => {
+    setFeedbackMessage({ type, text });
+    setTimeout(() => setFeedbackMessage(null), 6000);
+  };
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -103,8 +171,9 @@ export default function BusinessDashboardPage() {
     async function loadDashboardData() {
       try {
         setLoading(true);
-        const [bizRes, appRes, sopRes, legalRes, meetRes, outletRes, planRes] = await Promise.all([
-          api.get<{ business: any; assessment: any }>("/businesses/my"),
+        const [bizRes, oppRes, appRes, sopRes, legalRes, meetRes, outletRes, planRes] = await Promise.all([
+          api.get<{ business: any; assessment: any; profileCompletion?: number }>("/businesses/my"),
+          api.get<any[]>("/franchises/my"),
           api.get<any[]>("/applications/business"),
           api.get<any[]>("/documents/sop"),
           api.get<any[]>("/documents/legal"),
@@ -114,26 +183,44 @@ export default function BusinessDashboardPage() {
         ]);
 
         if (bizRes.success && bizRes.data) {
-          setBusinessData(bizRes.data.business);
+          const b = bizRes.data.business;
+          setBusinessData(b);
           setAssessment(bizRes.data.assessment);
-          if (bizRes.data.business) {
+          setProfileCompletion(bizRes.data.profileCompletion || 0);
+
+          if (b) {
             setProfileForm({
-              businessName: bizRes.data.business.businessName,
-              category: bizRes.data.business.category,
-              founderName: bizRes.data.business.founderName,
-              contactEmail: bizRes.data.business.contactEmail,
-              contactPhone: bizRes.data.business.contactPhone,
-              establishedYear: bizRes.data.business.establishedYear,
-              city: bizRes.data.business.headquarters?.city || "",
-              numberOfOutlets: bizRes.data.business.numberOfOutlets,
-              description: bizRes.data.business.description,
-              businessModel: bizRes.data.business.businessModel,
-              expansionGoals: bizRes.data.business.expansionGoals,
-              estimatedInvestmentMin: bizRes.data.business.estimatedInvestmentMin,
-              estimatedInvestmentMax: bizRes.data.business.estimatedInvestmentMax,
+              businessName: b.businessName || "",
+              legalBusinessName: b.legalBusinessName || b.businessName || "",
+              brandName: b.brandName || b.businessName || "",
+              logoUrl: b.logoUrl || "",
+              category: b.category || "Food & Beverage",
+              industry: b.industry || "Quick Service Restaurant",
+              founderName: b.founderName || "",
+              contactPerson: b.contactPerson || b.founderName || "",
+              contactEmail: b.contactEmail || user?.email || "",
+              contactPhone: b.contactPhone || "",
+              websiteUrl: b.websiteUrl || "",
+              establishedYear: b.establishedYear || 2021,
+              street: b.registeredAddress?.street || "",
+              city: b.headquarters?.city || b.registeredAddress?.city || "",
+              state: b.headquarters?.state || b.registeredAddress?.state || "",
+              postalCode: b.registeredAddress?.postalCode || "",
+              country: b.headquarters?.country || "India",
+              operatingLocations: Array.isArray(b.operatingLocations) && b.operatingLocations.length > 0
+                ? b.operatingLocations.join(", ")
+                : (b.currentLocations || []).join(", "),
+              numberOfOutlets: b.numberOfOutlets || 1,
+              outletsSummary: b.outletsSummary || "",
+              description: b.description || "",
+              businessModel: b.businessModel || "FOCO / FOFO",
+              expansionGoals: b.expansionGoals || "",
+              estimatedInvestmentMin: b.estimatedInvestmentMin || 2500000,
+              estimatedInvestmentMax: b.estimatedInvestmentMax || 5000000,
             });
           }
         }
+        if (oppRes.success && oppRes.data) setOpportunities(oppRes.data);
         if (appRes.success && appRes.data) setApplications(appRes.data);
         if (sopRes.success && sopRes.data) setSops(sopRes.data);
         if (legalRes.success && legalRes.data) setLegalDocs(legalRes.data);
@@ -152,19 +239,211 @@ export default function BusinessDashboardPage() {
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    setProfileSubmitting(true);
     try {
+      const locationsArr = profileForm.operatingLocations
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
       const payload = {
-        ...profileForm,
-        headquarters: { city: profileForm.city, country: "India" },
-        desiredExpansionCities: [profileForm.city, "Bengaluru", "Mumbai"],
+        businessName: profileForm.businessName,
+        legalBusinessName: profileForm.legalBusinessName || profileForm.businessName,
+        brandName: profileForm.brandName || profileForm.businessName,
+        logoUrl: profileForm.logoUrl,
+        category: profileForm.category,
+        industry: profileForm.industry,
+        founderName: profileForm.founderName,
+        contactPerson: profileForm.contactPerson,
+        contactEmail: profileForm.contactEmail,
+        contactPhone: profileForm.contactPhone,
+        websiteUrl: profileForm.websiteUrl,
+        establishedYear: Number(profileForm.establishedYear),
+        headquarters: {
+          city: profileForm.city,
+          state: profileForm.state,
+          country: profileForm.country || "India",
+        },
+        registeredAddress: {
+          street: profileForm.street,
+          city: profileForm.city,
+          state: profileForm.state,
+          postalCode: profileForm.postalCode,
+          country: profileForm.country || "India",
+        },
+        operatingLocations: locationsArr,
+        currentLocations: locationsArr,
+        numberOfOutlets: Number(profileForm.numberOfOutlets),
+        outletsSummary: profileForm.outletsSummary,
+        description: profileForm.description,
+        businessModel: profileForm.businessModel,
+        expansionGoals: profileForm.expansionGoals,
+        desiredExpansionCities: locationsArr,
+        estimatedInvestmentMin: Number(profileForm.estimatedInvestmentMin),
+        estimatedInvestmentMax: Number(profileForm.estimatedInvestmentMax),
       };
-      const res = await api.post("/businesses", payload);
+
+      const res = await api.post<any>("/businesses", payload);
       if (res.success && res.data) {
         setBusinessData(res.data);
+        if (res.data.profileCompletion !== undefined) {
+          setProfileCompletion(res.data.profileCompletion);
+        }
         setIsEditingProfile(false);
+        showFeedback("success", "Company profile saved and verified successfully!");
       }
     } catch (err: any) {
-      alert(err.message || "Failed to update profile");
+      showFeedback("error", err.message || "Failed to update company profile");
+    } finally {
+      setProfileSubmitting(false);
+    }
+  };
+
+  const handleSubmitProfileForReview = async () => {
+    try {
+      setProfileSubmitting(true);
+      const res = await api.post<any>("/businesses/submit-review");
+      if (res.success && res.data) {
+        setBusinessData(res.data);
+        showFeedback("success", "Brand company profile submitted for administrator approval!");
+      }
+    } catch (err: any) {
+      showFeedback("error", err.message || "Failed to submit profile for review");
+    } finally {
+      setProfileSubmitting(false);
+    }
+  };
+
+  const handleOpenCreateOppModal = () => {
+    setIsEditingOpp(false);
+    setSelectedOppId(null);
+    setOppForm({
+      ...defaultOppForm,
+      brandName: businessData?.brandName || businessData?.businessName || "",
+      category: businessData?.category || "Food & Beverage",
+      industry: businessData?.industry || "Quick Service Restaurant",
+    });
+    setIsCreateOppModalOpen(true);
+  };
+
+  const handleOpenEditOppModal = (opp: any) => {
+    setIsEditingOpp(true);
+    setSelectedOppId(opp._id);
+    setOppForm({
+      opportunityTitle: opp.opportunityTitle || opp.tagline || "",
+      brandName: opp.brandName || businessData?.brandName || "",
+      category: opp.category || opp.industry || "Food & Beverage",
+      industry: opp.industry || "Quick Service Restaurant",
+      businessModel: opp.businessModel || opp.franchiseModelType || "FOFO",
+      totalInvestmentMin: opp.totalInvestmentMin || 2500000,
+      totalInvestmentMax: opp.totalInvestmentMax || 4500000,
+      initialFranchiseFee: opp.initialFranchiseFee || 500000,
+      setupCosts: opp.setupCosts || 1200000,
+      equipmentCosts: opp.equipmentCosts || 600000,
+      workingCapitalEstimate: opp.workingCapitalEstimate || 200000,
+      royaltyPercentage: opp.royaltyPercentage || 6,
+      royaltyDescription: opp.royaltyStructure?.description || "6% monthly gross revenue royalty",
+      commercialSpaceMinSqFt: opp.commercialSpaceMinSqFt || 350,
+      commercialSpaceMaxSqFt: opp.commercialSpaceMaxSqFt || 800,
+      staffRequiredMin: opp.staffRequiredMin || 3,
+      staffRequiredMax: opp.staffRequiredMax || 6,
+      trainingDurationWeeks: opp.trainingDurationWeeks || 2,
+      trainingSupportDetails: opp.trainingSupportDetails || "",
+      targetLocations: Array.isArray(opp.targetLocations) ? opp.targetLocations.join(", ") : (opp.expansionLocations || []).join(", "),
+      availableTerritories: Array.isArray(opp.availableTerritories) ? opp.availableTerritories.join(", ") : "",
+      expectedOpeningTimelineMonths: opp.expectedOpeningTimelineMonths || 2,
+      idealFranchiseeProfile: opp.idealFranchiseeProfile || "",
+      summary: opp.summary || "",
+      brandStory: opp.brandStory || "",
+      status: opp.status || "DRAFT",
+    });
+    setIsCreateOppModalOpen(true);
+  };
+
+  const handleSaveOpportunity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (oppForm.totalInvestmentMin > oppForm.totalInvestmentMax) {
+      showFeedback("error", "Minimum investment cannot exceed maximum investment");
+      return;
+    }
+
+    setOppSubmitting(true);
+    try {
+      const targetLocsArr = oppForm.targetLocations.split(",").map((s) => s.trim()).filter(Boolean);
+      const terrArr = oppForm.availableTerritories.split(",").map((s) => s.trim()).filter(Boolean);
+
+      const payload = {
+        brandName: oppForm.brandName || businessData?.brandName || businessData?.businessName || "My Brand",
+        opportunityTitle: oppForm.opportunityTitle,
+        tagline: oppForm.opportunityTitle,
+        category: oppForm.category,
+        industry: oppForm.industry,
+        businessModel: oppForm.businessModel,
+        summary: oppForm.summary,
+        brandStory: oppForm.brandStory,
+        totalInvestmentMin: Number(oppForm.totalInvestmentMin),
+        totalInvestmentMax: Number(oppForm.totalInvestmentMax),
+        initialFranchiseFee: Number(oppForm.initialFranchiseFee),
+        setupCosts: Number(oppForm.setupCosts),
+        equipmentCosts: Number(oppForm.equipmentCosts),
+        workingCapitalEstimate: Number(oppForm.workingCapitalEstimate),
+        royaltyPercentage: Number(oppForm.royaltyPercentage),
+        royaltyStructure: {
+          type: "percentage",
+          percentage: Number(oppForm.royaltyPercentage),
+          description: oppForm.royaltyDescription,
+        },
+        commercialSpaceMinSqFt: Number(oppForm.commercialSpaceMinSqFt),
+        commercialSpaceMaxSqFt: Number(oppForm.commercialSpaceMaxSqFt),
+        spaceRequirements: {
+          minSqFt: Number(oppForm.commercialSpaceMinSqFt),
+          maxSqFt: Number(oppForm.commercialSpaceMaxSqFt),
+          unit: "sq ft",
+        },
+        staffRequiredMin: Number(oppForm.staffRequiredMin),
+        staffRequiredMax: Number(oppForm.staffRequiredMax),
+        trainingDurationWeeks: Number(oppForm.trainingDurationWeeks),
+        trainingSupportDetails: oppForm.trainingSupportDetails,
+        supportProvided: ["Site Selection", "Store Design", "Training Academy", "Supply Chain"],
+        idealFranchiseeProfile: oppForm.idealFranchiseeProfile,
+        targetLocations: targetLocsArr,
+        expansionLocations: targetLocsArr,
+        availableTerritories: terrArr,
+        expectedOpeningTimelineMonths: Number(oppForm.expectedOpeningTimelineMonths),
+        status: oppForm.status,
+      };
+
+      if (isEditingOpp && selectedOppId) {
+        const res = await api.patch<any>(`/franchises/${selectedOppId}`, payload);
+        if (res.success && res.data) {
+          setOpportunities((prev) => prev.map((o) => (o._id === selectedOppId ? res.data : o)));
+          setIsCreateOppModalOpen(false);
+          showFeedback("success", "Franchise opportunity updated successfully!");
+        }
+      } else {
+        const res = await api.post<any>("/franchises", payload);
+        if (res.success && res.data) {
+          setOpportunities((prev) => [res.data, ...prev]);
+          setIsCreateOppModalOpen(false);
+          showFeedback("success", "Franchise opportunity created in DRAFT status!");
+        }
+      }
+    } catch (err: any) {
+      showFeedback("error", err.message || "Failed to save franchise opportunity");
+    } finally {
+      setOppSubmitting(false);
+    }
+  };
+
+  const handleSubmitOpportunityForReview = async (oppId: string) => {
+    try {
+      const res = await api.post<any>(`/franchises/${oppId}/submit`);
+      if (res.success && res.data) {
+        setOpportunities((prev) => prev.map((o) => (o._id === oppId ? res.data : o)));
+        showFeedback("success", "Opportunity submitted to brokerage admins for compliance review!");
+      }
+    } catch (err: any) {
+      showFeedback("error", err.message || "Failed to submit opportunity");
     }
   };
 
@@ -325,15 +604,21 @@ export default function BusinessDashboardPage() {
             Franchisor Expansion Headquarters
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            {businessData?.businessName || "Welcome to Your Business Portal"}
+            {businessData?.brandName || businessData?.businessName || "Welcome to Your Business Portal"}
           </h1>
           <p className="text-slate-300 text-xs sm:text-sm max-w-xl">
-            Package operational SOPs, maintain FDD legal disclosures, benchmark franchise readiness, and review
-            pre-vetted multi-unit investor applications.
+            Package operational SOPs, maintain FDD legal disclosures, benchmark franchise readiness, and launch vetted franchise expansion opportunities.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={handleOpenCreateOppModal}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow-md transition-all flex items-center gap-1.5"
+          >
+            <Plus className="w-4 h-4" />
+            Create Franchise Opportunity
+          </button>
           <button
             onClick={handleRunDiagnostic}
             className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs shadow-md transition-all flex items-center gap-1.5"
@@ -351,10 +636,29 @@ export default function BusinessDashboardPage() {
         </div>
       </div>
 
+      {/* Global Feedback Alert */}
+      {feedbackMessage && (
+        <div
+          className={`p-4 rounded-2xl flex items-center gap-3 text-xs font-semibold border ${
+            feedbackMessage.type === "success"
+              ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+              : "bg-rose-50 border-rose-200 text-rose-800"
+          }`}
+        >
+          {feedbackMessage.type === "success" ? (
+            <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+          ) : (
+            <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />
+          )}
+          <span>{feedbackMessage.text}</span>
+        </div>
+      )}
+
       {/* Navigation Tabs */}
       <div className="flex border-b border-slate-200 overflow-x-auto gap-2 text-xs font-semibold">
         {[
           { id: "overview", label: "Executive Overview", icon: TrendingUp },
+          { id: "opportunities", label: `Franchise Opportunities (${opportunities.length})`, icon: Briefcase },
           { id: "readiness", label: "Franchise Readiness Index", icon: Sparkles },
           { id: "outlets", label: `Outlets (${outlets.length})`, icon: Store },
           { id: "roadmap", label: "Expansion Roadmap", icon: Compass },
@@ -384,6 +688,100 @@ export default function BusinessDashboardPage() {
       {/* TAB 1: EXECUTIVE OVERVIEW */}
       {activeTab === "overview" && (
         <div className="space-y-8">
+          {/* Profile Completion & Verification Card */}
+          <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <h3 className="text-lg font-bold text-navy-900">Brand Onboarding & Verification</h3>
+                  <StatusBadge status={businessData?.approvalStatus || "DRAFT"} />
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Complete your verified corporate credentials to pass brokerage compliance checks.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                {["draft", "DRAFT", "rejected", "REJECTED"].includes(businessData?.approvalStatus || "DRAFT") && (
+                  <button
+                    onClick={handleSubmitProfileForReview}
+                    disabled={profileSubmitting}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-sm transition-all flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    {profileSubmitting ? "Submitting..." : "Submit Profile for Review"}
+                  </button>
+                )}
+                <button
+                  onClick={() => setIsEditingProfile(!isEditingProfile)}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2 rounded-xl text-xs transition-all flex items-center gap-1.5"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  {isEditingProfile ? "Close Editor" : "Edit Profile"}
+                </button>
+              </div>
+            </div>
+
+            {/* Profile Completion Bar */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-semibold text-slate-700">Profile Readiness Completion</span>
+                <span className="font-bold text-blue-600">{profileCompletion}% Complete</span>
+              </div>
+              <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-500 rounded-full ${
+                    profileCompletion >= 80
+                      ? "bg-emerald-500"
+                      : profileCompletion >= 50
+                      ? "bg-blue-500"
+                      : "bg-amber-500"
+                  }`}
+                  style={{ width: `${profileCompletion}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Rejection / Note banner if applicable */}
+            {businessData?.rejectionReason && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-xl text-xs space-y-1">
+                <span className="font-bold flex items-center gap-1.5 text-rose-900">
+                  <AlertCircle className="w-4 h-4 text-rose-600" />
+                  Brokerage Compliance Rejection Feedback:
+                </span>
+                <p>{businessData.rejectionReason}</p>
+              </div>
+            )}
+
+            {/* Checklist elements */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-2 text-[11px]">
+              <div className={`p-3 rounded-xl border flex items-center gap-2 ${businessData?.legalBusinessName ? "bg-emerald-50/60 border-emerald-200 text-emerald-800" : "bg-slate-50 border-slate-200 text-slate-500"}`}>
+                <Check className={`w-3.5 h-3.5 ${businessData?.legalBusinessName ? "text-emerald-600" : "text-slate-300"}`} />
+                <span>Legal Entity</span>
+              </div>
+              <div className={`p-3 rounded-xl border flex items-center gap-2 ${businessData?.brandName ? "bg-emerald-50/60 border-emerald-200 text-emerald-800" : "bg-slate-50 border-slate-200 text-slate-500"}`}>
+                <Check className={`w-3.5 h-3.5 ${businessData?.brandName ? "text-emerald-600" : "text-slate-300"}`} />
+                <span>Brand Identity</span>
+              </div>
+              <div className={`p-3 rounded-xl border flex items-center gap-2 ${businessData?.registeredAddress?.city ? "bg-emerald-50/60 border-emerald-200 text-emerald-800" : "bg-slate-50 border-slate-200 text-slate-500"}`}>
+                <Check className={`w-3.5 h-3.5 ${businessData?.registeredAddress?.city ? "text-emerald-600" : "text-slate-300"}`} />
+                <span>Headquarters</span>
+              </div>
+              <div className={`p-3 rounded-xl border flex items-center gap-2 ${businessData?.contactPerson ? "bg-emerald-50/60 border-emerald-200 text-emerald-800" : "bg-slate-50 border-slate-200 text-slate-500"}`}>
+                <Check className={`w-3.5 h-3.5 ${businessData?.contactPerson ? "text-emerald-600" : "text-slate-300"}`} />
+                <span>Key Contact</span>
+              </div>
+              <div className={`p-3 rounded-xl border flex items-center gap-2 ${businessData?.numberOfOutlets ? "bg-emerald-50/60 border-emerald-200 text-emerald-800" : "bg-slate-50 border-slate-200 text-slate-500"}`}>
+                <Check className={`w-3.5 h-3.5 ${businessData?.numberOfOutlets ? "text-emerald-600" : "text-slate-300"}`} />
+                <span>Active Units</span>
+              </div>
+              <div className={`p-3 rounded-xl border flex items-center gap-2 ${businessData?.description ? "bg-emerald-50/60 border-emerald-200 text-emerald-800" : "bg-slate-50 border-slate-200 text-slate-500"}`}>
+                <Check className={`w-3.5 h-3.5 ${businessData?.description ? "text-emerald-600" : "text-slate-300"}`} />
+                <span>Value Prop</span>
+              </div>
+            </div>
+          </div>
+
           {/* Key Metric Tiles */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-2">
@@ -398,155 +796,661 @@ export default function BusinessDashboardPage() {
             </div>
 
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+              <span className="text-xs font-medium text-slate-400 uppercase">Franchise Opportunities</span>
+              <div className="text-3xl font-extrabold text-navy-900">{opportunities.length}</div>
+              <p className="text-[11px] text-slate-500">
+                {opportunities.filter((o) => o.status === "PUBLISHED" || o.status === "published").length} active in investor marketplace
+              </p>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-2">
               <span className="text-xs font-medium text-slate-400 uppercase">Investor Applications</span>
               <div className="text-3xl font-extrabold text-navy-900">{applications.length}</div>
               <p className="text-[11px] text-slate-500">Submitted by vetted multi-unit operators</p>
             </div>
 
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-2">
-              <span className="text-xs font-medium text-slate-400 uppercase">Codified SOPs</span>
-              <div className="text-3xl font-extrabold text-navy-900">{sops.length}</div>
-              <p className="text-[11px] text-slate-500">Approved operational checklists</p>
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-2">
-              <span className="text-xs font-medium text-slate-400 uppercase">Approval Status</span>
-              <div>
-                <StatusBadge status={businessData?.approvalStatus || "approved"} />
-              </div>
-              <p className="text-[11px] text-slate-500">Brokerage listing compliance</p>
+              <span className="text-xs font-medium text-slate-400 uppercase">Operating Units</span>
+              <div className="text-3xl font-extrabold text-navy-900">{businessData?.numberOfOutlets || 1}</div>
+              <p className="text-[11px] text-slate-500">Proven company & franchise outlets</p>
             </div>
           </div>
 
           {/* Business Profile Review & Edit */}
           <div className="bg-white rounded-2xl border border-slate-200 p-8 space-y-6 shadow-sm">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div>
-                <h3 className="text-lg font-bold text-navy-900">Brand Profile & Expansion Mandate</h3>
-                <p className="text-xs text-slate-500">Your public and brokerage franchise credentials</p>
+                <h3 className="text-lg font-bold text-navy-900">Brand Profile & Corporate Credentials</h3>
+                <p className="text-xs text-slate-500">Legal entity, registered headquarters, and operational footprint</p>
               </div>
               <button
                 onClick={() => setIsEditingProfile(!isEditingProfile)}
-                className="text-xs font-semibold text-blue-600 hover:text-blue-800 border border-blue-200 px-3 py-1.5 rounded-lg"
+                className="text-xs font-semibold text-blue-600 hover:text-blue-800 border border-blue-200 px-3.5 py-1.5 rounded-lg flex items-center gap-1.5"
               >
+                <Edit3 className="w-3.5 h-3.5" />
                 {isEditingProfile ? "Cancel" : "Edit Profile"}
               </button>
             </div>
 
             {isEditingProfile ? (
-              <form onSubmit={handleSaveProfile} className="space-y-4 text-xs">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <form onSubmit={handleSaveProfile} className="space-y-5 text-xs">
+                {/* 1. Brand & Legal Entity */}
+                <div className="space-y-3">
+                  <h4 className="font-bold text-navy-900 text-sm border-b pb-1">1. Legal Entity & Brand Identity</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-slate-700 font-medium mb-1">Legal Business Name *</label>
+                      <input
+                        type="text"
+                        required
+                        value={profileForm.legalBusinessName}
+                        onChange={(e) => setProfileForm({ ...profileForm, legalBusinessName: e.target.value })}
+                        placeholder="e.g. Blue Tokai Coffee Roasters Pvt Ltd"
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 font-medium mb-1">Brand Name *</label>
+                      <input
+                        type="text"
+                        required
+                        value={profileForm.brandName}
+                        onChange={(e) => setProfileForm({ ...profileForm, brandName: e.target.value, businessName: e.target.value })}
+                        placeholder="e.g. Blue Tokai Coffee Roasters"
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 font-medium mb-1">Brand Logo URL</label>
+                      <input
+                        type="url"
+                        value={profileForm.logoUrl}
+                        onChange={(e) => setProfileForm({ ...profileForm, logoUrl: e.target.value })}
+                        placeholder="https://images.unsplash.com/..."
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Industry & Contacts */}
+                <div className="space-y-3">
+                  <h4 className="font-bold text-navy-900 text-sm border-b pb-1">2. Industry & Key Contact Details</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-slate-700 font-medium mb-1">Franchise Category *</label>
+                      <select
+                        value={profileForm.category}
+                        onChange={(e) => setProfileForm({ ...profileForm, category: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg bg-white"
+                      >
+                        <option value="Food & Beverage">Food & Beverage</option>
+                        <option value="Retail">Retail</option>
+                        <option value="Health & Wellness">Health & Wellness</option>
+                        <option value="Education">Education</option>
+                        <option value="Automotive">Automotive</option>
+                        <option value="Beauty & Salon">Beauty & Salon</option>
+                        <option value="Technology">Technology</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 font-medium mb-1">Specific Industry *</label>
+                      <input
+                        type="text"
+                        required
+                        value={profileForm.industry}
+                        onChange={(e) => setProfileForm({ ...profileForm, industry: e.target.value })}
+                        placeholder="e.g. Specialty Coffee & Artisanal Bakery"
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 font-medium mb-1">Established Year *</label>
+                      <input
+                        type="number"
+                        required
+                        min={1950}
+                        max={2030}
+                        value={profileForm.establishedYear}
+                        onChange={(e) => setProfileForm({ ...profileForm, establishedYear: parseInt(e.target.value) || 2021 })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block text-slate-700 font-medium mb-1">Managing Director / Founder *</label>
+                      <input
+                        type="text"
+                        required
+                        value={profileForm.founderName}
+                        onChange={(e) => setProfileForm({ ...profileForm, founderName: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 font-medium mb-1">Contact Person Name *</label>
+                      <input
+                        type="text"
+                        required
+                        value={profileForm.contactPerson}
+                        onChange={(e) => setProfileForm({ ...profileForm, contactPerson: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 font-medium mb-1">Contact Email *</label>
+                      <input
+                        type="email"
+                        required
+                        value={profileForm.contactEmail}
+                        onChange={(e) => setProfileForm({ ...profileForm, contactEmail: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 font-medium mb-1">Contact Phone *</label>
+                      <input
+                        type="tel"
+                        required
+                        value={profileForm.contactPhone}
+                        onChange={(e) => setProfileForm({ ...profileForm, contactPhone: e.target.value })}
+                        placeholder="+91 98765 43210"
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+                  </div>
+
                   <div>
-                    <label className="block text-slate-700 font-medium mb-1">Brand Name *</label>
+                    <label className="block text-slate-700 font-medium mb-1">Company Website URL</label>
+                    <input
+                      type="url"
+                      value={profileForm.websiteUrl}
+                      onChange={(e) => setProfileForm({ ...profileForm, websiteUrl: e.target.value })}
+                      placeholder="https://www.example.com"
+                      className="w-full px-3 py-2 border rounded-lg"
+                    />
+                  </div>
+                </div>
+
+                {/* 3. Registered Address & Operating Footprint */}
+                <div className="space-y-3">
+                  <h4 className="font-bold text-navy-900 text-sm border-b pb-1">3. Registered Address & Operating Footprint</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                    <div className="sm:col-span-2">
+                      <label className="block text-slate-700 font-medium mb-1">Street Address</label>
+                      <input
+                        type="text"
+                        value={profileForm.street}
+                        onChange={(e) => setProfileForm({ ...profileForm, street: e.target.value })}
+                        placeholder="Corporate Office Building, Bandra Kurla Complex"
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 font-medium mb-1">Headquarters City *</label>
+                      <input
+                        type="text"
+                        required
+                        value={profileForm.city}
+                        onChange={(e) => setProfileForm({ ...profileForm, city: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 font-medium mb-1">State & PIN</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={profileForm.state}
+                          onChange={(e) => setProfileForm({ ...profileForm, state: e.target.value })}
+                          placeholder="State"
+                          className="w-1/2 px-3 py-2 border rounded-lg"
+                        />
+                        <input
+                          type="text"
+                          value={profileForm.postalCode}
+                          onChange={(e) => setProfileForm({ ...profileForm, postalCode: e.target.value })}
+                          placeholder="PIN Code"
+                          className="w-1/2 px-3 py-2 border rounded-lg"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="sm:col-span-2">
+                      <label className="block text-slate-700 font-medium mb-1">Operating Locations (Comma-separated) *</label>
+                      <input
+                        type="text"
+                        required
+                        value={profileForm.operatingLocations}
+                        onChange={(e) => setProfileForm({ ...profileForm, operatingLocations: e.target.value })}
+                        placeholder="Mumbai, Pune, Bengaluru, Delhi NCR"
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 font-medium mb-1">Current Outlets Count *</label>
+                      <input
+                        type="number"
+                        required
+                        min={1}
+                        value={profileForm.numberOfOutlets}
+                        onChange={(e) => setProfileForm({ ...profileForm, numberOfOutlets: parseInt(e.target.value) || 1 })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 font-medium mb-1">Outlets Operational Summary</label>
                     <input
                       type="text"
-                      required
-                      value={profileForm.businessName}
-                      onChange={(e) => setProfileForm({ ...profileForm, businessName: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-700 font-medium mb-1">Founder / Managing Director *</label>
-                    <input
-                      type="text"
-                      required
-                      value={profileForm.founderName}
-                      onChange={(e) => setProfileForm({ ...profileForm, founderName: e.target.value })}
+                      value={profileForm.outletsSummary}
+                      onChange={(e) => setProfileForm({ ...profileForm, outletsSummary: e.target.value })}
+                      placeholder="e.g. 14 flagship company-owned stores, 8 profitable franchise partner outlets"
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* 4. Business Description & Economics */}
+                <div className="space-y-3">
+                  <h4 className="font-bold text-navy-900 text-sm border-b pb-1">4. Mandate, Description & Economics</h4>
                   <div>
-                    <label className="block text-slate-700 font-medium mb-1">Headquarters City *</label>
-                    <input
-                      type="text"
+                    <label className="block text-slate-700 font-medium mb-1">Company Description *</label>
+                    <textarea
+                      rows={3}
                       required
-                      value={profileForm.city}
-                      onChange={(e) => setProfileForm({ ...profileForm, city: e.target.value })}
+                      value={profileForm.description}
+                      onChange={(e) => setProfileForm({ ...profileForm, description: e.target.value })}
+                      placeholder="Detailed overview of brand heritage, customer demographics, and competitive moat..."
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
-                  <div>
-                    <label className="block text-slate-700 font-medium mb-1">Current Outlets *</label>
-                    <input
-                      type="number"
-                      required
-                      min={1}
-                      value={profileForm.numberOfOutlets}
-                      onChange={(e) => setProfileForm({ ...profileForm, numberOfOutlets: parseInt(e.target.value) || 1 })}
-                      className="w-full px-3 py-2 border rounded-lg"
-                    />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-slate-700 font-medium mb-1">Primary Franchise Model</label>
+                      <input
+                        type="text"
+                        value={profileForm.businessModel}
+                        onChange={(e) => setProfileForm({ ...profileForm, businessModel: e.target.value })}
+                        placeholder="FOFO, FOCO, Master Franchise"
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 font-medium mb-1">Min Estimated Capex (₹)</label>
+                      <input
+                        type="number"
+                        value={profileForm.estimatedInvestmentMin}
+                        onChange={(e) => setProfileForm({ ...profileForm, estimatedInvestmentMin: parseInt(e.target.value) || 0 })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 font-medium mb-1">Max Estimated Capex (₹)</label>
+                      <input
+                        type="number"
+                        value={profileForm.estimatedInvestmentMax}
+                        onChange={(e) => setProfileForm({ ...profileForm, estimatedInvestmentMax: parseInt(e.target.value) || 0 })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
                   </div>
+
                   <div>
-                    <label className="block text-slate-700 font-medium mb-1">Established Year *</label>
-                    <input
-                      type="number"
+                    <label className="block text-slate-700 font-medium mb-1">Expansion Goals & Target Geographies *</label>
+                    <textarea
+                      rows={2}
                       required
-                      value={profileForm.establishedYear}
-                      onChange={(e) =>
-                        setProfileForm({ ...profileForm, establishedYear: parseInt(e.target.value) || 2020 })
-                      }
+                      value={profileForm.expansionGoals}
+                      onChange={(e) => setProfileForm({ ...profileForm, expansionGoals: e.target.value })}
+                      placeholder="e.g. Target 25 tier-1 metro clusters across Western and Southern India by Q4..."
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-slate-700 font-medium mb-1">Business Description *</label>
-                  <textarea
-                    rows={3}
-                    required
-                    value={profileForm.description}
-                    onChange={(e) => setProfileForm({ ...profileForm, description: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 font-medium mb-1">Expansion Goals *</label>
-                  <textarea
-                    rows={2}
-                    required
-                    value={profileForm.expansionGoals}
-                    onChange={(e) => setProfileForm({ ...profileForm, expansionGoals: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
-                  />
-                </div>
-
-                <div className="pt-2">
-                  <button type="submit" className="bg-blue-600 text-white font-bold px-6 py-2 rounded-lg text-xs">
-                    Save Profile Changes
+                <div className="pt-3 flex items-center justify-end gap-3 border-t">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingProfile(false)}
+                    className="px-4 py-2 border rounded-lg text-slate-600 hover:bg-slate-50 font-semibold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={profileSubmitting}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2 rounded-lg transition-all flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {profileSubmitting ? "Saving Profile..." : "Save Company Profile"}
                   </button>
                 </div>
               </form>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 text-xs text-slate-600">
-                <div className="bg-slate-50 p-4 rounded-xl">
-                  <span className="text-slate-400 block font-medium">Founder</span>
-                  <span className="font-bold text-navy-900 text-sm mt-0.5 block">{businessData?.founderName}</span>
+              <div className="space-y-6">
+                {/* Profile Header Display */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                  {businessData?.logoUrl ? (
+                    <img
+                      src={businessData.logoUrl}
+                      alt={businessData.brandName || "Logo"}
+                      className="w-16 h-16 rounded-xl object-cover border border-slate-200"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xl">
+                      {(businessData?.brandName || businessData?.businessName || "B")[0]}
+                    </div>
+                  )}
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="text-xl font-bold text-navy-900">
+                        {businessData?.brandName || businessData?.businessName || "Brand Profile Pending"}
+                      </h4>
+                      <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded-full font-semibold">
+                        {businessData?.category || "Food & Beverage"}
+                      </span>
+                      <span className="text-xs bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full font-medium">
+                        Est. {businessData?.establishedYear || 2021}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      Legal Entity: <span className="font-semibold text-slate-700">{businessData?.legalBusinessName || businessData?.businessName || "Not configured"}</span>
+                      {businessData?.industry && ` • Industry: ${businessData.industry}`}
+                    </p>
+                  </div>
                 </div>
-                <div className="bg-slate-50 p-4 rounded-xl">
-                  <span className="text-slate-400 block font-medium">Headquarters</span>
-                  <span className="font-bold text-navy-900 text-sm mt-0.5 block">
-                    {businessData?.headquarters?.city}, {businessData?.headquarters?.country}
-                  </span>
+
+                {/* Grid of Verified Credentials */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-1">
+                    <span className="text-slate-400 font-medium">Founder & Leadership</span>
+                    <span className="font-bold text-navy-900 block">{businessData?.founderName || "N/A"}</span>
+                    <span className="text-slate-500 text-[11px] block">Contact: {businessData?.contactPerson || businessData?.founderName}</span>
+                  </div>
+
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-1">
+                    <span className="text-slate-400 font-medium">Corporate Headquarters</span>
+                    <span className="font-bold text-navy-900 block">
+                      {businessData?.headquarters?.city || businessData?.registeredAddress?.city || "Mumbai"},{" "}
+                      {businessData?.headquarters?.country || "India"}
+                    </span>
+                    <span className="text-slate-500 text-[11px] block">{businessData?.registeredAddress?.street || "Registered Office"}</span>
+                  </div>
+
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-1">
+                    <span className="text-slate-400 font-medium">Operating Footprint</span>
+                    <span className="font-bold text-navy-900 block">{businessData?.numberOfOutlets || 1} Outlets Operational</span>
+                    <span className="text-slate-500 text-[11px] block truncate">
+                      {Array.isArray(businessData?.operatingLocations) && businessData.operatingLocations.length > 0
+                        ? businessData.operatingLocations.join(", ")
+                        : (businessData?.currentLocations || []).join(", ") || "Metro regions"}
+                    </span>
+                  </div>
+
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-1">
+                    <span className="text-slate-400 font-medium">Contact Channels</span>
+                    <span className="font-bold text-navy-900 block truncate">{businessData?.contactEmail || user?.email}</span>
+                    <span className="text-slate-500 text-[11px] block">{businessData?.contactPhone || "+91 Contact on file"}</span>
+                  </div>
                 </div>
-                <div className="bg-slate-50 p-4 rounded-xl">
-                  <span className="text-slate-400 block font-medium">Operating Units</span>
-                  <span className="font-bold text-navy-900 text-sm mt-0.5 block">
-                    {businessData?.numberOfOutlets} Existing Outlets
-                  </span>
-                </div>
-                <div className="bg-slate-50 p-4 rounded-xl sm:col-span-2 lg:col-span-3">
-                  <span className="text-slate-400 block font-medium mb-1">Expansion Targets</span>
-                  <p className="text-slate-700 text-sm leading-relaxed">{businessData?.expansionGoals}</p>
+
+                {/* Description & Expansion Mandate */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-1.5">
+                    <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Brand Description</span>
+                    <p className="text-slate-700 leading-relaxed">{businessData?.description || "No company description provided yet."}</p>
+                    {businessData?.websiteUrl && (
+                      <a
+                        href={businessData.websiteUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-blue-600 hover:underline inline-flex items-center gap-1 font-semibold pt-1"
+                      >
+                        Visit Official Website <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
+
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-1.5">
+                    <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Expansion Strategy & Outlets</span>
+                    <p className="text-slate-700 leading-relaxed">{businessData?.expansionGoals || "Expansion targets not specified."}</p>
+                    {businessData?.outletsSummary && (
+                      <p className="text-slate-500 text-[11px] italic pt-1">Outlets breakdown: {businessData.outletsSummary}</p>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* TAB: FRANCHISE OPPORTUNITIES (MILESTONE 3) */}
+      {activeTab === "opportunities" && (
+        <div className="space-y-8">
+          {/* Opportunity Metrics Header */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+              <span className="text-xs font-medium text-slate-400 uppercase">Total Opportunities</span>
+              <div className="text-3xl font-extrabold text-navy-900">{opportunities.length}</div>
+              <p className="text-[11px] text-slate-500">Configured franchise models</p>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+              <span className="text-xs font-medium text-emerald-600 uppercase font-semibold">Published in Marketplace</span>
+              <div className="text-3xl font-extrabold text-emerald-600">
+                {opportunities.filter((o) => o.status === "PUBLISHED" || o.status === "published").length}
+              </div>
+              <p className="text-[11px] text-slate-500">Live for vetted investors</p>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+              <span className="text-xs font-medium text-amber-600 uppercase font-semibold">Under Compliance Review</span>
+              <div className="text-3xl font-extrabold text-amber-600">
+                {opportunities.filter((o) => ["SUBMITTED", "submitted", "UNDER_REVIEW", "under_review"].includes(o.status)).length}
+              </div>
+              <p className="text-[11px] text-slate-500">Pending brokerage approval</p>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+              <span className="text-xs font-medium text-slate-400 uppercase">Draft Opportunities</span>
+              <div className="text-3xl font-extrabold text-slate-700">
+                {opportunities.filter((o) => ["DRAFT", "draft"].includes(o.status)).length}
+              </div>
+              <p className="text-[11px] text-slate-500">Unsubmitted models</p>
+            </div>
+          </div>
+
+          {/* Action Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <div>
+              <h3 className="text-lg font-bold text-navy-900">Franchise Opportunities & Business Models</h3>
+              <p className="text-xs text-slate-500">
+                Define and publish franchise opportunities with complete capex breakdown, territory rights, and operational support.
+              </p>
+            </div>
+            <button
+              onClick={handleOpenCreateOppModal}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow-md transition-all flex items-center gap-1.5 whitespace-nowrap self-start sm:self-auto"
+            >
+              <Plus className="w-4 h-4" />
+              Create Franchise Opportunity
+            </button>
+          </div>
+
+          {/* Opportunities Card Grid */}
+          {opportunities.length === 0 ? (
+            <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center space-y-4 shadow-sm">
+              <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto">
+                <Briefcase className="w-8 h-8" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-base font-bold text-navy-900">No Franchise Opportunities Created Yet</h4>
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  Package your franchise format (FOFO, FOCO, Master) with required capital, royalty structure, and physical unit specifications to attract multi-unit investors.
+                </p>
+              </div>
+              <button
+                onClick={handleOpenCreateOppModal}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2.5 rounded-xl text-xs transition-all inline-flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Create First Opportunity
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {opportunities.map((opp) => {
+                const isDraftOrRejected = ["DRAFT", "draft", "REJECTED", "rejected"].includes(opp.status);
+                const isPublished = ["PUBLISHED", "published"].includes(opp.status);
+                const isUnderReview = ["SUBMITTED", "submitted", "UNDER_REVIEW", "under_review"].includes(opp.status);
+
+                return (
+                  <div
+                    key={opp._id}
+                    className="bg-white rounded-3xl border border-slate-200 p-6 space-y-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
+                  >
+                    <div className="space-y-4">
+                      {/* Top Header */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-blue-600 block">
+                            {opp.brandName} • {opp.category}
+                          </span>
+                          <h4 className="text-lg font-extrabold text-navy-900 mt-0.5">
+                            {opp.opportunityTitle || opp.tagline || "Franchise Opportunity"}
+                          </h4>
+                        </div>
+                        <StatusBadge status={opp.status} />
+                      </div>
+
+                      {/* Business Model Pill */}
+                      <div className="flex flex-wrap items-center gap-2 text-xs">
+                        <span className="bg-slate-100 text-slate-800 font-bold px-2.5 py-1 rounded-md">
+                          Model: {opp.businessModel || opp.franchiseModelType || "FOFO"}
+                        </span>
+                        {opp.expectedOpeningTimelineMonths && (
+                          <span className="bg-blue-50 text-blue-700 font-semibold px-2.5 py-1 rounded-md">
+                            ⏱️ Launch: ~{opp.expectedOpeningTimelineMonths} Months
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Rejection / Correction Banner */}
+                      {opp.rejectionReason && (
+                        <div className="bg-rose-50 border border-rose-200 text-rose-800 p-3 rounded-xl text-xs space-y-1">
+                          <span className="font-bold flex items-center gap-1.5">
+                            <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+                            Review Compliance Feedback:
+                          </span>
+                          <p>{opp.rejectionReason}</p>
+                        </div>
+                      )}
+
+                      {opp.correctionNotes && (
+                        <div className="bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-xl text-xs space-y-1">
+                          <span className="font-bold flex items-center gap-1.5">
+                            <Info className="w-3.5 h-3.5 text-amber-600" />
+                            Brokerage Corrections Requested:
+                          </span>
+                          <p>{opp.correctionNotes}</p>
+                        </div>
+                      )}
+
+                      {/* Summary */}
+                      <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
+                        {opp.summary || "Complete franchise package with verified unit margins and operating manuals."}
+                      </p>
+
+                      {/* Financial & Operational Grid */}
+                      <div className="grid grid-cols-2 gap-3 text-xs bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                        <div>
+                          <span className="text-slate-400 block text-[11px] font-medium">Total Investment</span>
+                          <span className="font-bold text-navy-900 block mt-0.5">
+                            ₹{((opp.totalInvestmentMin || 0) / 100000).toFixed(1)}L - ₹{((opp.totalInvestmentMax || 0) / 100000).toFixed(1)}L
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block text-[11px] font-medium">Franchise Fee</span>
+                          <span className="font-bold text-navy-900 block mt-0.5">
+                            ₹{((opp.initialFranchiseFee || 0) / 100000).toFixed(1)}L
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block text-[11px] font-medium">Royalty Structure</span>
+                          <span className="font-bold text-navy-900 block mt-0.5">
+                            {opp.royaltyPercentage}% Gross
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block text-[11px] font-medium">Space Requirement</span>
+                          <span className="font-bold text-navy-900 block mt-0.5">
+                            {opp.commercialSpaceMinSqFt} - {opp.commercialSpaceMaxSqFt} sq ft
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Territories / Locations */}
+                      <div className="text-xs text-slate-500 space-y-1">
+                        <span className="font-medium text-slate-700 block">Available Territories:</span>
+                        <p className="text-slate-600 truncate">
+                          {Array.isArray(opp.availableTerritories) && opp.availableTerritories.length > 0
+                            ? opp.availableTerritories.join(", ")
+                            : Array.isArray(opp.targetLocations) && opp.targetLocations.length > 0
+                            ? opp.targetLocations.join(", ")
+                            : "Pan-India Expansion"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Bottom Actions */}
+                    <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleOpenEditOppModal(opp)}
+                          className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          Edit Opportunity
+                        </button>
+                        {isPublished && (
+                          <Link
+                            href={`/franchises/${opp._id}`}
+                            className="text-blue-600 hover:text-blue-800 font-bold text-xs inline-flex items-center gap-1"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            Marketplace View
+                          </Link>
+                        )}
+                      </div>
+
+                      {isDraftOrRejected && (
+                        <button
+                          onClick={() => handleSubmitOpportunityForReview(opp._id)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-1.5 rounded-lg text-xs shadow-sm transition-all flex items-center gap-1.5"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          Submit for Review
+                        </button>
+                      )}
+
+                      {isUnderReview && (
+                        <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200">
+                          ⏳ Under Compliance Review
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -1393,6 +2297,391 @@ export default function BusinessDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Franchise Opportunity Create / Edit Modal (Milestone 3) */}
+      {isCreateOppModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-3xl w-full p-8 shadow-2xl border border-slate-200 my-8 space-y-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-xl font-bold text-navy-900">
+                  {isEditingOpp ? "Edit Franchise Opportunity" : "Create New Franchise Opportunity"}
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Package investment model, capital breakdown, store dimensions, and royalty structure.
+                </p>
+              </div>
+              <button
+                onClick={() => setIsCreateOppModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 text-2xl font-bold leading-none"
+              >
+                &times;
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveOpportunity} className="space-y-6 text-xs">
+              {/* 1. Basic Opportunity Identity */}
+              <div className="space-y-3">
+                <h4 className="font-bold text-navy-900 text-sm border-b pb-1">1. Opportunity Overview & Model</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="sm:col-span-2">
+                    <label className="block text-slate-700 font-medium mb-1">Opportunity Title *</label>
+                    <input
+                      type="text"
+                      required
+                      value={oppForm.opportunityTitle}
+                      onChange={(e) => setOppForm({ ...oppForm, opportunityTitle: e.target.value })}
+                      placeholder="e.g. Master Franchise & Multi-Unit Cafes (Tier-1 Metros)"
+                      className="w-full px-3 py-2 border rounded-lg text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-700 font-medium mb-1">Brand Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={oppForm.brandName}
+                      onChange={(e) => setOppForm({ ...oppForm, brandName: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-700 font-medium mb-1">Franchise Model Type *</label>
+                    <select
+                      value={oppForm.businessModel}
+                      onChange={(e) => setOppForm({ ...oppForm, businessModel: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg text-xs bg-white"
+                    >
+                      <option value="FOFO">FOFO (Franchise Owned, Franchise Operated)</option>
+                      <option value="FOCO">FOCO (Franchise Owned, Company Operated)</option>
+                      <option value="COCO">COCO (Company Owned, Company Operated)</option>
+                      <option value="Master Franchise">Master Franchise / Regional Developer</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-700 font-medium mb-1">Category *</label>
+                    <select
+                      value={oppForm.category}
+                      onChange={(e) => setOppForm({ ...oppForm, category: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg text-xs bg-white"
+                    >
+                      <option value="Food & Beverage">Food & Beverage</option>
+                      <option value="Retail">Retail</option>
+                      <option value="Health & Wellness">Health & Wellness</option>
+                      <option value="Education">Education</option>
+                      <option value="Automotive">Automotive</option>
+                      <option value="Beauty & Salon">Beauty & Salon</option>
+                      <option value="Technology">Technology</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-700 font-medium mb-1">Industry Segment *</label>
+                    <input
+                      type="text"
+                      required
+                      value={oppForm.industry}
+                      onChange={(e) => setOppForm({ ...oppForm, industry: e.target.value })}
+                      placeholder="e.g. Specialty Coffee / QSR"
+                      className="w-full px-3 py-2 border rounded-lg text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Capital Architecture & Fees */}
+              <div className="space-y-3">
+                <h4 className="font-bold text-navy-900 text-sm border-b pb-1">
+                  2. Financial Architecture (stored in integer paise, entered in INR ₹)
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-slate-700 font-medium mb-1">
+                      Min Total Investment (₹) *
+                      <span className="text-slate-400 font-normal ml-1">
+                        (₹{(oppForm.totalInvestmentMin / 100000).toFixed(1)} Lakhs)
+                      </span>
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min={10000}
+                      step={10000}
+                      value={oppForm.totalInvestmentMin}
+                      onChange={(e) => setOppForm({ ...oppForm, totalInvestmentMin: parseInt(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 border rounded-lg text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-700 font-medium mb-1">
+                      Max Total Investment (₹) *
+                      <span className="text-slate-400 font-normal ml-1">
+                        (₹{(oppForm.totalInvestmentMax / 100000).toFixed(1)} Lakhs)
+                      </span>
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min={10000}
+                      step={10000}
+                      value={oppForm.totalInvestmentMax}
+                      onChange={(e) => setOppForm({ ...oppForm, totalInvestmentMax: parseInt(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 border rounded-lg text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-slate-700 font-medium mb-1">Initial Franchise Fee (₹) *</label>
+                    <input
+                      type="number"
+                      required
+                      value={oppForm.initialFranchiseFee}
+                      onChange={(e) => setOppForm({ ...oppForm, initialFranchiseFee: parseInt(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 border rounded-lg text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-700 font-medium mb-1">Setup / Interior Costs (₹)</label>
+                    <input
+                      type="number"
+                      value={oppForm.setupCosts}
+                      onChange={(e) => setOppForm({ ...oppForm, setupCosts: parseInt(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 border rounded-lg text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-700 font-medium mb-1">Equipment Costs (₹)</label>
+                    <input
+                      type="number"
+                      value={oppForm.equipmentCosts}
+                      onChange={(e) => setOppForm({ ...oppForm, equipmentCosts: parseInt(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 border rounded-lg text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-700 font-medium mb-1">Working Capital (₹)</label>
+                    <input
+                      type="number"
+                      value={oppForm.workingCapitalEstimate}
+                      onChange={(e) => setOppForm({ ...oppForm, workingCapitalEstimate: parseInt(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 border rounded-lg text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-slate-700 font-medium mb-1">Royalty Percentage (%) *</label>
+                    <input
+                      type="number"
+                      required
+                      min={0}
+                      max={100}
+                      step={0.5}
+                      value={oppForm.royaltyPercentage}
+                      onChange={(e) => setOppForm({ ...oppForm, royaltyPercentage: parseFloat(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 border rounded-lg text-xs"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-slate-700 font-medium mb-1">Royalty Structure Description</label>
+                    <input
+                      type="text"
+                      value={oppForm.royaltyDescription}
+                      onChange={(e) => setOppForm({ ...oppForm, royaltyDescription: e.target.value })}
+                      placeholder="e.g. 6% monthly gross revenue royalty + 2% national marketing fund"
+                      className="w-full px-3 py-2 border rounded-lg text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Physical Space & Operations */}
+              <div className="space-y-3">
+                <h4 className="font-bold text-navy-900 text-sm border-b pb-1">3. Space, Staffing & Launch Timeline</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-slate-700 font-medium mb-1">Min Carpet Area (sq ft) *</label>
+                    <input
+                      type="number"
+                      required
+                      min={50}
+                      value={oppForm.commercialSpaceMinSqFt}
+                      onChange={(e) => setOppForm({ ...oppForm, commercialSpaceMinSqFt: parseInt(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 border rounded-lg text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-700 font-medium mb-1">Max Carpet Area (sq ft) *</label>
+                    <input
+                      type="number"
+                      required
+                      min={50}
+                      value={oppForm.commercialSpaceMaxSqFt}
+                      onChange={(e) => setOppForm({ ...oppForm, commercialSpaceMaxSqFt: parseInt(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 border rounded-lg text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-700 font-medium mb-1">Staff Required (Min - Max)</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        min={1}
+                        value={oppForm.staffRequiredMin}
+                        onChange={(e) => setOppForm({ ...oppForm, staffRequiredMin: parseInt(e.target.value) || 1 })}
+                        className="w-1/2 px-2 py-2 border rounded-lg text-xs"
+                      />
+                      <input
+                        type="number"
+                        min={1}
+                        value={oppForm.staffRequiredMax}
+                        onChange={(e) => setOppForm({ ...oppForm, staffRequiredMax: parseInt(e.target.value) || 1 })}
+                        className="w-1/2 px-2 py-2 border rounded-lg text-xs"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-slate-700 font-medium mb-1">Launch Timeline (Months) *</label>
+                    <input
+                      type="number"
+                      required
+                      min={1}
+                      max={24}
+                      value={oppForm.expectedOpeningTimelineMonths}
+                      onChange={(e) => setOppForm({ ...oppForm, expectedOpeningTimelineMonths: parseInt(e.target.value) || 2 })}
+                      className="w-full px-3 py-2 border rounded-lg text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-slate-700 font-medium mb-1">Target Locations (Comma-separated) *</label>
+                    <input
+                      type="text"
+                      required
+                      value={oppForm.targetLocations}
+                      onChange={(e) => setOppForm({ ...oppForm, targetLocations: e.target.value })}
+                      placeholder="Mumbai, Pune, Bengaluru, Hyderabad"
+                      className="w-full px-3 py-2 border rounded-lg text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-700 font-medium mb-1">Available Territories</label>
+                    <input
+                      type="text"
+                      value={oppForm.availableTerritories}
+                      onChange={(e) => setOppForm({ ...oppForm, availableTerritories: e.target.value })}
+                      placeholder="Western Region, Delhi NCR, South Zone"
+                      className="w-full px-3 py-2 border rounded-lg text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. Training, Profile & Summary */}
+              <div className="space-y-3">
+                <h4 className="font-bold text-navy-900 text-sm border-b pb-1">4. Training, Support & Franchisee Criteria</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-slate-700 font-medium mb-1">Training Duration (Weeks) *</label>
+                    <input
+                      type="number"
+                      required
+                      min={1}
+                      value={oppForm.trainingDurationWeeks}
+                      onChange={(e) => setOppForm({ ...oppForm, trainingDurationWeeks: parseInt(e.target.value) || 2 })}
+                      className="w-full px-3 py-2 border rounded-lg text-xs"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-slate-700 font-medium mb-1">Training & Operational Support Details</label>
+                    <input
+                      type="text"
+                      value={oppForm.trainingSupportDetails}
+                      onChange={(e) => setOppForm({ ...oppForm, trainingSupportDetails: e.target.value })}
+                      placeholder="e.g. 2-week barista & manager certification, store launch team on-site for 10 days"
+                      className="w-full px-3 py-2 border rounded-lg text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-medium mb-1">Ideal Franchisee Profile / Criteria *</label>
+                  <textarea
+                    rows={2}
+                    required
+                    value={oppForm.idealFranchiseeProfile}
+                    onChange={(e) => setOppForm({ ...oppForm, idealFranchiseeProfile: e.target.value })}
+                    placeholder="e.g. Passionate entrepreneur with hospitality experience, liquid net worth of ₹50L+..."
+                    className="w-full px-3 py-2 border rounded-lg text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-medium mb-1">Executive Summary *</label>
+                  <textarea
+                    rows={2}
+                    required
+                    value={oppForm.summary}
+                    onChange={(e) => setOppForm({ ...oppForm, summary: e.target.value })}
+                    placeholder="Short compelling summary highlighting unit ROI, store payback, and operational moat..."
+                    className="w-full px-3 py-2 border rounded-lg text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-medium mb-1">Brand Story & Heritage</label>
+                  <textarea
+                    rows={2}
+                    value={oppForm.brandStory}
+                    onChange={(e) => setOppForm({ ...oppForm, brandStory: e.target.value })}
+                    placeholder="Story of the brand origins, customer loyalty, and market leadership..."
+                    className="w-full px-3 py-2 border rounded-lg text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Submission CTA */}
+              <div className="pt-4 border-t flex items-center justify-between">
+                <div className="text-[11px] text-slate-500">
+                  <span>New opportunities will be created in </span>
+                  <span className="font-semibold text-slate-800">DRAFT</span>
+                  <span> status. You can review before submitting.</span>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateOppModalOpen(false)}
+                    className="px-4 py-2 border rounded-lg text-slate-600 hover:bg-slate-50 font-semibold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={oppSubmitting}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2 rounded-lg transition-all flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {oppSubmitting ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Saving Opportunity...
+                      </>
+                    ) : isEditingOpp ? (
+                      "Save Opportunity Changes"
+                    ) : (
+                      "Create Franchise Opportunity"
+                    )}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

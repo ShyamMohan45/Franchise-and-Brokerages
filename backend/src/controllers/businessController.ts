@@ -17,6 +17,26 @@ function generateSlug(name: string): string {
   );
 }
 
+export function calculateProfileCompletion(data: any): number {
+  if (!data) return 0;
+  const criteria = [
+    Boolean(data.businessName || data.brandName),
+    Boolean(data.legalBusinessName),
+    Boolean(data.category || data.industry),
+    Boolean(data.founderName || data.contactPerson),
+    Boolean(data.contactEmail && data.contactPhone),
+    Boolean(data.establishedYear),
+    Boolean(data.headquarters?.city || data.registeredAddress?.city),
+    Boolean(data.description && data.description.length >= 15),
+    Boolean(data.businessModel),
+    Boolean(data.numberOfOutlets && data.numberOfOutlets > 0),
+    Boolean(data.logoUrl),
+    Boolean(data.websiteUrl),
+  ];
+  const completed = criteria.filter(Boolean).length;
+  return Math.round((completed / criteria.length) * 100);
+}
+
 export async function getMyBusiness(req: Request, res: Response): Promise<any> {
   const profile = await BusinessProfile.findOne({ user: req.user!._id });
   if (!profile) {
@@ -27,9 +47,16 @@ export async function getMyBusiness(req: Request, res: Response): Promise<any> {
     createdAt: -1,
   });
 
+  const completion = calculateProfileCompletion(profile);
+  if (profile.profileCompletion !== completion) {
+    profile.profileCompletion = completion;
+    await profile.save();
+  }
+
   return sendSuccess(res, {
     business: profile,
     assessment,
+    profileCompletion: completion,
   });
 }
 
@@ -37,13 +64,21 @@ export async function createOrUpdateBusiness(req: Request, res: Response): Promi
   const userId = req.user!._id;
   let profile = await BusinessProfile.findOne({ user: userId });
 
+  const completion = calculateProfileCompletion({
+    ...(profile ? profile.toObject() : {}),
+    ...req.body,
+  });
+
   if (!profile) {
-    const slug = generateSlug(req.body.businessName);
+    const slug = generateSlug(req.body.brandName || req.body.businessName);
     profile = await BusinessProfile.create({
       ...req.body,
+      brandName: req.body.brandName || req.body.businessName,
+      legalBusinessName: req.body.legalBusinessName || req.body.businessName,
       user: userId,
       slug,
-      approvalStatus: 'under_review',
+      approvalStatus: req.body.approvalStatus || 'DRAFT',
+      profileCompletion: completion,
     });
 
     await AuditLog.create({
@@ -53,16 +88,31 @@ export async function createOrUpdateBusiness(req: Request, res: Response): Promi
       action: 'BUSINESS_CREATED',
       entityType: 'BusinessProfile',
       entityId: profile._id.toString(),
-      details: { businessName: profile.businessName },
+      details: { businessName: profile.businessName, completion },
     });
 
-    return sendSuccess(res, profile, 'Business profile submitted for review', 201);
+    return sendSuccess(res, profile, 'Brand business profile created successfully', 201);
   } else {
-    Object.assign(profile, req.body);
-    // If it was rejected or draft, put back under review upon resubmission
-    if (profile.approvalStatus === 'draft' || profile.approvalStatus === 'revision_requested') {
-      profile.approvalStatus = 'under_review';
+    // Check ownership authorization
+    if (profile.user.toString() !== userId.toString() && req.user!.role !== 'admin' && req.user!.role !== 'super_admin') {
+      return sendError(res, 'Unauthorized to edit this brand profile', 403);
     }
+
+    if (req.body.brandName && !req.body.businessName) {
+      req.body.businessName = req.body.brandName;
+    }
+    if (req.body.businessName && !req.body.brandName) {
+      req.body.brandName = req.body.businessName;
+    }
+
+    Object.assign(profile, req.body);
+    profile.profileCompletion = completion;
+
+    // If it was rejected or draft and resubmitted with full info, move to UNDER_REVIEW
+    if (req.body.submitForReview) {
+      profile.approvalStatus = 'UNDER_REVIEW';
+    }
+
     await profile.save();
 
     await AuditLog.create({
@@ -72,10 +122,34 @@ export async function createOrUpdateBusiness(req: Request, res: Response): Promi
       action: 'BUSINESS_UPDATED',
       entityType: 'BusinessProfile',
       entityId: profile._id.toString(),
+      details: { completion, approvalStatus: profile.approvalStatus },
     });
 
-    return sendSuccess(res, profile, 'Business profile updated successfully');
+    return sendSuccess(res, profile, 'Brand profile updated successfully');
   }
+}
+
+export async function submitBusinessForReview(req: Request, res: Response): Promise<any> {
+  const userId = req.user!._id;
+  const profile = await BusinessProfile.findOne({ user: userId });
+
+  if (!profile) {
+    return sendError(res, 'Please create your brand profile first', 404);
+  }
+
+  profile.approvalStatus = 'UNDER_REVIEW';
+  await profile.save();
+
+  await AuditLog.create({
+    actor: userId,
+    actorRole: req.user!.role,
+    actorEmail: req.user!.email,
+    action: 'BUSINESS_SUBMITTED_FOR_REVIEW',
+    entityType: 'BusinessProfile',
+    entityId: profile._id.toString(),
+  });
+
+  return sendSuccess(res, profile, 'Brand profile submitted for administrator approval');
 }
 
 export async function submitReadinessAssessment(req: Request, res: Response): Promise<any> {

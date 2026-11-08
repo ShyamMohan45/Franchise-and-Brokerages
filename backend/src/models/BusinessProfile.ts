@@ -1,24 +1,48 @@
 import { Schema, model, Document, Types } from 'mongoose';
 
-export type BusinessApprovalStatus = 'draft' | 'under_review' | 'approved' | 'rejected' | 'revision_requested';
+export type BusinessApprovalStatus =
+  | 'DRAFT'
+  | 'SUBMITTED'
+  | 'UNDER_REVIEW'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'PUBLISHED'
+  | 'draft'
+  | 'under_review'
+  | 'approved'
+  | 'rejected'
+  | 'revision_requested';
 
 export interface IBusinessProfile extends Document {
   user: Types.ObjectId;
   businessName: string;
+  legalBusinessName?: string;
+  brandName?: string;
   slug: string;
+  industry?: string;
   category: string;
   founderName: string;
+  contactPerson?: string;
   contactEmail: string;
   contactPhone: string;
   websiteUrl?: string;
   establishedYear: number;
+  registeredAddress?: {
+    street?: string;
+    city: string;
+    state?: string;
+    postalCode?: string;
+    country: string;
+  };
   headquarters: {
     city: string;
     state?: string;
     country: string;
   };
   currentLocations: string[];
+  operatingLocations?: string[];
   numberOfOutlets: number;
+  outletsSummary?: string;
   description: string;
   businessModel: string;
   expansionGoals: string;
@@ -34,6 +58,7 @@ export interface IBusinessProfile extends Document {
   reviewedBy?: Types.ObjectId;
   reviewedAt?: Date;
   readinessScore?: number;
+  profileCompletion?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -52,6 +77,14 @@ const businessProfileSchema = new Schema<IBusinessProfile>(
       required: true,
       trim: true,
     },
+    legalBusinessName: {
+      type: String,
+      trim: true,
+    },
+    brandName: {
+      type: String,
+      trim: true,
+    },
     slug: {
       type: String,
       required: true,
@@ -59,6 +92,10 @@ const businessProfileSchema = new Schema<IBusinessProfile>(
       lowercase: true,
       trim: true,
       index: true,
+    },
+    industry: {
+      type: String,
+      trim: true,
     },
     category: {
       type: String,
@@ -69,6 +106,10 @@ const businessProfileSchema = new Schema<IBusinessProfile>(
     founderName: {
       type: String,
       required: true,
+      trim: true,
+    },
+    contactPerson: {
+      type: String,
       trim: true,
     },
     contactEmail: {
@@ -90,16 +131,27 @@ const businessProfileSchema = new Schema<IBusinessProfile>(
       type: Number,
       required: true,
     },
+    registeredAddress: {
+      street: { type: String },
+      city: { type: String },
+      state: { type: String },
+      postalCode: { type: String },
+      country: { type: String, default: 'India' },
+    },
     headquarters: {
       city: { type: String, required: true },
       state: { type: String },
       country: { type: String, required: true, default: 'India' },
     },
     currentLocations: [{ type: String }],
+    operatingLocations: [{ type: String }],
     numberOfOutlets: {
       type: Number,
       required: true,
       default: 1,
+    },
+    outletsSummary: {
+      type: String,
     },
     description: {
       type: String,
@@ -135,8 +187,20 @@ const businessProfileSchema = new Schema<IBusinessProfile>(
     images: [{ type: String }],
     approvalStatus: {
       type: String,
-      enum: ['draft', 'under_review', 'approved', 'rejected', 'revision_requested'],
-      default: 'draft',
+      enum: [
+        'DRAFT',
+        'SUBMITTED',
+        'UNDER_REVIEW',
+        'APPROVED',
+        'REJECTED',
+        'PUBLISHED',
+        'draft',
+        'under_review',
+        'approved',
+        'rejected',
+        'revision_requested',
+      ],
+      default: 'DRAFT',
       index: true,
     },
     adminReviewNotes: {
@@ -150,6 +214,10 @@ const businessProfileSchema = new Schema<IBusinessProfile>(
       type: Date,
     },
     readinessScore: {
+      type: Number,
+      default: 0,
+    },
+    profileCompletion: {
       type: Number,
       default: 0,
     },
