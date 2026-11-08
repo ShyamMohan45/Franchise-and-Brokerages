@@ -17,6 +17,7 @@ export interface IMeeting extends Document {
   relatedFranchise?: Types.ObjectId;
   relatedApplication?: Types.ObjectId;
   relatedDeal?: Types.ObjectId;
+  relatedLead?: Types.ObjectId;
   scheduledStartTime: Date;
   scheduledEndTime: Date;
   status: MeetingStatus;
@@ -73,6 +74,10 @@ const meetingSchema = new Schema<IMeeting>(
     relatedDeal: {
       type: Schema.Types.ObjectId,
       ref: 'BrokerageDeal',
+    },
+    relatedLead: {
+      type: Schema.Types.ObjectId,
+      ref: 'Lead',
     },
     scheduledStartTime: {
       type: Date,

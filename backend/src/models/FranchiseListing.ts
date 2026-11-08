@@ -86,6 +86,7 @@ export interface IFranchiseListing extends Document {
   isFeatured: boolean;
   viewsCount: number;
   enquiriesCount: number;
+  inquiriesCount?: number;
   rejectionReason?: string;
   correctionNotes?: string;
   reviewedBy?: Types.ObjectId;
@@ -307,6 +308,10 @@ const franchiseListingSchema = new Schema<IFranchiseListing>(
       default: 0,
     },
     enquiriesCount: {
+      type: Number,
+      default: 0,
+    },
+    inquiriesCount: {
       type: Number,
       default: 0,
     },
