@@ -33,6 +33,11 @@ import {
   Activity,
   ArrowUpRight,
   RefreshCw,
+  Download,
+  CreditCard,
+  FileSpreadsheet,
+  Bell,
+  Check,
 } from "lucide-react";
 import { useAuth } from "@/providers/AuthProvider";
 import { api } from "@/lib/api";
@@ -54,7 +59,7 @@ const STAGES = [
 
 export default function BrokerageDashboardPage() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<"leads" | "pipeline" | "tasks" | "meetings" | "analytics">("leads");
+  const [activeTab, setActiveTab] = useState<"leads" | "pipeline" | "tasks" | "meetings" | "analytics" | "commissions" | "reminders">("leads");
 
   // Core Data States
   const [metrics, setMetrics] = useState<any>(null);
@@ -63,6 +68,21 @@ export default function BrokerageDashboardPage() {
   const [pipelineDeals, setPipelineDeals] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [meetings, setMeetings] = useState<any[]>([]);
+  const [agreements, setAgreements] = useState<any[]>([]);
+  const [reminders, setReminders] = useState<any>(null);
+  const [notifPreferences, setNotifPreferences] = useState<any>(null);
+  const [analyticsOverview, setAnalyticsOverview] = useState<any>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [statementModal, setStatementModal] = useState<any | null>(null);
+  const [paymentModalAgreement, setPaymentModalAgreement] = useState<any | null>(null);
+  const [paymentForm, setPaymentForm] = useState({
+    amount: 100000,
+    paymentReference: "",
+    paymentMethod: "RTGS",
+    payerName: "",
+    payerRole: "brand",
+    notes: "",
+  });
   const [loading, setLoading] = useState(true);
 
   // Filter & Search states
@@ -117,13 +137,28 @@ export default function BrokerageDashboardPage() {
   async function loadData() {
     try {
       setLoading(true);
-      const [metricsRes, leadsRes, dealsRes, tasksRes, meetingsRes, enqRes] = await Promise.all([
+      const [
+        metricsRes,
+        leadsRes,
+        dealsRes,
+        tasksRes,
+        meetingsRes,
+        enqRes,
+        commsRes,
+        remRes,
+        prefRes,
+        analyticsRes,
+      ] = await Promise.all([
         api.get<any>("/crm/metrics"),
         api.get<any>("/crm/leads"),
         api.get<any>("/crm/pipeline"),
         api.get<any>("/crm/tasks"),
         api.get<any>("/crm/meetings"),
         api.get<any>("/applications/broker"),
+        api.get<any>("/commissions/agreements").catch(() => ({ success: false, data: [] })),
+        api.get<any>("/notifications/reminders").catch(() => ({ success: false, data: null })),
+        api.get<any>("/notifications/preferences").catch(() => ({ success: false, data: null })),
+        api.get<any>("/analytics/dashboard").catch(() => ({ success: false, data: null })),
       ]);
 
       if (metricsRes.success && metricsRes.data) setMetrics(metricsRes.data);
@@ -142,12 +177,101 @@ export default function BrokerageDashboardPage() {
       if (enqRes.success && enqRes.data) {
         setEnquiries(Array.isArray(enqRes.data) ? enqRes.data : []);
       }
+      if (commsRes.success && commsRes.data) {
+        setAgreements(Array.isArray(commsRes.data) ? commsRes.data : commsRes.data.data || []);
+      }
+      if (remRes.success && remRes.data) {
+        setReminders(remRes.data);
+      }
+      if (prefRes.success && prefRes.data) {
+        setNotifPreferences(prefRes.data);
+      }
+      if (analyticsRes.success && analyticsRes.data) {
+        setAnalyticsOverview(analyticsRes.data);
+      }
     } catch (err) {
       console.error("CRM dashboard load error", err);
     } finally {
       setLoading(false);
     }
   }
+
+  const handleDownloadCsv = async (endpoint: string, filename: string) => {
+    try {
+      setIsExporting(true);
+      const token = typeof window !== "undefined" ? localStorage.getItem("fb_auth_token") : null;
+      const res = await fetch(`http://localhost:5000/api/v1${endpoint}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) throw new Error("Failed to export CSV report");
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      showFeedback("success", `Downloaded ${filename}`);
+    } catch (err: any) {
+      showFeedback("error", err.message || "Failed to download CSV");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleRecordPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!paymentModalAgreement) return;
+    try {
+      setIsUpdating(true);
+      const res = await api.post<any>("/commissions/payments", {
+        agreementId: paymentModalAgreement._id,
+        amount: Number(paymentForm.amount),
+        paymentReference: paymentForm.paymentReference,
+        paymentMethod: paymentForm.paymentMethod,
+        payerName: paymentForm.payerName || user?.fullName || "Brand Representative",
+        payerRole: paymentForm.payerRole,
+        notes: paymentForm.notes,
+      });
+      if (res.success) {
+        showFeedback("success", `Payment ₹${paymentForm.amount} recorded successfully!`);
+        setPaymentModalAgreement(null);
+        await loadData();
+      }
+    } catch (err: any) {
+      showFeedback("error", err.message || "Failed to record payment");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleViewStatement = async (agreementId: string) => {
+    try {
+      setIsUpdating(true);
+      const res = await api.get<any>(`/commissions/agreements/${agreementId}/statement`);
+      if (res.success && res.data) {
+        setStatementModal(res.data);
+      }
+    } catch (err: any) {
+      showFeedback("error", err.message || "Failed to load commission statement");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleTogglePreference = async (key: string, value: boolean) => {
+    try {
+      const updated = { ...notifPreferences, [key]: value };
+      setNotifPreferences(updated);
+      await api.put<any>("/notifications/preferences", { [key]: value });
+      showFeedback("success", "Preferences saved.");
+    } catch (err: any) {
+      showFeedback("error", "Failed to update preference");
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -457,7 +581,13 @@ export default function BrokerageDashboardPage() {
             { id: "pipeline", label: "10-Stage Deal Pipeline", count: pipelineDeals.length },
             { id: "tasks", label: "Follow-Up Tasks", count: tasks.length },
             { id: "meetings", label: "Scheduled Meetings", count: meetings.length },
-            { id: "analytics", label: "Broker Performance", count: metrics?.brokerPerformance?.length || 0 },
+            { id: "analytics", label: "Operations & Analytics", count: metrics?.brokerPerformance?.length || 0 },
+            { id: "commissions", label: "Commission Agreements", count: agreements.length },
+            {
+              id: "reminders",
+              label: "Reminders & Alerts",
+              count: (reminders?.upcomingFollowUps?.length || 0) + (reminders?.tasks?.length || 0),
+            },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -884,56 +1014,421 @@ export default function BrokerageDashboardPage() {
           </div>
         )}
 
-        {/* TAB 5: BROKER PERFORMANCE ANALYTICS */}
+        {/* TAB 5: BUSINESS OPERATIONS ANALYTICS & CSV REPORTING */}
         {activeTab === "analytics" && (
-          <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 space-y-6 shadow-sm">
-            <div className="pb-4 border-b border-slate-100">
-              <h3 className="text-xl font-extrabold text-navy-900">Broker Performance & Leaderboard</h3>
-              <p className="text-xs text-slate-500">
-                Institutional volume won, qualified investor desk velocity, and commissions earned per advisor.
-              </p>
+          <div className="space-y-6 animate-fade-in">
+            <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 space-y-6 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                <div>
+                  <h3 className="text-xl font-extrabold text-navy-900">Operations & Financial Analytics</h3>
+                  <p className="text-xs text-slate-500">
+                    Live database-backed conversion metrics, deal volume closed, and brokerage revenue performance.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => handleDownloadCsv("/reports/deals/csv", `franchisebridge_deals_${Date.now()}.csv`)}
+                    disabled={isExporting}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all disabled:opacity-50"
+                  >
+                    <Download className="w-3.5 h-3.5 text-blue-400" />
+                    <span>{isExporting ? "Exporting..." : "Export Deals CSV"}</span>
+                  </button>
+                  <button
+                    onClick={() => handleDownloadCsv("/reports/commissions/csv", `franchisebridge_commissions_${Date.now()}.csv`)}
+                    disabled={isExporting}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-all disabled:opacity-50"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-200" />
+                    <span>{isExporting ? "Exporting..." : "Export Commission CSV"}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 5 Core Operations KPI Cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Conversion Rate</span>
+                  <div className="text-2xl font-black text-indigo-700">
+                    {analyticsOverview?.summary?.conversionRate ?? 0}%
+                  </div>
+                  <span className="text-[10px] text-indigo-600 font-semibold">Won vs Closed</span>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Avg Deal Size</span>
+                  <div className="text-2xl font-black text-navy-900">
+                    {formatCurrency(analyticsOverview?.summary?.averageDealValue || 0)}
+                  </div>
+                  <span className="text-[10px] text-slate-500">Per Mandate</span>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Deal Volume</span>
+                  <div className="text-2xl font-black text-blue-600">
+                    {formatCurrency(analyticsOverview?.summary?.totalDealValue || 0)}
+                  </div>
+                  <span className="text-[10px] text-blue-600 font-semibold">Pipeline Gross Value</span>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Expected Commission</span>
+                  <div className="text-2xl font-black text-amber-600">
+                    {formatCurrency(analyticsOverview?.summary?.expectedCommission || 0)}
+                  </div>
+                  <span className="text-[10px] text-amber-600 font-semibold">Contracted Fee</span>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Verified Revenue</span>
+                  <div className="text-2xl font-black text-emerald-600">
+                    {formatCurrency(analyticsOverview?.summary?.receivedRevenue || 0)}
+                  </div>
+                  <span className="text-[10px] text-emerald-600 font-semibold">Realized Bank Inflows</span>
+                </div>
+              </div>
+
+              {/* Monthly Trend & Industry Breakdown */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="bg-slate-50/50 p-5 rounded-2xl border border-slate-200 space-y-3">
+                  <h4 className="text-xs font-extrabold text-navy-900 uppercase tracking-wider">
+                    Monthly Performance Trends
+                  </h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-200 text-slate-400 font-bold text-[10px] uppercase">
+                          <th className="pb-2">Month</th>
+                          <th className="pb-2">Deals Closed</th>
+                          <th className="pb-2">Volume</th>
+                          <th className="pb-2 text-right">Commission</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {(analyticsOverview?.monthlyPerformance || []).length === 0 ? (
+                          <tr><td colSpan={4} className="py-4 text-center text-slate-400">No monthly records yet.</td></tr>
+                        ) : (
+                          (analyticsOverview?.monthlyPerformance || []).map((m: any) => (
+                            <tr key={m.month} className="hover:bg-slate-100/50">
+                              <td className="py-2.5 font-bold text-slate-700">{m.month}</td>
+                              <td className="py-2.5 text-slate-600">{m.dealsCount}</td>
+                              <td className="py-2.5 font-medium text-navy-900">{formatCurrency(m.volume || 0)}</td>
+                              <td className="py-2.5 font-bold text-emerald-700 text-right">{formatCurrency(m.revenue || 0)}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50/50 p-5 rounded-2xl border border-slate-200 space-y-3">
+                  <h4 className="text-xs font-extrabold text-navy-900 uppercase tracking-wider">
+                    Industry Sector Distribution
+                  </h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-200 text-slate-400 font-bold text-[10px] uppercase">
+                          <th className="pb-2">Industry</th>
+                          <th className="pb-2">Deals</th>
+                          <th className="pb-2">Gross Value</th>
+                          <th className="pb-2 text-right">Won</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {(analyticsOverview?.industryPerformance || []).length === 0 ? (
+                          <tr><td colSpan={4} className="py-4 text-center text-slate-400">No sector records yet.</td></tr>
+                        ) : (
+                          (analyticsOverview?.industryPerformance || []).map((ind: any) => (
+                            <tr key={ind.industry} className="hover:bg-slate-100/50">
+                              <td className="py-2.5 font-bold text-navy-900">{ind.industry}</td>
+                              <td className="py-2.5 text-slate-600">{ind.dealCount}</td>
+                              <td className="py-2.5 font-medium text-navy-900">{formatCurrency(ind.totalValue || 0)}</td>
+                              <td className="py-2.5 font-bold text-emerald-700 text-right">{ind.dealsWon}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* Broker Leaderboard */}
+              <div className="pt-2">
+                <h4 className="text-xs font-extrabold text-navy-900 uppercase tracking-wider mb-3">
+                  Advisor Performance Leaderboard
+                </h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-slate-400 uppercase font-bold text-[10px]">
+                        <th className="pb-3">Advisor / Broker</th>
+                        <th className="pb-3">Assigned Leads</th>
+                        <th className="pb-3">Qualified Leads</th>
+                        <th className="pb-3">Active Pipeline</th>
+                        <th className="pb-3">Deals Won</th>
+                        <th className="pb-3">Volume Closed</th>
+                        <th className="pb-3 text-right">Commission Earned</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {(analyticsOverview?.brokerPerformance || metrics?.brokerPerformance || []).length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="py-8 text-center text-slate-400">
+                            No broker performance records available.
+                          </td>
+                        </tr>
+                      ) : (
+                        (analyticsOverview?.brokerPerformance || metrics?.brokerPerformance || []).map((bp: any) => (
+                          <tr key={bp.brokerId} className="hover:bg-slate-50 transition-colors">
+                            <td className="py-4">
+                              <div className="font-bold text-navy-900">{bp.brokerName || bp.name}</div>
+                              <div className="text-[11px] text-slate-500">{bp.email}</div>
+                            </td>
+                            <td className="py-4 font-semibold text-slate-700">{bp.totalDeals ?? bp.assignedLeads ?? 0}</td>
+                            <td className="py-4 font-bold text-indigo-700">{bp.qualifiedLeads ?? 0}</td>
+                            <td className="py-4 font-semibold text-amber-700">{bp.activeDeals ?? 0}</td>
+                            <td className="py-4 font-bold text-emerald-700">{bp.dealsWon ?? 0}</td>
+                            <td className="py-4 font-bold text-navy-900">{formatCurrency(bp.totalVolume ?? bp.volumeWon ?? 0)}</td>
+                            <td className="py-4 font-extrabold text-emerald-700 text-right">
+                              {formatCurrency(bp.earnedCommission ?? bp.commissionEarned ?? 0)}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 6: COMMISSION AGREEMENTS & REVENUE TRACKING */}
+        {activeTab === "commissions" && (
+          <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 space-y-6 shadow-sm animate-fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+              <div>
+                <h3 className="text-xl font-extrabold text-navy-900">Commission Agreements & Verified Revenue</h3>
+                <p className="text-xs text-slate-500">
+                  Track contracted percentage and fixed fees, milestone triggers, and verified INR payment settlements.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500">
+                  {agreements.length} Total Agreement{agreements.length === 1 ? "" : "s"}
+                </span>
+              </div>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-slate-200 text-slate-400 uppercase font-bold text-[10px]">
-                    <th className="pb-3">Advisor / Broker</th>
-                    <th className="pb-3">Assigned Leads</th>
-                    <th className="pb-3">Qualified Leads</th>
-                    <th className="pb-3">Active Pipeline</th>
-                    <th className="pb-3">Deals Won</th>
-                    <th className="pb-3">Volume Closed</th>
-                    <th className="pb-3 text-right">Commission Earned</th>
+                    <th className="pb-3">Agreement #</th>
+                    <th className="pb-3">Deal Title</th>
+                    <th className="pb-3">Payer & Basis</th>
+                    <th className="pb-3">Expected Fee</th>
+                    <th className="pb-3">Received Revenue</th>
+                    <th className="pb-3">Pending Balance</th>
+                    <th className="pb-3">Status</th>
+                    <th className="pb-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {(metrics?.brokerPerformance || []).length === 0 ? (
+                  {agreements.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-slate-400">
-                        No broker performance records available.
+                      <td colSpan={8} className="py-8 text-center text-slate-400">
+                        No commission agreements recorded for your assigned deals yet.
                       </td>
                     </tr>
                   ) : (
-                    (metrics?.brokerPerformance || []).map((bp: any) => (
-                      <tr key={bp.brokerId} className="hover:bg-slate-50 transition-colors">
+                    agreements.map((a: any) => (
+                      <tr key={a._id} className="hover:bg-slate-50 transition-colors">
+                        <td className="py-4 font-mono font-bold text-navy-900">{a.agreementNumber}</td>
                         <td className="py-4">
-                          <div className="font-bold text-navy-900">{bp.name}</div>
-                          <div className="text-[11px] text-slate-500">{bp.email}</div>
+                          <div className="font-bold text-navy-900">{a.deal?.dealTitle || "Franchise Deal"}</div>
+                          <div className="text-[11px] text-slate-500">Brand: {a.brand?.fullName || "Brand Owner"}</div>
                         </td>
-                        <td className="py-4 font-semibold text-slate-700">{bp.assignedLeads}</td>
-                        <td className="py-4 font-bold text-indigo-700">{bp.qualifiedLeads}</td>
-                        <td className="py-4 font-semibold text-amber-700">{bp.activeDeals}</td>
-                        <td className="py-4 font-bold text-emerald-700">{bp.dealsWon}</td>
-                        <td className="py-4 font-bold text-navy-900">{formatCurrency(bp.volumeWon || 0)}</td>
-                        <td className="py-4 font-extrabold text-emerald-700 text-right">
-                          {formatCurrency(bp.commissionEarned || 0)}
+                        <td className="py-4">
+                          <span className="uppercase font-semibold text-[11px] text-slate-700 block">{a.payer}</span>
+                          <span className="text-[10px] text-slate-400 font-mono">{a.commissionType} ({a.calculationBasis})</span>
+                        </td>
+                        <td className="py-4 font-bold text-navy-900">{formatCurrency(a.expectedCommission || 0)}</td>
+                        <td className="py-4 font-bold text-emerald-700">{formatCurrency(a.receivedRevenue || 0)}</td>
+                        <td className="py-4 font-bold text-amber-700">{formatCurrency(a.pendingCommission || 0)}</td>
+                        <td className="py-4">
+                          <StatusBadge status={a.status} />
+                        </td>
+                        <td className="py-4 text-right space-x-1.5 whitespace-nowrap">
+                          {a.pendingCommission > 0 && (
+                            <button
+                              onClick={() => {
+                                setPaymentModalAgreement(a);
+                                setPaymentForm({
+                                  amount: a.pendingCommission,
+                                  paymentReference: "",
+                                  paymentMethod: "RTGS",
+                                  payerName: a.brand?.fullName || "",
+                                  payerRole: a.payer === "investor" ? "investor" : "brand",
+                                  notes: `Milestone settlement for ${a.agreementNumber}`,
+                                });
+                              }}
+                              className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-colors"
+                            >
+                              Record Payment
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleViewStatement(a._id)}
+                            className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-colors"
+                          >
+                            Statement
+                          </button>
                         </td>
                       </tr>
                     ))
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 7: OPERATIONAL REMINDERS & NOTIFICATION PREFERENCES */}
+        {activeTab === "reminders" && (
+          <div className="space-y-6 animate-fade-in">
+            {/* Operational Reminders Overview */}
+            <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 space-y-6 shadow-sm">
+              <div className="pb-4 border-b border-slate-100">
+                <h3 className="text-xl font-extrabold text-navy-900">Operational Reminders & Deadlines</h3>
+                <p className="text-xs text-slate-500">
+                  Aggregated time-sensitive actions across follow-ups, overdue tasks, discovery conferences, and outstanding payments.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* 1. Upcoming Follow-ups */}
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-navy-900 uppercase tracking-wider">Lead Follow-ups</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">
+                      {reminders?.upcomingFollowUps?.length || 0}
+                    </span>
+                  </div>
+                  <div className="space-y-2 max-h-48 overflow-y-auto text-xs">
+                    {(reminders?.upcomingFollowUps || []).length === 0 ? (
+                      <p className="text-slate-400 py-3 text-center">No scheduled follow-ups.</p>
+                    ) : (
+                      (reminders?.upcomingFollowUps || []).map((f: any) => (
+                        <div key={f.leadId} className="bg-white p-2.5 rounded-xl border border-slate-200 space-y-1">
+                          <div className="font-bold text-navy-900 flex justify-between">
+                            <span>{f.leadName}</span>
+                            {f.isOverdue && <span className="text-[10px] text-rose-600 font-bold">OVERDUE</span>}
+                          </div>
+                          <div className="text-[11px] text-slate-500">
+                            Due: {new Date(f.followUpDate).toLocaleDateString()}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Tasks */}
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-navy-900 uppercase tracking-wider">Action Tasks</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                      {reminders?.tasks?.length || 0}
+                    </span>
+                  </div>
+                  <div className="space-y-2 max-h-48 overflow-y-auto text-xs">
+                    {(reminders?.tasks || []).length === 0 ? (
+                      <p className="text-slate-400 py-3 text-center">No pending tasks.</p>
+                    ) : (
+                      (reminders?.tasks || []).map((t: any) => (
+                        <div key={t.taskId} className="bg-white p-2.5 rounded-xl border border-slate-200 space-y-1">
+                          <div className="font-bold text-navy-900 flex justify-between">
+                            <span className="truncate pr-2">{t.title}</span>
+                            {t.isOverdue && <span className="text-[10px] text-rose-600 font-bold shrink-0">OVERDUE</span>}
+                          </div>
+                          <div className="text-[11px] text-slate-500">
+                            Due: {new Date(t.dueDate).toLocaleDateString()} • {t.priority}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* 3. Upcoming Meetings */}
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-navy-900 uppercase tracking-wider">Scheduled Conferences</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800">
+                      {reminders?.meetings?.length || 0}
+                    </span>
+                  </div>
+                  <div className="space-y-2 max-h-48 overflow-y-auto text-xs">
+                    {(reminders?.meetings || []).length === 0 ? (
+                      <p className="text-slate-400 py-3 text-center">No scheduled meetings.</p>
+                    ) : (
+                      (reminders?.meetings || []).map((m: any) => (
+                        <div key={m.meetingId} className="bg-white p-2.5 rounded-xl border border-slate-200 space-y-1">
+                          <div className="font-bold text-navy-900">{m.title}</div>
+                          <div className="text-[11px] text-slate-500">
+                            {new Date(m.scheduledStartTime).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Notification Preferences Card */}
+            <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 space-y-6 shadow-sm">
+              <div className="pb-4 border-b border-slate-100 flex items-center gap-2">
+                <Bell className="w-5 h-5 text-indigo-600" />
+                <div>
+                  <h3 className="text-xl font-extrabold text-navy-900">Notification Channels & Delivery Preferences</h3>
+                  <p className="text-xs text-slate-500">
+                    Control in-app alerts and notifications dispatched for deals, leads, meetings, documents, and payments.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                {[
+                  { key: "inAppNotifications", label: "In-App Alerts", desc: "Notification drawer and banner badges" },
+                  { key: "emailNotifications", label: "Email Notifications", desc: "Dispatched to registered mailbox" },
+                  { key: "leadAlerts", label: "New Lead & Enquiry Alerts", desc: "Inbounds assigned to your desk" },
+                  { key: "dealAlerts", label: "Deal Pipeline Changes", desc: "Stage advancements and conversions" },
+                  { key: "commissionAlerts", label: "Commission & Payment Alerts", desc: "Due milestones and received bank remittances" },
+                  { key: "meetingReminders", label: "Meeting Reminders", desc: "Calendar invites & conference links" },
+                  { key: "documentAlerts", label: "Document Uploads", desc: "Deal room document submissions" },
+                  { key: "diligenceAlerts", label: "Due Diligence Updates", desc: "Review approvals and clarification tickets" },
+                ].map((item) => {
+                  const isChecked = notifPreferences ? !!notifPreferences[item.key] : true;
+                  return (
+                    <label
+                      key={item.key}
+                      className="flex items-start gap-3 p-3.5 rounded-2xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(e) => handleTogglePreference(item.key, e.target.checked)}
+                        className="mt-0.5 rounded text-blue-600 focus:ring-blue-500"
+                      />
+                      <div>
+                        <div className="font-bold text-navy-900">{item.label}</div>
+                        <div className="text-[11px] text-slate-500">{item.desc}</div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
@@ -1266,6 +1761,243 @@ export default function BrokerageDashboardPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 5: RECORD COMMISSION PAYMENT */}
+      {paymentModalAgreement && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl border border-slate-200 w-full max-w-lg shadow-2xl p-6 sm:p-8 space-y-5">
+            <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 block">
+                  Commission Revenue Settlement
+                </span>
+                <h3 className="text-lg font-extrabold text-navy-900 mt-1">
+                  Record Verified Payment
+                </h3>
+                <p className="text-xs text-slate-500 font-mono">
+                  Agreement #{paymentModalAgreement.agreementNumber} • Pending: {formatCurrency(paymentModalAgreement.pendingCommission)}
+                </p>
+              </div>
+              <button
+                onClick={() => setPaymentModalAgreement(null)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleRecordPayment} className="space-y-4 text-xs">
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[11px] text-amber-800">
+                <span className="font-bold">Duplicate Guard:</span> Each transaction requires a unique UTR or bank reference number. Duplicate references are automatically rejected with HTTP 409.
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Amount (INR) *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    value={paymentForm.amount}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, amount: Number(e.target.value) })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Payment Method *
+                  </label>
+                  <select
+                    value={paymentForm.paymentMethod}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, paymentMethod: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-blue-500 bg-white"
+                  >
+                    <option value="RTGS">RTGS</option>
+                    <option value="NEFT">NEFT</option>
+                    <option value="IMPS">IMPS</option>
+                    <option value="UPI">UPI</option>
+                    <option value="BANK_TRANSFER">Bank Transfer</option>
+                    <option value="CHEQUE">Cheque</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  Unique Transaction Reference / UTR *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. UTR-HDFC-2026-998811"
+                  value={paymentForm.paymentReference}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, paymentReference: e.target.value })}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 text-xs font-mono focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Payer Name
+                  </label>
+                  <input
+                    type="text"
+                    value={paymentForm.payerName}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, payerName: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Payer Role
+                  </label>
+                  <select
+                    value={paymentForm.payerRole}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, payerRole: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-blue-500 bg-white"
+                  >
+                    <option value="brand">Brand</option>
+                    <option value="investor">Investor</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  Internal Notes
+                </label>
+                <textarea
+                  rows={2}
+                  value={paymentForm.notes}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
+                  placeholder="Verified against company bank account statement..."
+                  className="w-full p-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setPaymentModalAgreement(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUpdating}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-5 py-2 rounded-xl text-xs shadow-sm transition-all disabled:opacity-50"
+                >
+                  {isUpdating ? "Recording..." : "Record & Verify Payment"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 6: COMMISSION STATEMENT */}
+      {statementModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl border border-slate-200 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl p-6 sm:p-8 space-y-5">
+            <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 block">
+                  Official Financial Statement
+                </span>
+                <h3 className="text-lg font-extrabold text-navy-900 mt-1">
+                  {statementModal.statementNumber}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Deal: {statementModal.dealTitle} • Agreement #{statementModal.agreementNumber}
+                </p>
+              </div>
+              <button
+                onClick={() => setStatementModal(null)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Summary Cards */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Contracted</span>
+                <div className="text-base font-extrabold text-navy-900 mt-0.5">
+                  {formatCurrency(statementModal.financialSummary?.expectedCommission || 0)}
+                </div>
+              </div>
+              <div className="bg-emerald-50 p-3.5 rounded-2xl border border-emerald-200">
+                <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Received</span>
+                <div className="text-base font-extrabold text-emerald-800 mt-0.5">
+                  {formatCurrency(statementModal.financialSummary?.receivedRevenue || 0)}
+                </div>
+              </div>
+              <div className="bg-amber-50 p-3.5 rounded-2xl border border-amber-200">
+                <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block">Pending</span>
+                <div className="text-base font-extrabold text-amber-800 mt-0.5">
+                  {formatCurrency(statementModal.financialSummary?.pendingCommission || 0)}
+                </div>
+              </div>
+            </div>
+
+            {/* Verified Payments Ledger */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold text-navy-900 uppercase tracking-wider">Verified Remittances Ledger</h4>
+              <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-400 uppercase font-bold text-[10px]">
+                    <tr>
+                      <th className="p-2.5">Reference / UTR</th>
+                      <th className="p-2.5">Date</th>
+                      <th className="p-2.5">Method</th>
+                      <th className="p-2.5">Amount (INR)</th>
+                      <th className="p-2.5 text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {(statementModal.payments || statementModal.verifiedPayments || []).length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="p-4 text-center text-slate-400">
+                          No payment transactions recorded yet.
+                        </td>
+                      </tr>
+                    ) : (
+                      (statementModal.payments || statementModal.verifiedPayments || []).map((p: any, idx: number) => (
+                        <tr key={idx} className="hover:bg-slate-50">
+                          <td className="p-2.5 font-mono text-[11px] font-bold text-slate-800">{p.paymentReference}</td>
+                          <td className="p-2.5 text-slate-600">{new Date(p.paymentDate).toLocaleDateString()}</td>
+                          <td className="p-2.5 text-slate-600 uppercase">{p.paymentMethod}</td>
+                          <td className="p-2.5 font-bold text-emerald-700">{formatCurrency(p.amount)}</td>
+                          <td className="p-2.5 text-right">
+                            <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 text-emerald-800">
+                              {p.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setStatementModal(null)}
+                className="px-5 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white transition-colors"
+              >
+                Close Statement
+              </button>
+            </div>
           </div>
         </div>
       )}

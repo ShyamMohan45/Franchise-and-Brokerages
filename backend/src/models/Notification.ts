@@ -14,7 +14,17 @@ export type NotificationType =
   | 'system'
   | 'deal'
   | 'task'
-  | 'TASK_ASSIGNED';
+  | 'TASK_ASSIGNED'
+  // Milestone 7 notification types
+  | 'new_enquiry'
+  | 'lead_assigned'
+  | 'broker_followup'
+  | 'upcoming_meeting'
+  | 'document_submission'
+  | 'due_diligence_update'
+  | 'commission_due'
+  | 'commission_payment_received'
+  | 'task_reminder';
 
 export interface INotification extends Document {
   recipient: Types.ObjectId;
@@ -23,6 +33,7 @@ export interface INotification extends Document {
   message: string;
   actionUrl?: string;
   isRead: boolean;
+  priority?: 'low' | 'normal' | 'high';
   metadata?: Record<string, any>;
   createdAt: Date;
 }
@@ -52,9 +63,20 @@ const notificationSchema = new Schema<INotification>(
         'deal',
         'task',
         'TASK_ASSIGNED',
+        // Milestone 7 types
+        'new_enquiry',
+        'lead_assigned',
+        'broker_followup',
+        'upcoming_meeting',
+        'document_submission',
+        'due_diligence_update',
+        'commission_due',
+        'commission_payment_received',
+        'task_reminder',
       ],
       default: 'system',
       required: true,
+      index: true,
     },
     title: {
       type: String,
@@ -72,6 +94,11 @@ const notificationSchema = new Schema<INotification>(
       default: false,
       index: true,
     },
+    priority: {
+      type: String,
+      enum: ['low', 'normal', 'high'],
+      default: 'normal',
+    },
     metadata: {
       type: Schema.Types.Mixed,
     },
@@ -80,5 +107,7 @@ const notificationSchema = new Schema<INotification>(
     timestamps: { createdAt: true, updatedAt: false },
   }
 );
+
+notificationSchema.index({ recipient: 1, isRead: 1, createdAt: -1 });
 
 export const Notification = model<INotification>('Notification', notificationSchema);

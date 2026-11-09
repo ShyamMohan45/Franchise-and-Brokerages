@@ -18,6 +18,8 @@ import taskRoutes from './taskRoutes';
 import reviewRoutes from './reviewRoutes';
 import notificationRoutes from './notificationRoutes';
 import crmRoutes from './crmRoutes';
+import commissionRoutes from './commissionRoutes';
+import analyticsRoutes from './analyticsRoutes';
 
 const router = Router();
 
@@ -41,5 +43,8 @@ router.use('/tasks', taskRoutes);
 router.use('/reviews', reviewRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/crm', crmRoutes);
+router.use('/commissions', commissionRoutes);
+router.use('/analytics', analyticsRoutes);
+router.use('/reports', analyticsRoutes);
 
 export default router;

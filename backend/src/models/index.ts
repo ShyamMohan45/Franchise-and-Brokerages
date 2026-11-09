@@ -25,3 +25,6 @@ export * from './FranchiseReadinessAssessment';
 export * from './SavedFranchise';
 export * from './DealDocument';
 export * from './DealMessage';
+export * from './CommissionAgreement';
+export * from './CommissionPayment';
+export * from './NotificationPreference';
