@@ -1,4 +1,4 @@
-import nodemailer from 'nodemailer';
+import nodemailer, { Transporter } from 'nodemailer';
 import { env } from '../config/env';
 import { Logger } from '../utils/logger';
 
@@ -10,9 +10,9 @@ export interface EmailOptions {
 }
 
 export class EmailService {
-  private static transporter: nodemailer.Transporter | null = null;
+  private static transporter: Transporter | null = null;
 
-  private static getTransporter(): nodemailer.Transporter | null {
+  private static getTransporter(): Transporter | null {
     if (!this.transporter && env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS) {
       this.transporter = nodemailer.createTransport({
         host: env.SMTP_HOST,
