@@ -23,3 +23,5 @@ export * from './ContactEnquiry';
 export * from './BlogPost';
 export * from './FranchiseReadinessAssessment';
 export * from './SavedFranchise';
+export * from './DealDocument';
+export * from './DealMessage';

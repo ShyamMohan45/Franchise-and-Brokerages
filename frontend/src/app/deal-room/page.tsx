@@ -46,7 +46,7 @@ export default function DealRoomsListPage() {
 
   useEffect(() => {
     const token = typeof window !== "undefined" ? localStorage.getItem("fb_auth_token") : null;
-    fetch("http://localhost:5000/api/deal-rooms", {
+    fetch("http://localhost:5000/api/v1/deal-rooms", {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
       .then((r) => r.json())

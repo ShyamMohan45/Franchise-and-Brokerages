@@ -24,6 +24,8 @@ yarn-error.log*
 
 # Uploads & temporary test data
 uploads/
+private_storage/
+backend/private_storage/
 coverage/
 
 # OS files
