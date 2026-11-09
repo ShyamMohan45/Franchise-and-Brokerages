@@ -6,9 +6,12 @@ import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
 import fs from 'fs';
+import { randomUUID } from 'crypto';
 import { env } from './config/env';
+import { getDatabaseStatus } from './config/db';
 import routes from './routes';
 import { errorHandler } from './middleware/errorHandler';
+import { Logger } from './utils/logger';
 
 export const app = express();
 
@@ -19,28 +22,64 @@ if (!fs.existsSync(uploadsDir)) {
 }
 app.use('/uploads', express.static(uploadsDir));
 
-// Security Headers
+// Request correlation ID middleware
+app.use((req, res, next) => {
+  const incomingId = req.headers['x-request-id'] as string;
+  const requestId = incomingId || randomUUID();
+  (req as any).id = requestId;
+  res.setHeader('X-Request-Id', requestId);
+  next();
+});
+
+// Security Headers (CSP, HSTS in production)
 app.use(
   helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: env.isProduction
+      ? {
+          directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
+            connectSrc: ["'self'", ...env.getAllowedOrigins()],
+            fontSrc: ["'self'", 'https:'],
+            objectSrc: ["'none'"],
+            upgradeInsecureRequests: [],
+          },
+        }
+      : false,
     crossOriginEmbedderPolicy: false,
+    hsts: env.isProduction ? { maxAge: 31536000, includeSubDomains: true, preload: true } : false,
   })
 );
 
 // CORS configuration for cookies and auth headers
+const allowedOrigins = env.getAllowedOrigins();
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow localhost and frontend URL
-      if (!origin || origin.includes('localhost') || origin === env.CLIENT_URL) {
-        callback(null, true);
+      // Allow requests with no origin (like mobile apps, curl, server-to-server)
+      if (!origin) return callback(null, true);
+      
+      if (!env.isProduction) {
+        // In dev/test, allow localhost and any configured client origin
+        if (origin.includes('localhost') || origin.includes('127.0.0.1') || allowedOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+        return callback(null, true);
+      }
+
+      // In production, strictly match configured origins
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
       } else {
-        callback(null, true); // Permissive in dev/staging
+        Logger.warn(`Blocked CORS request from unauthorized origin: ${origin}`);
+        return callback(new Error('Blocked by CORS policy: Origin not allowed'), false);
       }
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Request-Id'],
   })
 );
 
@@ -53,25 +92,50 @@ if (env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));
 }
 
-// Global API rate limiter
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+// Global API rate limiter (1000 requests per 15 minutes)
+export const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
   max: 1000,
   message: { success: false, message: 'Too many requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
-app.use('/api', limiter);
-app.use('/api/v1', limiter);
+app.use('/api', globalLimiter);
+app.use('/api/v1', globalLimiter);
 
-// Health check endpoint
-const healthHandler = (req: express.Request, res: express.Response) => {
-  res.json({
-    status: 'healthy',
+// Dedicated strict rate limiter for authentication routes (prevent brute force)
+export const authRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30, // 30 login/register attempts per 15 minutes per IP
+  message: {
+    success: false,
+    message: 'Too many authentication attempts. Please try again after 15 minutes.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use(['/api/v1/auth/login', '/api/auth/login'], authRateLimiter);
+app.use(['/api/v1/auth/register', '/api/auth/register'], authRateLimiter);
+
+// Comprehensive Health check endpoint
+export const healthHandler = (req: express.Request, res: express.Response) => {
+  const dbStatus = getDatabaseStatus();
+  const isHealthy = dbStatus.state === 'connected';
+
+  res.status(isHealthy ? 200 : 503).json({
+    status: isHealthy ? 'healthy' : 'degraded',
     timestamp: new Date().toISOString(),
+    uptimeSeconds: Math.floor(process.uptime()),
     environment: env.NODE_ENV,
     version: '1.0.0',
     service: 'FranchiseBridge Enterprise API Gateway',
+    database: dbStatus,
+    memory: {
+      rssMb: Math.round(process.memoryUsage().rss / 1024 / 1024),
+      heapTotalMb: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+      heapUsedMb: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+    },
     endpoints: {
       v1: '/api/v1',
       legacy: '/api',

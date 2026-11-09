@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  # Production MongoDB
+  mongo:
+    image: mongo:7.0-jammy
+    container_name: franchisebridge-prod-mongo
+    restart: always
+    environment:
+      MONGO_INITDB_DATABASE: franchisebridge
+    volumes:
+      - mongo_data:/data/db
+      - mongo_config:/data/configdb
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - franchisebridge-internal
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  # Production Express Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: franchisebridge-prod-backend
+    restart: always
+    depends_on:
+      mongo:
+        condition: service_healthy
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      MONGODB_URI: mongodb://mongo:27017/franchisebridge
+    volumes:
+      - private_storage:/app/private_storage/documents
+      - uploads_storage:/app/uploads
+      - backups_storage:/app/backups
+    networks:
+      - franchisebridge-internal
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  # Production Next.js Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: franchisebridge-prod-frontend
+    restart: always
+    depends_on:
+      - backend
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: /api/v1
+    networks:
+      - franchisebridge-internal
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  # Reverse Proxy & SSL Gateway
+  nginx:
+    image: nginx:alpine
+    container_name: franchisebridge-prod-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ssl_certs:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - franchisebridge-internal
+
+volumes:
+  mongo_data:
+  mongo_config:
+  private_storage:
+  uploads_storage:
+  backups_storage:
+  ssl_certs:
+
+networks:
+  franchisebridge-internal:
+    driver: bridge

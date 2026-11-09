@@ -26,6 +26,9 @@ yarn-error.log*
 uploads/
 private_storage/
 backend/private_storage/
+backups/
+backend/backups/
+.env.production
 coverage/
 
 # OS files
