@@ -10,6 +10,7 @@ import { DealMessage } from '../models/DealMessage';
 import { Task } from '../models/Task';
 import { Meeting } from '../models/Meeting';
 import { AuditLog } from '../models/AuditLog';
+import { Notification } from '../models/Notification';
 import { User } from '../models/User';
 import { PRIVATE_STORAGE_DIR } from '../middleware/privateUpload';
 
@@ -573,6 +574,23 @@ export const uploadDealRoomDocument = async (req: Request, res: Response): Promi
       });
     }
 
+    // Generate notification for deal participants
+    const notifyRecipient =
+      user.role === 'investor' || user.role === 'business_owner'
+        ? (room.assignedBroker || room.broker)
+        : room.investor;
+
+    if (notifyRecipient) {
+      await Notification.create({
+        recipient: notifyRecipient,
+        type: 'document',
+        title: 'New Deal Room Document Uploaded',
+        message: `${doc.title} (${doc.category}) was uploaded to ${room.roomName}.`,
+        actionUrl: `/deal-room/${room._id}`,
+        metadata: { dealRoomId: room._id, docId: doc._id },
+      });
+    }
+
     res.status(201).json({
       success: true,
       message: 'Document uploaded securely to private storage',
@@ -1060,6 +1078,21 @@ export const updateDealRoomDueDiligenceItem = async (req: Request, res: Response
         completionPercentage: checklist.completionPercentage,
       },
     });
+
+    // Generate notification for diligence update
+    if (status === 'NEEDS_CLARIFICATION' || status === 'REJECTED' || status === 'APPROVED') {
+      const recipient = room.investor || room.franchisor;
+      if (recipient) {
+        await Notification.create({
+          recipient,
+          type: 'deal',
+          title: `Due Diligence Update: ${item.title}`,
+          message: `Checklist item ${item.title} has been updated to ${status}.${clarificationRequest ? ' Action required: ' + clarificationRequest : ''}`,
+          actionUrl: `/deal-room/${room._id}`,
+          metadata: { dealRoomId: room._id, itemId },
+        });
+      }
+    }
 
     res.json({
       success: true,

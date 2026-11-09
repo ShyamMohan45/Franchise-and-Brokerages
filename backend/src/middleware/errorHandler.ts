@@ -28,6 +28,15 @@ export function errorHandler(
     return sendError(res, `Duplicate value entered for ${field}. Please use another value.`, 409);
   }
 
+  if (
+    err.name === 'MulterError' ||
+    err.message?.includes('Only PDF') ||
+    err.message?.includes('Invalid file type') ||
+    err.message?.includes('file size')
+  ) {
+    return sendError(res, err.message, 400);
+  }
+
   return sendError(
     res,
     err.message || 'Internal server error occurred.',

@@ -38,7 +38,7 @@ export const updateDiligenceItemSchema = z.object({
     'verified',
     'flagged',
     'not_applicable',
-  ]),
+  ]).optional(),
   notes: z.string().optional(),
   reviewerNotes: z.string().optional(),
   evidenceDocumentIds: z.array(z.string()).optional(),
