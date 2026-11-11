@@ -14,7 +14,7 @@ const envSchema = z
     JWT_REFRESH_SECRET: z.string().default('franchisebridge_jwt_refresh_secret_key_change_in_prod'),
     JWT_EXPIRES_IN: z.string().default('1d'),
     JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
-    CLIENT_URL: z.string().default('http://localhost:3000'),
+    CLIENT_URL: z.string().default('http://localhost:3002'),
     ALLOWED_ORIGINS: z.string().optional(),
     COOKIE_SECRET: z.string().default('franchisebridge_cookie_signing_secret'),
     UPLOAD_DIR: z.string().default('./uploads'),
@@ -81,7 +81,7 @@ export const env = {
   isDevelopment: parsed.data.NODE_ENV === 'development',
   isTest: parsed.data.NODE_ENV === 'test',
   getAllowedOrigins(): string[] {
-    const list: string[] = [parsed.data.CLIENT_URL, 'http://localhost:3000', 'http://localhost:3005'];
+    const list: string[] = [parsed.data.CLIENT_URL, 'http://localhost:3000', 'http://localhost:3002', 'http://localhost:3005'];
     if (parsed.data.ALLOWED_ORIGINS) {
       const additional = parsed.data.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean);
       list.push(...additional);
