@@ -1,0 +1,52 @@
+{
+  "expo": {
+    "name": "FranchiseBridge",
+    "slug": "franchisebridge-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "franchisebridge",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#14243A"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.franchisebridge.app",
+      "buildNumber": "1"
+    },
+    "android": {
+      "package": "com.franchisebridge.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#14243A"
+      },
+      "permissions": [
+        "INTERNET"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "./plugins/withCleartextTraffic"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "apiUrl": "http://172.22.82.210:5000/api/v1",
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "8b37bf7c-187e-40a2-8971-e39219067f4e"
+      }
+    },
+    "owner": "franchisebridge"
+  }
+}
