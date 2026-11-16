@@ -17,6 +17,7 @@ export const createSopDocumentSchema = z.object({
   summary: z.string().min(10, 'Summary is required'),
   contentMarkdown: z.string().optional(),
   fileUrl: z.string().optional(),
+  storageKey: z.string().optional(),
   fileName: z.string().optional(),
   fileSizeBytes: z.number().optional(),
   mimeType: z.string().optional(),

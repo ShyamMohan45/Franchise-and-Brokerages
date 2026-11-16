@@ -1,6 +1,15 @@
 import fs from 'fs';
 import path from 'path';
 import { Readable } from 'stream';
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+  HeadObjectCommand,
+  S3ClientConfig,
+} from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { env } from '../config/env';
 import { Logger } from '../utils/logger';
 
@@ -49,7 +58,7 @@ export class LocalStorageProvider implements IStorageProvider {
     return {
       key: path.basename(targetPath),
       size: stats.size,
-      url: `/api/v1/deal-room/documents/${path.basename(targetPath)}/download`,
+      url: `/api/v1/documents/${path.basename(targetPath)}/download`,
     };
   }
 
@@ -82,49 +91,161 @@ export class LocalStorageProvider implements IStorageProvider {
 
   public async getDownloadUrl(key: string, _expiresInSeconds = 3600): Promise<string> {
     // Return relative authenticated download endpoint
-    return `/api/v1/deal-room/documents/${path.basename(key)}/download`;
+    return `/api/v1/documents/${path.basename(key)}/download`;
   }
 }
 
 export class S3StorageProvider implements IStorageProvider {
   public name = 's3';
+  private client: S3Client;
   private bucket: string;
   private region: string;
 
-  constructor() {
-    this.bucket = env.AWS_S3_BUCKET || 'franchisebridge-private-vault';
-    this.region = env.AWS_REGION || 'ap-south-1';
+  constructor(bucket?: string, region?: string, client?: S3Client) {
+    this.bucket = bucket || env.AWS_S3_BUCKET || 'franchisebridge-private-vault';
+    this.region = region || env.AWS_REGION || 'ap-south-1';
+
+    if (client) {
+      this.client = client;
+    } else {
+      const config: S3ClientConfig = {
+        region: this.region,
+      };
+
+      if (env.AWS_ENDPOINT) {
+        config.endpoint = env.AWS_ENDPOINT;
+        config.forcePathStyle = true;
+      }
+
+      if (env.AWS_ACCESS_KEY_ID && env.AWS_SECRET_ACCESS_KEY) {
+        config.credentials = {
+          accessKeyId: env.AWS_ACCESS_KEY_ID,
+          secretAccessKey: env.AWS_SECRET_ACCESS_KEY,
+        };
+      }
+      // If credentials are omitted, AWS SDK v3 falls back to the default credential provider chain
+      // (environment variables, IAM roles for EC2/ECS/Kubernetes, Web Identity tokens).
+
+      this.client = new S3Client(config);
+    }
   }
 
-  public async saveFile(key: string, data: Buffer | Uint8Array, _mimeType?: string): Promise<StorageFileResult> {
-    Logger.info(`[S3StorageProvider] Uploading to s3://${this.bucket}/${key}`);
-    // AWS SDK v3 PutObjectCommand integration
+  private resolveSafeKey(key: string): string {
+    if (key.includes('..')) {
+      throw new Error(`Security violation: Key contains invalid traversal sequence: ${key}`);
+    }
+    // Strip leading slashes to conform to AWS S3 key conventions
+    return key.replace(/^\/+/, '');
+  }
+
+  public async saveFile(key: string, data: Buffer | Uint8Array, mimeType?: string): Promise<StorageFileResult> {
+    const safeKey = this.resolveSafeKey(key);
+    const bodyBuffer = Buffer.isBuffer(data) ? data : Buffer.from(data);
+    const contentType = mimeType || 'application/octet-stream';
+
+    Logger.info(`[S3StorageProvider] Uploading to s3://${this.bucket}/${safeKey} (${bodyBuffer.length} bytes, ${contentType})`);
+
+    const command = new PutObjectCommand({
+      Bucket: this.bucket,
+      Key: safeKey,
+      Body: bodyBuffer,
+      ContentType: contentType,
+      ServerSideEncryption: 'AES256',
+      Metadata: {
+        'uploaded-by': 'franchisebridge-backend',
+        'upload-timestamp': new Date().toISOString(),
+      },
+    });
+
+    await this.client.send(command);
+
     return {
-      key,
-      size: data.length,
-      url: `https://${this.bucket}.s3.${this.region}.amazonaws.com/${key}`,
+      key: safeKey,
+      size: bodyBuffer.length,
+      // For private documents, return the internal authenticated download endpoint to preserve authorization
+      url: `/api/v1/documents/${path.basename(safeKey)}/download`,
     };
   }
 
   public async getFileStream(key: string): Promise<{ stream: NodeJS.ReadableStream; size: number; mimeType?: string }> {
-    Logger.info(`[S3StorageProvider] Streaming from s3://${this.bucket}/${key}`);
-    const emptyStream = new Readable();
-    emptyStream.push(null);
-    return { stream: emptyStream, size: 0 };
+    const safeKey = this.resolveSafeKey(key);
+    Logger.info(`[S3StorageProvider] Streaming from s3://${this.bucket}/${safeKey}`);
+
+    try {
+      const command = new GetObjectCommand({
+        Bucket: this.bucket,
+        Key: safeKey,
+      });
+
+      const response = await this.client.send(command);
+
+      if (!response.Body) {
+        throw new Error(`S3 GetObject returned empty body for key: ${safeKey}`);
+      }
+
+      // In Node.js environment with AWS SDK v3, response.Body is a Readable stream
+      const stream = response.Body as unknown as NodeJS.ReadableStream;
+      const size = response.ContentLength ?? 0;
+      const mimeType = response.ContentType;
+
+      return {
+        stream,
+        size,
+        mimeType,
+      };
+    } catch (err: any) {
+      if (err.name === 'NoSuchKey' || err.$metadata?.httpStatusCode === 404) {
+        throw new Error(`File not found: ${key}`);
+      }
+      throw err;
+    }
   }
 
   public async deleteFile(key: string): Promise<boolean> {
-    Logger.info(`[S3StorageProvider] Deleting from s3://${this.bucket}/${key}`);
-    return true;
+    const safeKey = this.resolveSafeKey(key);
+    Logger.info(`[S3StorageProvider] Deleting from s3://${this.bucket}/${safeKey}`);
+
+    try {
+      const command = new DeleteObjectCommand({
+        Bucket: this.bucket,
+        Key: safeKey,
+      });
+
+      await this.client.send(command);
+      return true;
+    } catch (err: any) {
+      Logger.error(`[S3StorageProvider] Error deleting file s3://${this.bucket}/${safeKey}:`, err);
+      return false;
+    }
   }
 
-  public async fileExists(_key: string): Promise<boolean> {
-    return true;
+  public async fileExists(key: string): Promise<boolean> {
+    const safeKey = this.resolveSafeKey(key);
+    try {
+      const command = new HeadObjectCommand({
+        Bucket: this.bucket,
+        Key: safeKey,
+      });
+      await this.client.send(command);
+      return true;
+    } catch (err: any) {
+      if (err.name === 'NotFound' || err.name === 'NoSuchKey' || err.$metadata?.httpStatusCode === 404) {
+        return false;
+      }
+      Logger.warn(`[S3StorageProvider] fileExists check encountered non-404 error for key ${safeKey}: ${err.message}`);
+      return false;
+    }
   }
 
   public async getDownloadUrl(key: string, expiresInSeconds = 900): Promise<string> {
-    // Presigned S3 URL simulation
-    return `https://${this.bucket}.s3.${this.region}.amazonaws.com/${key}?signed=true&expires=${expiresInSeconds}`;
+    const safeKey = this.resolveSafeKey(key);
+    const command = new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: safeKey,
+    });
+
+    // Generate secure time-limited presigned URL via AWS SDK v3
+    return await getSignedUrl(this.client, command, { expiresIn: expiresInSeconds });
   }
 }
 
@@ -139,4 +260,8 @@ export function getStorageService(): IStorageProvider {
     }
   }
   return storageInstance;
+}
+
+export function setStorageService(provider: IStorageProvider | null): void {
+  storageInstance = provider;
 }

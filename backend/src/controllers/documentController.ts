@@ -1,5 +1,6 @@
 import path from 'path';
 import fs from 'fs';
+import mongoose from 'mongoose';
 import { Request, Response } from 'express';
 import { SOPDocument } from '../models/SOPDocument';
 import { LegalDocument } from '../models/LegalDocument';
@@ -8,6 +9,8 @@ import { BusinessProfile } from '../models/BusinessProfile';
 import { DealRoom } from '../models/DealRoom';
 import { AuditLog } from '../models/AuditLog';
 import { sendSuccess, sendError } from '../utils/response';
+import { getStorageService } from '../services/storageService';
+import { env } from '../config/env';
 
 // SOP Operations
 export async function getSopDocuments(req: Request, res: Response): Promise<any> {
@@ -60,6 +63,7 @@ export async function createSopDocument(req: Request, res: Response): Promise<an
     documentType: 'SOP',
     versionNumber: 1,
     changeSummary: 'Initial document draft created',
+    storageKey: data.storageKey || sop.storageKey,
     changedBy: req.user!._id,
   });
 
@@ -202,16 +206,47 @@ export async function uploadDocumentFile(req: Request, res: Response): Promise<a
     return sendError(res, 'No file was uploaded or file type is not supported.', 400);
   }
 
-  const fileUrl = `/uploads/${req.file.filename}`;
-  const responseData = {
-    fileUrl,
-    fileName: req.file.originalname,
-    fileSizeBytes: req.file.size,
-    mimeType: req.file.mimetype,
-    storageKey: req.file.filename,
-  };
+  const storage = getStorageService();
+  const shouldCleanupFile = storage.name === 's3';
+  let uploadSuccess = false;
+  let storageKey = req.file.filename;
 
-  return sendSuccess(res, responseData, 'File uploaded successfully', 201);
+  try {
+    if (storage.name === 's3') {
+      const fileBuffer = await fs.promises.readFile(req.file.path);
+      const saved = await storage.saveFile(req.file.filename, fileBuffer, req.file.mimetype);
+      storageKey = saved.key;
+    }
+
+    // For S3 documents, return authenticated API download endpoint to prevent exposing private S3 keys
+    // For local storage, preserve existing /uploads relative route
+    const fileUrl = storage.name === 's3'
+      ? `/api/v1/documents/${storageKey}/download`
+      : `/uploads/${storageKey}`;
+
+    const responseData = {
+      fileUrl,
+      fileName: req.file.originalname,
+      fileSizeBytes: req.file.size,
+      mimeType: req.file.mimetype,
+      storageKey,
+    };
+
+    uploadSuccess = true;
+    return sendSuccess(res, responseData, 'File uploaded successfully', 201);
+  } catch (error: any) {
+    return sendError(res, `Failed to upload document: ${error.message}`, 500);
+  } finally {
+    if ((!uploadSuccess || shouldCleanupFile) && req.file?.path) {
+      try {
+        if (fs.existsSync(req.file.path)) {
+          await fs.promises.unlink(req.file.path);
+        }
+      } catch {
+        // Safe to ignore filesystem cleanup error
+      }
+    }
+  }
 }
 
 // Investor FDD Facility: Get all available FDD disclosure packages
@@ -241,11 +276,27 @@ export async function downloadDocument(req: Request, res: Response): Promise<any
   const { id } = req.params;
   const user = req.user!;
 
-  let doc: any = await LegalDocument.findById(id).populate('business');
+  let doc: any = null;
   let docType = 'LegalDocument';
+
+  if (mongoose.Types.ObjectId.isValid(id)) {
+    doc = await LegalDocument.findById(id).populate('business');
+    if (!doc) {
+      doc = await SOPDocument.findById(id).populate('business');
+      docType = 'SOPDocument';
+    }
+  }
+
   if (!doc) {
-    doc = await SOPDocument.findById(id).populate('business');
-    docType = 'SOPDocument';
+    doc = await LegalDocument.findOne({ storageKey: id }).populate('business');
+    if (doc) {
+      docType = 'LegalDocument';
+    } else {
+      doc = await SOPDocument.findOne({ storageKey: id }).populate('business');
+      if (doc) {
+        docType = 'SOPDocument';
+      }
+    }
   }
 
   if (!doc) {
@@ -284,14 +335,6 @@ export async function downloadDocument(req: Request, res: Response): Promise<any
     return sendError(res, 'Document file path is unavailable.', 404);
   }
 
-  const filePath = path.isAbsolute(storageKey)
-    ? storageKey
-    : path.join(process.cwd(), 'uploads', storageKey);
-
-  if (!fs.existsSync(filePath)) {
-    return sendError(res, 'Requested file is not present on physical storage.', 404);
-  }
-
   await AuditLog.create({
     actor: user._id,
     actorRole: user.role,
@@ -300,6 +343,48 @@ export async function downloadDocument(req: Request, res: Response): Promise<any
     entityType: docType,
     entityId: doc._id.toString(),
   });
+
+  const storage = getStorageService();
+  if (req.query.format === 'presigned' || req.query.presigned === 'true') {
+    if (!env.ALLOW_PRESIGNED_URLS) {
+      return sendError(
+        res,
+        'Presigned download URLs are disabled by security policy. Use direct authenticated download streaming.',
+        403
+      );
+    }
+    const presignedUrl = await storage.getDownloadUrl(storageKey, 900);
+    return res.json({
+      success: true,
+      data: {
+        downloadUrl: presignedUrl,
+        expiresInSeconds: 900,
+        fileName,
+      },
+    });
+  }
+
+  if (storage.name === 's3') {
+    try {
+      const fileData = await storage.getFileStream(storageKey);
+      res.setHeader('Content-Type', fileData.mimeType || 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
+      if (fileData.size > 0) {
+        res.setHeader('Content-Length', fileData.size);
+      }
+      return fileData.stream.pipe(res);
+    } catch {
+      // Fall through to local storage check
+    }
+  }
+
+  const filePath = path.isAbsolute(storageKey)
+    ? storageKey
+    : path.join(process.cwd(), 'uploads', storageKey);
+
+  if (!fs.existsSync(filePath)) {
+    return sendError(res, 'Requested file is not present on physical storage.', 404);
+  }
 
   return res.download(filePath, fileName);
 }

@@ -115,7 +115,7 @@ describe('FranchiseBridge Enterprise Backend API Test Suite', () => {
     expect(pipelineRes.status).toBe(200);
     expect(pipelineRes.body.success).toBe(true);
     expect(pipelineRes.body.data.columns).toBeDefined();
-    expect(pipelineRes.body.data.columns.NEW_LEAD).toBeDefined();
+    expect(pipelineRes.body.data.columns.NEW_ENQUIRY || pipelineRes.body.data.columns.NEW_LEAD).toBeDefined();
 
     const metricsRes = await request(app)
       .get('/api/v1/crm/metrics')

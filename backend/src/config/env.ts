@@ -6,7 +6,7 @@ dotenv.config();
 const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-    PORT: z.string().default('5000').transform(Number),
+    PORT: z.coerce.number().default(5000),
     MONGODB_URI: z.string().default('mongodb://127.0.0.1:27017/franchisebridge'),
     DB_MAX_POOL_SIZE: z.string().default('50').transform(Number),
     DB_MIN_POOL_SIZE: z.string().default('5').transform(Number),
@@ -26,6 +26,9 @@ const envSchema = z
     AWS_ACCESS_KEY_ID: z.string().optional(),
     AWS_SECRET_ACCESS_KEY: z.string().optional(),
     AWS_ENDPOINT: z.string().optional(),
+    ALLOW_PRESIGNED_URLS: z
+      .union([z.boolean(), z.string().transform((v) => v.toLowerCase() === 'true')])
+      .default(false),
 
     // Production SMTP config
     SMTP_HOST: z.string().optional(),
@@ -39,6 +42,14 @@ const envSchema = z
     LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   })
   .superRefine((data, ctx) => {
+    if (data.STORAGE_DRIVER === 's3' && !data.AWS_S3_BUCKET) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'AWS_S3_BUCKET is required when STORAGE_DRIVER is set to "s3"',
+        path: ['AWS_S3_BUCKET'],
+      });
+    }
+
     if (data.NODE_ENV === 'production') {
       const defaultSecret = 'franchisebridge_jwt_secret_super_secure_key_change_in_prod';
       const defaultRefresh = 'franchisebridge_jwt_refresh_secret_key_change_in_prod';

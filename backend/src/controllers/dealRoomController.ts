@@ -13,6 +13,8 @@ import { AuditLog } from '../models/AuditLog';
 import { Notification } from '../models/Notification';
 import { User } from '../models/User';
 import { PRIVATE_STORAGE_DIR } from '../middleware/privateUpload';
+import { getStorageService } from '../services/storageService';
+import { env } from '../config/env';
 
 export const DEFAULT_11_DILIGENCE_ITEMS: IDueDiligenceCategoryItem[] = [
   {
@@ -445,26 +447,33 @@ export const getDealRoomDocuments = async (req: Request, res: Response): Promise
  * Upload document into private storage with metadata and role permissions
  */
 export const uploadDealRoomDocument = async (req: Request, res: Response): Promise<void> => {
+  const file = req.file;
+  let shouldCleanupFile = false;
+
   try {
     const { id } = req.params;
     const user = req.user!;
-    const file = req.file;
 
     if (!file) {
       res.status(400).json({ success: false, message: 'No file provided or unsupported file format.' });
       return;
     }
 
+    const storage = getStorageService();
+    if (storage.name === 's3') {
+      shouldCleanupFile = true;
+    }
+
     const room = await DealRoom.findById(id);
     if (!room) {
+      shouldCleanupFile = true;
       res.status(404).json({ success: false, message: 'Deal room not found' });
       return;
     }
 
     const access = checkDealRoomAccess(user, room);
     if (!access.allowed) {
-      // Remove uploaded file from private storage on unauthorized attempt
-      if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+      shouldCleanupFile = true;
       res.status(403).json({ success: false, message: 'You are not an authorized participant of this deal room.' });
       return;
     }
@@ -488,13 +497,23 @@ export const uploadDealRoomDocument = async (req: Request, res: Response): Promi
         : allowedRoles.split(',').map((r: string) => r.trim());
     }
 
+    let finalKey = file.filename;
+    let finalPath = path.relative(process.cwd(), file.path);
+
+    if (storage.name === 's3') {
+      const fileBuffer = await fs.promises.readFile(file.path);
+      const saved = await storage.saveFile(file.filename, fileBuffer, file.mimetype);
+      finalKey = saved.key;
+      finalPath = `s3://${env.AWS_S3_BUCKET || 'franchisebridge-private-vault'}/${saved.key}`;
+    }
+
     const doc = await DealDocument.create({
       dealRoom: room._id,
       deal: room.deal || room.dealRef,
       title: title || file.originalname,
       fileName: file.originalname,
-      storageKey: file.filename,
-      filePath: path.relative(process.cwd(), file.path),
+      storageKey: finalKey,
+      filePath: finalPath,
       category: category || 'OTHER_SUPPORTING',
       uploadedBy: user._id,
       uploadedAt: new Date(),
@@ -508,7 +527,7 @@ export const uploadDealRoomDocument = async (req: Request, res: Response): Promi
         {
           versionNumber: 1,
           fileName: file.originalname,
-          storageKey: file.filename,
+          storageKey: finalKey,
           fileSize: file.size,
           mimeType: file.mimetype,
           uploadedBy: user._id,
@@ -597,7 +616,18 @@ export const uploadDealRoomDocument = async (req: Request, res: Response): Promi
       data: doc,
     });
   } catch (error: any) {
+    shouldCleanupFile = true;
     res.status(500).json({ success: false, message: error.message });
+  } finally {
+    if (file && shouldCleanupFile) {
+      try {
+        if (fs.existsSync(file.path)) {
+          await fs.promises.unlink(file.path);
+        }
+      } catch (cleanupErr) {
+        console.error('Failed to clean up temporary upload file:', cleanupErr);
+      }
+    }
   }
 };
 
@@ -606,32 +636,40 @@ export const uploadDealRoomDocument = async (req: Request, res: Response): Promi
  * Upload a new version for an existing document
  */
 export const uploadDealDocumentVersion = async (req: Request, res: Response): Promise<void> => {
+  const file = req.file;
+  let shouldCleanupFile = false;
+
   try {
     const { id, docId } = req.params;
     const user = req.user!;
-    const file = req.file;
 
     if (!file) {
       res.status(400).json({ success: false, message: 'No file provided for new version.' });
       return;
     }
 
+    const storage = getStorageService();
+    if (storage.name === 's3') {
+      shouldCleanupFile = true;
+    }
+
     const room = await DealRoom.findById(id);
     if (!room) {
+      shouldCleanupFile = true;
       res.status(404).json({ success: false, message: 'Deal room not found' });
       return;
     }
 
     const access = checkDealRoomAccess(user, room);
     if (!access.allowed) {
-      if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+      shouldCleanupFile = true;
       res.status(403).json({ success: false, message: 'Unauthorized to upload new version.' });
       return;
     }
 
     const doc = await DealDocument.findOne({ _id: docId, dealRoom: room._id });
     if (!doc) {
-      if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+      shouldCleanupFile = true;
       res.status(404).json({ success: false, message: 'Document not found' });
       return;
     }
@@ -639,11 +677,21 @@ export const uploadDealDocumentVersion = async (req: Request, res: Response): Pr
     const newVersionNumber = doc.currentVersion + 1;
     const changeNote = req.body.changeNote || `Version ${newVersionNumber} revision`;
 
+    let finalKey = file.filename;
+    let finalPath = path.relative(process.cwd(), file.path);
+
+    if (storage.name === 's3') {
+      const fileBuffer = await fs.promises.readFile(file.path);
+      const saved = await storage.saveFile(file.filename, fileBuffer, file.mimetype);
+      finalKey = saved.key;
+      finalPath = `s3://${env.AWS_S3_BUCKET || 'franchisebridge-private-vault'}/${saved.key}`;
+    }
+
     // Append to versions array
     doc.versions.push({
       versionNumber: newVersionNumber,
       fileName: file.originalname,
-      storageKey: file.filename,
+      storageKey: finalKey,
       fileSize: file.size,
       mimeType: file.mimetype,
       uploadedBy: user._id,
@@ -654,8 +702,8 @@ export const uploadDealDocumentVersion = async (req: Request, res: Response): Pr
     // Update current active pointers
     doc.currentVersion = newVersionNumber;
     doc.fileName = file.originalname;
-    doc.storageKey = file.filename;
-    doc.filePath = path.relative(process.cwd(), file.path);
+    doc.storageKey = finalKey;
+    doc.filePath = finalPath;
     doc.fileSize = file.size;
     doc.mimeType = file.mimetype;
     doc.status = 'UNDER_REVIEW';
@@ -681,7 +729,18 @@ export const uploadDealDocumentVersion = async (req: Request, res: Response): Pr
       data: doc,
     });
   } catch (error: any) {
+    shouldCleanupFile = true;
     res.status(500).json({ success: false, message: error.message });
+  } finally {
+    if (file && shouldCleanupFile) {
+      try {
+        if (fs.existsSync(file.path)) {
+          await fs.promises.unlink(file.path);
+        }
+      } catch (cleanupErr) {
+        console.error('Failed to clean up temporary upload file:', cleanupErr);
+      }
+    }
   }
 };
 
@@ -735,16 +794,6 @@ export const downloadDealDocument = async (req: Request, res: Response): Promise
       return;
     }
 
-    // Check physical file in private storage
-    const absolutePath = path.isAbsolute(doc.filePath)
-      ? doc.filePath
-      : path.join(process.cwd(), doc.filePath);
-
-    if (!fs.existsSync(absolutePath)) {
-      res.status(404).json({ success: false, message: 'File is not present on physical storage.' });
-      return;
-    }
-
     // Record access history
     doc.accessHistory.push({
       user: user._id,
@@ -766,6 +815,65 @@ export const downloadDealDocument = async (req: Request, res: Response): Promise
         storageKey: doc.storageKey,
       },
     });
+
+    const storage = getStorageService();
+
+    // Check if client requested a presigned download URL
+    if (req.query.format === 'presigned' || req.query.presigned === 'true') {
+      if (!env.ALLOW_PRESIGNED_URLS) {
+        res.status(403).json({
+          success: false,
+          message: 'Presigned download URLs are disabled by security policy. Use direct authenticated download streaming.',
+        });
+        return;
+      }
+
+      if (doc.isInternalOnly) {
+        res.status(403).json({
+          success: false,
+          message: 'Presigned URLs are prohibited for internal confidential documents. Direct authenticated streaming required.',
+        });
+        return;
+      }
+
+      const presignedUrl = await storage.getDownloadUrl(doc.storageKey || doc.fileName, 900);
+      res.json({
+        success: true,
+        data: {
+          downloadUrl: presignedUrl,
+          expiresInSeconds: 900,
+          fileName: doc.fileName,
+        },
+      });
+      return;
+    }
+
+    // S3 Streaming Support: Stream authenticated file directly to client
+    if (storage.name === 's3') {
+      try {
+        const fileData = await storage.getFileStream(doc.storageKey || doc.fileName);
+        res.setHeader('Content-Type', fileData.mimeType || doc.mimeType || 'application/octet-stream');
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(doc.fileName)}"`);
+        if (fileData.size > 0) {
+          res.setHeader('Content-Length', fileData.size);
+        }
+        fileData.stream.pipe(res);
+        return;
+      } catch (err: any) {
+        res.status(404).json({ success: false, message: 'File not found on storage.' });
+        return;
+      }
+    }
+
+    // Local Storage File check
+    const absolutePath = path.isAbsolute(doc.filePath)
+      ? doc.filePath
+      : path.join(process.cwd(), doc.filePath);
+
+    if (!fs.existsSync(absolutePath)) {
+      res.status(404).json({ success: false, message: 'File is not present on physical storage.' });
+      return;
+    }
 
     res.download(absolutePath, doc.fileName);
   } catch (error: any) {
@@ -855,7 +963,20 @@ export const deleteDealDocument = async (req: Request, res: Response): Promise<v
       return;
     }
 
-    // Remove physical file from private storage
+    // Remove file from storage provider (S3 or local)
+    const storage = getStorageService();
+    if (doc.storageKey) {
+      const deleteSuccess = await storage.deleteFile(doc.storageKey);
+      if (!deleteSuccess) {
+        res.status(502).json({
+          success: false,
+          message: 'Failed to delete file from object storage. Document record was preserved.',
+        });
+        return;
+      }
+    }
+
+    // Also remove physical file from local private storage if present
     const absolutePath = path.isAbsolute(doc.filePath)
       ? doc.filePath
       : path.join(process.cwd(), doc.filePath);

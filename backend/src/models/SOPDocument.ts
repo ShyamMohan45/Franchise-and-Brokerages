@@ -22,6 +22,7 @@ export interface ISOPDocument extends Document {
   status: DocumentWorkflowStatus;
   contentMarkdown?: string;
   fileUrl?: string;
+  storageKey?: string;
   fileName?: string;
   fileSizeBytes?: number;
   mimeType?: string;
@@ -85,6 +86,9 @@ const sopDocumentSchema = new Schema<ISOPDocument>(
       type: String,
     },
     fileUrl: {
+      type: String,
+    },
+    storageKey: {
       type: String,
     },
     fileName: {
