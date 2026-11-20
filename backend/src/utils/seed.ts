@@ -21,7 +21,11 @@ import { AuditLog } from '../models/AuditLog';
 
 export async function runSeed() {
   console.log('[Seed] Connecting to MongoDB...');
-  await mongoose.connect(env.MONGODB_URI);
+  const mongoUri = env.MONGODB_URI || process.env.MONGODB_URI;
+  if (!mongoUri) {
+    throw new Error('[Seed] MONGODB_URI is required to run seed');
+  }
+  await mongoose.connect(mongoUri);
   console.log('[Seed] Connected.');
 
   console.log('[Seed] Clearing existing collections...');
