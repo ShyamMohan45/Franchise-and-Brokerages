@@ -9,7 +9,7 @@ import {
   StyleProp,
   View,
 } from 'react-native';
-import { colors, typography, spacing, borderRadius } from '../theme';
+import { useTheme, typography, spacing, borderRadius } from '../theme';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
 export type ButtonSize = 'sm' | 'md' | 'lg';
@@ -39,7 +39,37 @@ export const Button: React.FC<ButtonProps> = ({
   style,
   textStyle,
 }) => {
+  const { colors, isDark } = useTheme();
   const isDisabled = disabled || loading;
+
+  const dynamicVariantStyles: Record<ButtonVariant, { container: ViewStyle; text: TextStyle }> = {
+    primary: {
+      container: { backgroundColor: colors.primary.DEFAULT },
+      text: { color: colors.white },
+    },
+    secondary: {
+      container: { backgroundColor: isDark ? colors.surfaceSubtle : colors.navy[900] },
+      text: { color: colors.white },
+    },
+    outline: {
+      container: {
+        backgroundColor: colors.transparent,
+        borderWidth: 1.5,
+        borderColor: colors.border,
+      },
+      text: { color: colors.text.primary },
+    },
+    ghost: {
+      container: { backgroundColor: colors.transparent },
+      text: { color: colors.primary.DEFAULT },
+    },
+    danger: {
+      container: { backgroundColor: colors.danger.DEFAULT },
+      text: { color: colors.white },
+    },
+  };
+
+  const currentVariant = dynamicVariantStyles[variant];
 
   return (
     <Pressable
@@ -47,7 +77,7 @@ export const Button: React.FC<ButtonProps> = ({
       disabled={isDisabled}
       style={({ pressed }) => [
         styles.base,
-        styles[variant],
+        currentVariant.container,
         styles[`size_${size}`],
         fullWidth && styles.fullWidth,
         pressed && !isDisabled && styles.pressed,
@@ -66,9 +96,9 @@ export const Button: React.FC<ButtonProps> = ({
           <Text
             style={[
               styles.textBase,
-              styles[`text_${variant}`],
+              currentVariant.text,
               styles[`textSize_${size}`],
-              isDisabled && styles.textDisabled,
+              isDisabled && { color: colors.text.muted },
               textStyle,
             ]}
           >
@@ -105,24 +135,6 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.5,
   },
-  // Variant styles
-  primary: {
-    backgroundColor: colors.primary.DEFAULT,
-  },
-  secondary: {
-    backgroundColor: colors.navy[900],
-  },
-  outline: {
-    backgroundColor: colors.transparent,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-  },
-  ghost: {
-    backgroundColor: colors.transparent,
-  },
-  danger: {
-    backgroundColor: colors.danger.DEFAULT,
-  },
   // Size styles
   size_sm: {
     paddingVertical: spacing.xs + 2,
@@ -140,21 +152,6 @@ const styles = StyleSheet.create({
   textBase: {
     fontWeight: typography.fontWeights.semiBold,
   },
-  text_primary: {
-    color: colors.white,
-  },
-  text_secondary: {
-    color: colors.white,
-  },
-  text_outline: {
-    color: colors.slate[800],
-  },
-  text_ghost: {
-    color: colors.primary.DEFAULT,
-  },
-  text_danger: {
-    color: colors.white,
-  },
   textSize_sm: {
     fontSize: typography.fontSizes.sm,
   },
@@ -163,8 +160,5 @@ const styles = StyleSheet.create({
   },
   textSize_lg: {
     fontSize: typography.fontSizes.lg,
-  },
-  textDisabled: {
-    color: colors.slate[400],
   },
 });

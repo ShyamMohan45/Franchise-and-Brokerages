@@ -10,6 +10,23 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Semantic Theme Tokens (CSS Variable backed for instant Dark/Light mode)
+        theme: {
+          main: "var(--bg-main)",
+          nav: "var(--bg-nav)",
+          secondary: "var(--bg-secondary)",
+          card: "var(--bg-card)",
+          elevated: "var(--bg-elevated)",
+          hover: "var(--bg-hover)",
+          text: {
+            primary: "var(--text-primary)",
+            secondary: "var(--text-secondary)",
+            muted: "var(--text-muted)",
+          },
+          border: "var(--border-color)",
+          divider: "var(--border-divider)",
+          input: "var(--input-bg)",
+        },
         // Master Prompt Design System Tokens
         midnight: {
           DEFAULT: "#14243A",

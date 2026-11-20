@@ -11,14 +11,15 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing, borderRadius } from '../src/theme';
-import { Card, Badge, Button, Input, Header } from '../src/components';
+import { colors, typography, spacing, borderRadius, useTheme } from '../src/theme';
+import { Card, Badge, Button, Input, Header, ThemeSelector } from '../src/components';
 import { useAuth } from '../src/hooks/useAuth';
 import { AuthService } from '../src/services/authService';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, businessProfile, investorProfile, logout, refreshProfile } = useAuth();
+  const { colors, isDark } = useTheme();
 
   // Change Password state
   const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -103,8 +104,18 @@ export default function ProfileScreen() {
         .slice(0, 2)
     : 'FB';
 
+  const dyn = {
+    title: { color: colors.text.primary },
+    desc: { color: colors.text.muted },
+    fieldItem: { borderBottomColor: colors.border },
+    fieldLabel: { color: colors.text.muted },
+    fieldValue: { color: colors.text.primary },
+    fieldValueMono: { color: colors.text.secondary },
+    toggleBtn: { backgroundColor: colors.surfaceSubtle },
+  };
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <Header
         title="Account Profile"
         subtitle="Identity & Security"
@@ -122,7 +133,7 @@ export default function ProfileScreen() {
           showsVerticalScrollIndicator={false}
         >
           {/* User Identity Card */}
-          <Card style={styles.identityCard} padding="lg">
+          <Card style={[styles.identityCard, isDark && { backgroundColor: colors.card, borderColor: colors.border }]} padding="lg">
             <View style={styles.avatarRow}>
               <View style={styles.avatarContainer}>
                 <Text style={styles.avatarText}>{initials}</Text>
@@ -148,46 +159,46 @@ export default function ProfileScreen() {
 
           {/* Account Details (Actual Backend Fields) */}
           <Card style={styles.sectionCard} padding="lg">
-            <Text style={styles.sectionTitle}>Account Details</Text>
+            <Text style={[styles.sectionTitle, dyn.title]}>Account Details</Text>
 
-            <View style={styles.fieldItem}>
-              <Text style={styles.fieldLabel}>User ID</Text>
-              <Text style={styles.fieldValueMono}>{user?.id || 'N/A'}</Text>
+            <View style={[styles.fieldItem, dyn.fieldItem]}>
+              <Text style={[styles.fieldLabel, dyn.fieldLabel]}>User ID</Text>
+              <Text style={[styles.fieldValueMono, dyn.fieldValueMono]}>{user?.id || 'N/A'}</Text>
             </View>
 
-            <View style={styles.fieldItem}>
-              <Text style={styles.fieldLabel}>Full Legal Name</Text>
-              <Text style={styles.fieldValue}>{user?.fullName || 'Not provided'}</Text>
+            <View style={[styles.fieldItem, dyn.fieldItem]}>
+              <Text style={[styles.fieldLabel, dyn.fieldLabel]}>Full Legal Name</Text>
+              <Text style={[styles.fieldValue, dyn.fieldValue]}>{user?.fullName || 'Not provided'}</Text>
             </View>
 
-            <View style={styles.fieldItem}>
-              <Text style={styles.fieldLabel}>Registered Email</Text>
-              <Text style={styles.fieldValue}>{user?.email || 'Not provided'}</Text>
+            <View style={[styles.fieldItem, dyn.fieldItem]}>
+              <Text style={[styles.fieldLabel, dyn.fieldLabel]}>Registered Email</Text>
+              <Text style={[styles.fieldValue, dyn.fieldValue]}>{user?.email || 'Not provided'}</Text>
             </View>
 
-            <View style={styles.fieldItem}>
-              <Text style={styles.fieldLabel}>Phone Number</Text>
-              <Text style={styles.fieldValue}>{user?.phone || 'Not provided'}</Text>
+            <View style={[styles.fieldItem, dyn.fieldItem]}>
+              <Text style={[styles.fieldLabel, dyn.fieldLabel]}>Phone Number</Text>
+              <Text style={[styles.fieldValue, dyn.fieldValue]}>{user?.phone || 'Not provided'}</Text>
             </View>
 
-            <View style={styles.fieldItem}>
-              <Text style={styles.fieldLabel}>Account Status</Text>
-              <Text style={styles.fieldValue}>
+            <View style={[styles.fieldItem, dyn.fieldItem]}>
+              <Text style={[styles.fieldLabel, dyn.fieldLabel]}>Account Status</Text>
+              <Text style={[styles.fieldValue, dyn.fieldValue]}>
                 {user?.status ? user.status.toUpperCase() : 'ACTIVE'}
               </Text>
             </View>
 
-            <View style={styles.fieldItem}>
-              <Text style={styles.fieldLabel}>Email Verification Status</Text>
-              <Text style={styles.fieldValue}>
+            <View style={[styles.fieldItem, dyn.fieldItem]}>
+              <Text style={[styles.fieldLabel, dyn.fieldLabel]}>Email Verification Status</Text>
+              <Text style={[styles.fieldValue, dyn.fieldValue]}>
                 {user?.emailVerified ? 'Confirmed & Active' : 'Unverified (Action Required)'}
               </Text>
             </View>
 
             {user?.createdAt && (
-              <View style={[styles.fieldItem, { borderBottomWidth: 0 }]}>
-                <Text style={styles.fieldLabel}>Registration Date</Text>
-                <Text style={styles.fieldValue}>
+              <View style={[styles.fieldItem, dyn.fieldItem, { borderBottomWidth: 0 }]}>
+                <Text style={[styles.fieldLabel, dyn.fieldLabel]}>Registration Date</Text>
+                <Text style={[styles.fieldValue, dyn.fieldValue]}>
                   {new Date(user.createdAt).toLocaleDateString('en-US', {
                     year: 'numeric',
                     month: 'long',
@@ -201,26 +212,26 @@ export default function ProfileScreen() {
           {/* Role Profile Details (if present) */}
           {businessProfile && (
             <Card style={styles.sectionCard} padding="lg">
-              <Text style={styles.sectionTitle}>Brand Enterprise Profile</Text>
+              <Text style={[styles.sectionTitle, dyn.title]}>Brand Enterprise Profile</Text>
 
-              <View style={styles.fieldItem}>
-                <Text style={styles.fieldLabel}>Brand Name</Text>
-                <Text style={styles.fieldValue}>{businessProfile.brandName || 'N/A'}</Text>
+              <View style={[styles.fieldItem, dyn.fieldItem]}>
+                <Text style={[styles.fieldLabel, dyn.fieldLabel]}>Brand Name</Text>
+                <Text style={[styles.fieldValue, dyn.fieldValue]}>{businessProfile.brandName || 'N/A'}</Text>
               </View>
 
-              <View style={styles.fieldItem}>
-                <Text style={styles.fieldLabel}>Industry Category</Text>
-                <Text style={styles.fieldValue}>{businessProfile.category || 'N/A'}</Text>
+              <View style={[styles.fieldItem, dyn.fieldItem]}>
+                <Text style={[styles.fieldLabel, dyn.fieldLabel]}>Industry Category</Text>
+                <Text style={[styles.fieldValue, dyn.fieldValue]}>{businessProfile.category || 'N/A'}</Text>
               </View>
 
-              <View style={styles.fieldItem}>
-                <Text style={styles.fieldLabel}>Headquarters</Text>
-                <Text style={styles.fieldValue}>{businessProfile.headquarters || 'N/A'}</Text>
+              <View style={[styles.fieldItem, dyn.fieldItem]}>
+                <Text style={[styles.fieldLabel, dyn.fieldLabel]}>Headquarters</Text>
+                <Text style={[styles.fieldValue, dyn.fieldValue]}>{businessProfile.headquarters || 'N/A'}</Text>
               </View>
 
-              <View style={[styles.fieldItem, { borderBottomWidth: 0 }]}>
-                <Text style={styles.fieldLabel}>Approval Status</Text>
-                <Text style={styles.fieldValue}>
+              <View style={[styles.fieldItem, dyn.fieldItem, { borderBottomWidth: 0 }]}>
+                <Text style={[styles.fieldLabel, dyn.fieldLabel]}>Approval Status</Text>
+                <Text style={[styles.fieldValue, dyn.fieldValue]}>
                   {businessProfile.approvalStatus?.toUpperCase() || 'PENDING'}
                 </Text>
               </View>
@@ -229,21 +240,21 @@ export default function ProfileScreen() {
 
           {investorProfile && (
             <Card style={styles.sectionCard} padding="lg">
-              <Text style={styles.sectionTitle}>Investor Profile Specifications</Text>
+              <Text style={[styles.sectionTitle, dyn.title]}>Investor Profile Specifications</Text>
 
-              <View style={styles.fieldItem}>
-                <Text style={styles.fieldLabel}>Investor Classification</Text>
-                <Text style={styles.fieldValue}>{investorProfile.investorType || 'Individual'}</Text>
+              <View style={[styles.fieldItem, dyn.fieldItem]}>
+                <Text style={[styles.fieldLabel, dyn.fieldLabel]}>Investor Classification</Text>
+                <Text style={[styles.fieldValue, dyn.fieldValue]}>{investorProfile.investorType || 'Individual'}</Text>
               </View>
 
-              <View style={styles.fieldItem}>
-                <Text style={styles.fieldLabel}>Investment Timeline</Text>
-                <Text style={styles.fieldValue}>{investorProfile.investmentTimeline || 'Flexible'}</Text>
+              <View style={[styles.fieldItem, dyn.fieldItem]}>
+                <Text style={[styles.fieldLabel, dyn.fieldLabel]}>Investment Timeline</Text>
+                <Text style={[styles.fieldValue, dyn.fieldValue]}>{investorProfile.investmentTimeline || 'Flexible'}</Text>
               </View>
 
-              <View style={[styles.fieldItem, { borderBottomWidth: 0 }]}>
-                <Text style={styles.fieldLabel}>Target Industries</Text>
-                <Text style={styles.fieldValue}>
+              <View style={[styles.fieldItem, dyn.fieldItem, { borderBottomWidth: 0 }]}>
+                <Text style={[styles.fieldLabel, dyn.fieldLabel]}>Target Industries</Text>
+                <Text style={[styles.fieldValue, dyn.fieldValue]}>
                   {investorProfile.targetIndustries?.join(', ') || 'All sectors'}
                 </Text>
               </View>
@@ -254,12 +265,12 @@ export default function ProfileScreen() {
           <Card style={styles.sectionCard} padding="lg">
             <View style={styles.cardHeaderRow}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.sectionTitle}>Account Security</Text>
-                <Text style={styles.sectionDesc}>Update your account login password</Text>
+                <Text style={[styles.sectionTitle, dyn.title]}>Account Security</Text>
+                <Text style={[styles.sectionDesc, dyn.desc]}>Update your account login password</Text>
               </View>
               <Pressable
                 onPress={() => setShowPasswordForm(!showPasswordForm)}
-                style={styles.toggleFormButton}
+                style={[styles.toggleFormButton, dyn.toggleBtn]}
                 hitSlop={6}
               >
                 <Text style={styles.toggleFormText}>{showPasswordForm ? 'Cancel' : 'Change'}</Text>
@@ -332,6 +343,21 @@ export default function ProfileScreen() {
                 />
               </View>
             )}
+          </Card>
+
+          {/* Appearance & Theme Settings */}
+          <Card style={styles.sectionCard} padding="lg">
+            <View style={styles.cardHeaderRow}>
+              <View>
+                <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Appearance & Theme</Text>
+                <Text style={[styles.sectionDesc, { color: colors.text.muted }]}>
+                  Choose Light, Dark, or System mode to customize your interface
+                </Text>
+              </View>
+            </View>
+            <View style={{ marginTop: spacing.sm }}>
+              <ThemeSelector />
+            </View>
           </Card>
 
           {/* Sign Out Card */}

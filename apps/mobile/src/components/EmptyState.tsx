@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing } from '../theme';
+import { useTheme, typography, spacing } from '../theme';
 import { Button } from './Button';
 
 interface EmptyStateProps {
@@ -21,15 +21,16 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   actionLabel,
   onAction,
 }) => {
+  const { colors } = useTheme();
   const buttonLabel = actionTitle || actionLabel;
 
   return (
     <View style={styles.container}>
-      <View style={styles.iconCircle}>
+      <View style={[styles.iconCircle, { backgroundColor: colors.primary.soft }]}>
         <Ionicons name={icon} size={36} color={colors.primary.DEFAULT} />
       </View>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.description}>{description}</Text>
+      <Text style={[styles.title, { color: colors.text.primary }]}>{title}</Text>
+      <Text style={[styles.description, { color: colors.text.muted }]}>{description}</Text>
       {buttonLabel && onAction && (
         <Button
           title={buttonLabel}
@@ -53,7 +54,6 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: colors.primary.soft,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.lg,
@@ -61,13 +61,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSizes.lg,
     fontWeight: typography.fontWeights.bold,
-    color: colors.slate[800],
     marginBottom: spacing.xs,
     textAlign: 'center',
   },
   description: {
     fontSize: typography.fontSizes.sm,
-    color: colors.slate[500],
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: spacing.lg,

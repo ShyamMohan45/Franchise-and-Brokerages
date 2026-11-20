@@ -6,6 +6,7 @@ export { Header } from './Header';
 export { EmptyState } from './EmptyState';
 export { LoadingOverlay } from './LoadingOverlay';
 export { RoleGuard } from './RoleGuard';
+export { ThemeSelector } from './ThemeSelector';
 export * from './marketplace';
 export * from './crm';
 export * from './deal-room';

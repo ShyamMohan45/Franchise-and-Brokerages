@@ -10,8 +10,8 @@ interface StatusBadgeProps {
 export function StatusBadge({ status, className, showDot = true }: StatusBadgeProps) {
   const normalized = status ? status.toLowerCase().replace(/_/g, " ") : "unknown";
 
-  let badgeClasses = "bg-slate-100 text-slate-700 border-slate-200";
-  let dotClasses = "bg-slate-400";
+  let badgeClasses = "bg-slate-100 dark:bg-[#171717] text-slate-700 dark:text-[#D4D4D4] border-slate-200 dark:border-[#262626]";
+  let dotClasses = "bg-slate-400 dark:bg-[#A3A3A3]";
 
   switch (status) {
     case "published":
@@ -22,7 +22,7 @@ export function StatusBadge({ status, className, showDot = true }: StatusBadgePr
     case "paid":
     case "converted":
     case "closed":
-      badgeClasses = "bg-emerald-50 text-emerald-800 border-emerald-200/80 shadow-[0_1px_2px_rgba(16,185,129,0.06)]";
+      badgeClasses = "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800/60 shadow-[0_1px_2px_rgba(16,185,129,0.06)]";
       dotClasses = "bg-emerald-500 animate-pulse";
       break;
 
@@ -35,14 +35,14 @@ export function StatusBadge({ status, className, showDot = true }: StatusBadgePr
     case "negotiation":
     case "in_progress":
     case "contacted":
-      badgeClasses = "bg-amber-50 text-amber-800 border-amber-200/80 shadow-[0_1px_2px_rgba(245,158,11,0.06)]";
+      badgeClasses = "bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200/80 dark:border-amber-800/60 shadow-[0_1px_2px_rgba(245,158,11,0.06)]";
       dotClasses = "bg-amber-500";
       break;
 
     case "draft":
     case "self_assessment":
     case "new":
-      badgeClasses = "bg-blue-50 text-blue-800 border-blue-200/80";
+      badgeClasses = "bg-blue-50 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border-blue-200/80 dark:border-blue-800/60";
       dotClasses = "bg-blue-500";
       break;
 
@@ -50,7 +50,7 @@ export function StatusBadge({ status, className, showDot = true }: StatusBadgePr
     case "lost_cancelled":
     case "suspended":
     case "withdrawn":
-      badgeClasses = "bg-rose-50 text-rose-800 border-rose-200/80";
+      badgeClasses = "bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border-rose-200/80 dark:border-rose-800/60";
       dotClasses = "bg-rose-500";
       break;
 
@@ -58,7 +58,7 @@ export function StatusBadge({ status, className, showDot = true }: StatusBadgePr
     case "introduced_to_owner":
     case "assigned":
     case "qualified":
-      badgeClasses = "bg-indigo-50 text-indigo-800 border-indigo-200/80 shadow-[0_1px_2px_rgba(99,102,241,0.06)]";
+      badgeClasses = "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300 border-indigo-200/80 dark:border-indigo-800/60 shadow-[0_1px_2px_rgba(99,102,241,0.06)]";
       dotClasses = "bg-indigo-500";
       break;
   }

@@ -15,9 +15,9 @@ import {
 
 export function Footer() {
   return (
-    <footer className="bg-[#14243A] text-white border-t border-[#1C2A3E]">
+    <footer className="bg-[#14243A] dark:bg-[#050505] text-white border-t border-[#1C2A3E] dark:border-[#222222] transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-8 pb-12 border-b border-[#1C2A3E]">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-8 pb-12 border-b border-[#1C2A3E] dark:border-[#222222]">
           {/* Column 1: Brand & Bio */}
           <div className="lg:col-span-2 space-y-4">
             <Link href="/" className="flex items-center gap-3">
@@ -46,7 +46,7 @@ export function Footer() {
                 href="https://linkedin.com"
                 target="_blank"
                 rel="noreferrer"
-                className="w-8 h-8 rounded-lg bg-[#1C2A3E] flex items-center justify-center text-slate-400 hover:text-white hover:bg-[#315EFB] transition-colors"
+                className="w-8 h-8 rounded-lg bg-[#1C2A3E] dark:bg-[#101010] border border-transparent dark:border-[#262626] flex items-center justify-center text-slate-400 hover:text-white hover:bg-[#3563FF] transition-colors"
                 aria-label="LinkedIn"
               >
                 <Linkedin className="w-4 h-4" />
@@ -55,7 +55,7 @@ export function Footer() {
                 href="https://twitter.com"
                 target="_blank"
                 rel="noreferrer"
-                className="w-8 h-8 rounded-lg bg-[#1C2A3E] flex items-center justify-center text-slate-400 hover:text-white hover:bg-[#315EFB] transition-colors"
+                className="w-8 h-8 rounded-lg bg-[#1C2A3E] dark:bg-[#101010] border border-transparent dark:border-[#262626] flex items-center justify-center text-slate-400 hover:text-white hover:bg-[#3563FF] transition-colors"
                 aria-label="Twitter"
               >
                 <Twitter className="w-4 h-4" />
@@ -64,7 +64,7 @@ export function Footer() {
                 href="https://github.com/ShyamMohan45/Franchise-and-Brokerages"
                 target="_blank"
                 rel="noreferrer"
-                className="w-8 h-8 rounded-lg bg-[#1C2A3E] flex items-center justify-center text-slate-400 hover:text-white hover:bg-[#315EFB] transition-colors"
+                className="w-8 h-8 rounded-lg bg-[#1C2A3E] dark:bg-[#101010] border border-transparent dark:border-[#262626] flex items-center justify-center text-slate-400 hover:text-white hover:bg-[#3563FF] transition-colors"
                 aria-label="GitHub"
               >
                 <Github className="w-4 h-4" />

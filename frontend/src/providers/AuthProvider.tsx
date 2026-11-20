@@ -83,6 +83,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await fetchCurrentUser();
       if (payload.role === "investor") {
         router.push("/dashboard/investor");
+      } else if (payload.role === "admin" || payload.role === "super_admin") {
+        router.push("/dashboard/admin");
+      } else if (payload.role === "broker") {
+        router.push("/dashboard/brokerage");
       } else {
         router.push("/dashboard/business");
       }

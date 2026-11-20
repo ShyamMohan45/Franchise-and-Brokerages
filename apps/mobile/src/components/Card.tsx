@@ -6,7 +6,7 @@ import {
   ViewStyle,
   StyleProp,
 } from 'react-native';
-import { colors, spacing, borderRadius, shadows } from '../theme';
+import { useTheme, spacing, borderRadius, shadows } from '../theme';
 
 interface CardProps {
   children: React.ReactNode;
@@ -23,9 +23,17 @@ export const Card: React.FC<CardProps> = ({
   variant = 'elevated',
   padding = 'md',
 }) => {
+  const { colors, isDark } = useTheme();
+
+  const dynamicCardStyle: ViewStyle = {
+    backgroundColor: variant === 'flat' ? colors.surfaceSubtle : colors.card,
+    borderColor: variant === 'outlined' ? colors.borderStrong : colors.border,
+  };
+
   const containerStyle = [
     styles.base,
     styles[variant],
+    dynamicCardStyle,
     styles[`padding_${padding}`],
     style,
   ];
@@ -49,22 +57,17 @@ export const Card: React.FC<CardProps> = ({
 
 const styles = StyleSheet.create({
   base: {
-    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     overflow: 'hidden',
   },
   elevated: {
     ...shadows.sm,
     borderWidth: 1,
-    borderColor: colors.slate[100],
   },
   outlined: {
     borderWidth: 1.5,
-    borderColor: colors.border,
   },
-  flat: {
-    backgroundColor: colors.surfaceSubtle,
-  },
+  flat: {},
   pressed: {
     opacity: 0.92,
     transform: [{ scale: 0.995 }],

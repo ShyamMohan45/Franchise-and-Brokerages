@@ -9,7 +9,7 @@ import {
   StyleProp,
   Pressable,
 } from 'react-native';
-import { colors, typography, spacing, borderRadius } from '../theme';
+import { useTheme, typography, spacing, borderRadius } from '../theme';
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -29,25 +29,33 @@ export const Input: React.FC<InputProps> = ({
   containerStyle,
   style,
   secureTextEntry,
+  placeholderTextColor,
   ...rest
 }) => {
+  const { colors } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
   const [isSecure, setIsSecure] = useState(secureTextEntry);
 
   return (
     <View style={[styles.container, containerStyle]}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      {label && <Text style={[styles.label, { color: colors.text.secondary }]}>{label}</Text>}
       <View
         style={[
           styles.inputContainer,
-          isFocused && styles.inputFocused,
-          Boolean(error) && styles.inputError,
+          {
+            backgroundColor: colors.inputBg,
+            borderColor: Boolean(error)
+              ? colors.danger.DEFAULT
+              : isFocused
+              ? colors.primary.DEFAULT
+              : colors.border,
+          },
         ]}
       >
         {leftIcon && <View style={styles.iconLeft}>{leftIcon}</View>}
         <TextInput
-          placeholderTextColor={colors.slate[400]}
-          style={[styles.input, style]}
+          placeholderTextColor={placeholderTextColor || colors.text.muted}
+          style={[styles.input, { color: colors.text.primary }, style]}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           secureTextEntry={isSecure}
@@ -55,16 +63,18 @@ export const Input: React.FC<InputProps> = ({
         />
         {secureTextEntry ? (
           <Pressable onPress={() => setIsSecure(!isSecure)} style={styles.iconRight}>
-            <Text style={styles.toggleText}>{isSecure ? 'Show' : 'Hide'}</Text>
+            <Text style={[styles.toggleText, { color: colors.primary.DEFAULT }]}>
+              {isSecure ? 'Show' : 'Hide'}
+            </Text>
           </Pressable>
         ) : (
           rightIcon && <View style={styles.iconRight}>{rightIcon}</View>
         )}
       </View>
       {error ? (
-        <Text style={styles.errorText}>{error}</Text>
+        <Text style={[styles.errorText, { color: colors.danger.DEFAULT }]}>{error}</Text>
       ) : helperText ? (
-        <Text style={styles.helperText}>{helperText}</Text>
+        <Text style={[styles.helperText, { color: colors.text.muted }]}>{helperText}</Text>
       ) : null}
     </View>
   );
@@ -77,29 +87,19 @@ const styles = StyleSheet.create({
   label: {
     fontSize: typography.fontSizes.sm,
     fontWeight: typography.fontWeights.medium,
-    color: colors.slate[700],
     marginBottom: spacing.xs,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
     borderWidth: 1.5,
-    borderColor: colors.border,
     borderRadius: borderRadius.md,
     paddingHorizontal: spacing.md,
-  },
-  inputFocused: {
-    borderColor: colors.primary.DEFAULT,
-  },
-  inputError: {
-    borderColor: colors.danger.DEFAULT,
   },
   input: {
     flex: 1,
     paddingVertical: spacing.md - 2,
     fontSize: typography.fontSizes.base,
-    color: colors.slate[900],
   },
   iconLeft: {
     marginRight: spacing.sm,
@@ -109,17 +109,14 @@ const styles = StyleSheet.create({
   },
   toggleText: {
     fontSize: typography.fontSizes.xs,
-    color: colors.primary.DEFAULT,
     fontWeight: typography.fontWeights.semiBold,
   },
   errorText: {
     fontSize: typography.fontSizes.xs,
-    color: colors.danger.DEFAULT,
     marginTop: spacing.xxs + 2,
   },
   helperText: {
     fontSize: typography.fontSizes.xs,
-    color: colors.slate[500],
     marginTop: spacing.xxs + 2,
   },
 });

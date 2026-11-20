@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { colors, typography, spacing } from '../theme';
+import { useTheme, typography, spacing } from '../theme';
 
 interface HeaderProps {
   title: string;
@@ -20,6 +20,7 @@ export const Header: React.FC<HeaderProps> = ({
   rightAction,
 }) => {
   const router = useRouter();
+  const { colors } = useTheme();
 
   const handleBack = () => {
     if (onBack) {
@@ -30,19 +31,19 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
       <View style={styles.left}>
         {showBack && (
           <Pressable onPress={handleBack} style={styles.backButton} hitSlop={8}>
-            <Ionicons name="arrow-back" size={24} color={colors.navy[900]} />
+            <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
           </Pressable>
         )}
         <View style={styles.titleContainer}>
-          <Text style={styles.title} numberOfLines={1}>
+          <Text style={[styles.title, { color: colors.text.primary }]} numberOfLines={1}>
             {title}
           </Text>
           {subtitle && (
-            <Text style={styles.subtitle} numberOfLines={1}>
+            <Text style={[styles.subtitle, { color: colors.text.muted }]} numberOfLines={1}>
               {subtitle}
             </Text>
           )}
@@ -60,9 +61,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
-    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: colors.slate[200],
   },
   left: {
     flex: 1,
@@ -79,11 +78,9 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSizes.lg,
     fontWeight: typography.fontWeights.bold,
-    color: colors.navy[900],
   },
   subtitle: {
     fontSize: typography.fontSizes.xs,
-    color: colors.slate[500],
     marginTop: 1,
   },
   right: {
