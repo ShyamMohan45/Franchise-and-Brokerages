@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { API_V1_URL } from "@/lib/api";
 import {
   Briefcase,
   Users,
@@ -46,7 +47,7 @@ export default function DealRoomsListPage() {
 
   useEffect(() => {
     const token = typeof window !== "undefined" ? localStorage.getItem("fb_auth_token") : null;
-    fetch("http://localhost:5000/api/v1/deal-rooms", {
+    fetch(`${API_V1_URL}/deal-rooms`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
       .then((r) => r.json())

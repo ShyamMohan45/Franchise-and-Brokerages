@@ -30,7 +30,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useAuth } from "@/providers/AuthProvider";
-import { api } from "@/lib/api";
+import { api, resolveAssetUrl } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { StatusBadge } from "@/components/StatusBadge";
 
@@ -873,7 +873,7 @@ export default function InvestorDashboardPage() {
                     </div>
 
                     <a
-                      href={doc.storageKey?.startsWith("http") ? doc.storageKey : `http://localhost:5000${doc.storageKey}`}
+                      href={resolveAssetUrl(doc.storageKey)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs py-2.5 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2"

@@ -33,7 +33,7 @@ console.log('===============================================================\n')
 // -------------------------------------------------------------
 const BACKEND_PORT = 5000;
 const API_PREFIX = '/api/v1';
-const PRODUCTION_API_URL = 'https://api.franchisebridge.com/api/v1';
+const PRODUCTION_API_URL = 'https://franchisebridge-api-u54k.onrender.com/api/v1';
 
 function testResolveApi(mode: string, platformOs: string, explicitUrl?: string) {
   if (explicitUrl) return explicitUrl;
@@ -56,8 +56,8 @@ assert(
 assert(
   'Environment Configuration',
   'Production Base URL resolves to secure HTTPS endpoint',
-  testResolveApi('production', 'android') === 'https://api.franchisebridge.com/api/v1',
-  'Production URL correctly resolves to https://api.franchisebridge.com/api/v1'
+  testResolveApi('production', 'android') === 'https://franchisebridge-api-u54k.onrender.com/api/v1',
+  'Production URL correctly resolves to https://franchisebridge-api-u54k.onrender.com/api/v1'
 );
 
 assert(

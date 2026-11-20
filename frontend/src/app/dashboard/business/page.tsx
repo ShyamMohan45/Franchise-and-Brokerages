@@ -36,7 +36,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { useAuth } from "@/providers/AuthProvider";
-import { api } from "@/lib/api";
+import { api, resolveAssetUrl } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { StatusBadge } from "@/components/StatusBadge";
 
@@ -1971,7 +1971,7 @@ export default function BusinessDashboardPage() {
                       </div>
                     </div>
                     <a
-                      href={`http://localhost:5000${sop.fileUrl}`}
+                      href={resolveAssetUrl(sop.fileUrl)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-xs transition-colors"

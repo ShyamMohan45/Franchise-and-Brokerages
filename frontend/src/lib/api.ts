@@ -1,4 +1,32 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+export const API_HOST_URL =
+  process.env.NEXT_PUBLIC_API_HOST ||
+  (process.env.NODE_ENV === "production"
+    ? "https://franchisebridge-api-u54k.onrender.com"
+    : "http://localhost:5000");
+
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || `${API_HOST_URL}/api`;
+
+export const API_V1_URL = `${API_HOST_URL}/api/v1`;
+
+/**
+ * Resolves document, SOP, and uploaded asset URLs safely.
+ * If the path is already a full absolute URL (e.g., S3 presigned URL https://...), it returns it as is.
+ * If it's a relative storage path (e.g., /uploads/...), it prepends the backend host.
+ */
+export function resolveAssetUrl(path?: string | null): string {
+  if (!path) return "";
+  if (
+    path.startsWith("http://") ||
+    path.startsWith("https://") ||
+    path.startsWith("blob:") ||
+    path.startsWith("data:")
+  ) {
+    return path;
+  }
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  return `${API_HOST_URL}${cleanPath}`;
+}
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -19,6 +47,10 @@ class ApiClient {
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
+  }
+
+  public getBaseUrl(): string {
+    return this.baseUrl;
   }
 
   private getToken(): string | null {

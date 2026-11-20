@@ -14,13 +14,16 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://172.22.82.210:5000/api/v1"
+        "EXPO_PUBLIC_API_URL": "https://franchisebridge-api-u54k.onrender.com/api/v1"
       }
     },
     "production": {
       "autoIncrement": true,
       "android": {
         "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://franchisebridge-api-u54k.onrender.com/api/v1"
       }
     }
   },

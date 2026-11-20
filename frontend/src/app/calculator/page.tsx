@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { API_BASE_URL } from '@/lib/api';
 import {
   Calculator,
   TrendingUp,
@@ -65,7 +66,7 @@ export default function CalculatorPage() {
   const fetchEstimate = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/cost-estimator/calculate', {
+      const response = await fetch(`${API_BASE_URL}/cost-estimator/calculate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -39,7 +39,7 @@
       "typedRoutes": true
     },
     "extra": {
-      "apiUrl": "http://172.22.82.210:5000/api/v1",
+      "apiUrl": "https://franchisebridge-api-u54k.onrender.com/api/v1",
       "router": {
         "origin": false
       },

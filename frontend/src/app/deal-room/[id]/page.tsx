@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, use } from 'react';
 import Link from 'next/link';
+import { API_V1_URL } from '@/lib/api';
 import {
   Briefcase,
   FileText,
@@ -155,7 +156,7 @@ export default function DealRoomDetailPage({ params }: { params: Promise<{ id: s
 
     try {
       // 1. Fetch Room Details
-      const roomRes = await fetch(`http://localhost:5000/api/v1/deal-rooms/${roomId}`, {
+      const roomRes = await fetch(`${API_V1_URL}/deal-rooms/${roomId}`, {
         headers: authHeaders,
       });
       const roomData = await roomRes.json();
@@ -164,7 +165,7 @@ export default function DealRoomDetailPage({ params }: { params: Promise<{ id: s
       }
 
       // 2. Fetch Documents
-      const docsRes = await fetch(`http://localhost:5000/api/v1/deal-rooms/${roomId}/documents`, {
+      const docsRes = await fetch(`${API_V1_URL}/deal-rooms/${roomId}/documents`, {
         headers: authHeaders,
       });
       const docsData = await docsRes.json();
@@ -173,7 +174,7 @@ export default function DealRoomDetailPage({ params }: { params: Promise<{ id: s
       }
 
       // 3. Fetch Due Diligence
-      const ddRes = await fetch(`http://localhost:5000/api/v1/deal-rooms/${roomId}/due-diligence`, {
+      const ddRes = await fetch(`${API_V1_URL}/deal-rooms/${roomId}/due-diligence`, {
         headers: authHeaders,
       });
       const ddData = await ddRes.json();
@@ -182,7 +183,7 @@ export default function DealRoomDetailPage({ params }: { params: Promise<{ id: s
       }
 
       // 4. Fetch Messages
-      const msgRes = await fetch(`http://localhost:5000/api/v1/deal-rooms/${roomId}/messages`, {
+      const msgRes = await fetch(`${API_V1_URL}/deal-rooms/${roomId}/messages`, {
         headers: authHeaders,
       });
       const msgData = await msgRes.json();
@@ -206,7 +207,7 @@ export default function DealRoomDetailPage({ params }: { params: Promise<{ id: s
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('fb_auth_token') : null;
     try {
-      const response = await fetch(`http://localhost:5000/api/v1/deal-rooms/${roomId}/messages`, {
+      const response = await fetch(`${API_V1_URL}/deal-rooms/${roomId}/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -248,7 +249,7 @@ export default function DealRoomDetailPage({ params }: { params: Promise<{ id: s
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/v1/deal-rooms/${roomId}/documents`, {
+      const response = await fetch(`${API_V1_URL}/deal-rooms/${roomId}/documents`, {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
@@ -274,7 +275,7 @@ export default function DealRoomDetailPage({ params }: { params: Promise<{ id: s
     const token = typeof window !== 'undefined' ? localStorage.getItem('fb_auth_token') : null;
     try {
       const res = await fetch(
-        `http://localhost:5000/api/v1/deal-rooms/${roomId}/documents/${docId}/download`,
+        `${API_V1_URL}/deal-rooms/${roomId}/documents/${docId}/download`,
         {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         }
@@ -305,7 +306,7 @@ export default function DealRoomDetailPage({ params }: { params: Promise<{ id: s
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/v1/deal-rooms/${roomId}/due-diligence/${editingItem.itemId}`,
+        `${API_V1_URL}/deal-rooms/${roomId}/due-diligence/${editingItem.itemId}`,
         {
           method: 'PATCH',
           headers: {
@@ -336,7 +337,7 @@ export default function DealRoomDetailPage({ params }: { params: Promise<{ id: s
     setSigning(true);
     const token = typeof window !== 'undefined' ? localStorage.getItem('fb_auth_token') : null;
     try {
-      const response = await fetch(`http://localhost:5000/api/v1/deal-rooms/${roomId}/sign`, {
+      const response = await fetch(`${API_V1_URL}/deal-rooms/${roomId}/sign`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

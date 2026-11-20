@@ -40,7 +40,7 @@ import {
   Check,
 } from "lucide-react";
 import { useAuth } from "@/providers/AuthProvider";
-import { api } from "@/lib/api";
+import { api, API_V1_URL } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { StatusBadge } from "@/components/StatusBadge";
 
@@ -200,7 +200,7 @@ export default function BrokerageDashboardPage() {
     try {
       setIsExporting(true);
       const token = typeof window !== "undefined" ? localStorage.getItem("fb_auth_token") : null;
-      const res = await fetch(`http://localhost:5000/api/v1${endpoint}`, {
+      const res = await fetch(`${API_V1_URL}${endpoint}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { API_BASE_URL } from '@/lib/api';
 import {
   GitCompare,
   CheckCircle2,
@@ -47,7 +48,7 @@ export default function ComparePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/franchises')
+    fetch(`${API_BASE_URL}/franchises`)
       .then((r) => r.json())
       .then((data) => {
         if (data.success && data.data.length > 0) {
