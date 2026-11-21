@@ -14,10 +14,14 @@ export const loginSchema = z.object({
 });
 
 export const forgotPasswordSchema = z.object({
-  email: z.string().email('Valid email address is required'),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .pipe(z.string().email('Valid email address is required')),
 });
 
 export const resetPasswordSchema = z.object({
   token: z.string().min(1, 'Reset token is required'),
-  newPassword: z.string().min(8, 'Password must be at least 8 characters long'),
+  newPassword: z.string().min(16, 'Password must be at least 16 characters long'),
 });

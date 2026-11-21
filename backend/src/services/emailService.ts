@@ -51,7 +51,7 @@ export class EmailService {
   }
 
   public static async sendEmail(options: EmailOptions): Promise<boolean> {
-    const fromAddress = env.FROM_EMAIL || 'notifications@franchisebridge.com';
+    const fromAddress = env.FROM_EMAIL || env.SMTP_USER || 'notifications@franchisebridge.com';
 
     if (this.isConfigured()) {
       try {
@@ -64,17 +64,26 @@ export class EmailService {
             text: options.text || options.html.replace(/<[^>]+>/g, ''),
             html: options.html,
           });
-          Logger.info(`[EmailService] Live email dispatched: ${info.messageId} to ${options.to}`);
+          Logger.info(`[EmailService] Live email dispatched: ${info.messageId}`);
           return true;
         }
       } catch (err: any) {
-        Logger.error('[EmailService] SMTP dispatch failure, falling back to log:', { error: err.message, to: options.to });
-        // Fallback to avoid failing user requests when SMTP server is down
+        Logger.error('[EmailService] SMTP email dispatch failure:', {
+          code: err?.code,
+          command: err?.command,
+          message: err?.message,
+        });
+        return false;
       }
     }
 
-    // Development / fallback logging mode
-    Logger.info(`[EmailService - LOGGED] To: ${options.to} | Subject: ${options.subject}`);
+    if (env.isProduction) {
+      Logger.error('[EmailService] Outbound email skipped: SMTP credentials are not configured in production.');
+      return false;
+    }
+
+    // Development / test fallback logging mode (does not expose sensitive tokens or credentials)
+    Logger.info(`[EmailService - DEV/TEST MOCK] Email simulated to: ${options.to} | Subject: ${options.subject}`);
     return true;
   }
 
@@ -82,19 +91,60 @@ export class EmailService {
     return this.sendEmail({
       to,
       subject: 'FranchiseBridge - Password Reset Request',
-      text: `You have requested to reset your password. Use the following link within 1 hour: ${resetUrl}`,
+      text: `FranchiseBridge Password Recovery Request\n\nWe received a request to reset the password for your FranchiseBridge account. Use the link below within 1 hour to create a new password:\n\n${resetUrl}\n\nThis link is single-use and expires in 1 hour. If you did not request this, please ignore this email. Your account remains secure.`,
       html: `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: auto; padding: 32px 24px; border: 1px solid #E2E8F0; border-radius: 12px; background-color: #FFFFFF;">
-          <div style="margin-bottom: 24px;">
-            <span style="font-size: 20px; font-weight: bold; color: #1E293B;">Franchise<span style="color: #2563EB;">Bridge</span></span>
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Reset Your Password - FranchiseBridge</title>
+        </head>
+        <body style="margin: 0; padding: 0; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+          <div style="max-width: 600px; margin: 40px auto; background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+            <div style="background-color: #14243A; padding: 24px 32px; text-align: left;">
+              <span style="font-size: 22px; font-weight: 700; color: #FFFFFF; letter-spacing: -0.5px;">
+                Franchise<span style="color: #3563FF;">Bridge</span>
+              </span>
+              <span style="display: block; font-size: 11px; color: #94A3B8; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; font-weight: 600;">
+                Enterprise Brokerage Platform
+              </span>
+            </div>
+            <div style="padding: 32px;">
+              <h1 style="color: #0F172A; font-size: 20px; font-weight: 700; margin: 0 0 16px 0;">
+                Password Recovery Request
+              </h1>
+              <p style="color: #475569; font-size: 14px; line-height: 24px; margin: 0 0 20px 0;">
+                We received a request to reset the password for your FranchiseBridge account. Click the button below to establish a new password:
+              </p>
+              <div style="margin: 28px 0; text-align: center;">
+                <a href="${resetUrl}" style="background-color: #3563FF; color: #FFFFFF; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; display: inline-block; box-shadow: 0 2px 4px rgba(53, 99, 255, 0.2);">
+                  Reset My Password
+                </a>
+              </div>
+              <div style="background-color: #F1F5F9; border-left: 4px solid #3563FF; padding: 12px 16px; border-radius: 4px; margin: 24px 0;">
+                <p style="color: #334155; font-size: 13px; line-height: 20px; margin: 0; font-weight: 500;">
+                  <strong>Security Notice:</strong> This password reset link is valid for <strong>1 hour</strong> and can only be used once.
+                </p>
+              </div>
+              <p style="color: #64748B; font-size: 13px; line-height: 20px; margin: 20px 0 0 0;">
+                If you did not request a password reset, you can safely ignore this email. Your password will not change and your account remains protected.
+              </p>
+              <div style="margin-top: 28px; padding-top: 20px; border-top: 1px solid #E2E8F0;">
+                <p style="color: #94A3B8; font-size: 11px; line-height: 18px; margin: 0;">
+                  If the button above does not work, copy and paste this link into your browser:<br>
+                  <a href="${resetUrl}" style="color: #3563FF; word-break: break-all;">${resetUrl}</a>
+                </p>
+              </div>
+            </div>
+            <div style="background-color: #F8FAFC; padding: 16px 32px; border-top: 1px solid #E2E8F0; text-align: center;">
+              <p style="color: #94A3B8; font-size: 11px; margin: 0;">
+                &copy; FranchiseBridge Enterprise Platform. Confidential &amp; Proprietary.
+              </p>
+            </div>
           </div>
-          <h2 style="color: #0F172A; font-size: 22px; margin-bottom: 16px;">Reset Your Password</h2>
-          <p style="color: #475569; font-size: 15px; line-height: 24px;">You received this email because you requested a password reset for your FranchiseBridge Enterprise account.</p>
-          <div style="margin: 28px 0;">
-            <a href="${resetUrl}" style="background-color: #2563EB; color: #FFFFFF; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; display: inline-block;">Reset Password</a>
-          </div>
-          <p style="color: #64748B; font-size: 13px; line-height: 20px;">This link is valid for 1 hour. If you did not request this change, please ignore this email or contact support immediately.</p>
-        </div>
+        </body>
+        </html>
       `,
     });
   }

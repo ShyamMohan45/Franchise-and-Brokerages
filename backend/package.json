@@ -9,6 +9,7 @@
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
     "seed": "tsx src/utils/seed.ts",
+    "provision-admin": "tsx src/scripts/provisionAdmin.ts",
     "test": "vitest run"
   },
   "dependencies": {

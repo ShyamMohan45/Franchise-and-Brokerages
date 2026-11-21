@@ -122,4 +122,14 @@ const userSchema = new Schema<IUser>(
   }
 );
 
+// Database-level uniqueness safeguard: at most one super_admin can exist
+userSchema.index(
+  { role: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { role: 'super_admin' },
+    name: 'unique_super_admin_role',
+  }
+);
+
 export const User = model<IUser>('User', userSchema);

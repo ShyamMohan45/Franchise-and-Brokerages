@@ -118,6 +118,21 @@ export const authRateLimiter = rateLimit({
 app.use(['/api/v1/auth/login', '/api/auth/login'], authRateLimiter);
 app.use(['/api/v1/auth/register', '/api/auth/register'], authRateLimiter);
 
+// Strict rate limiter for password recovery endpoints (prevent email enumeration and spam)
+export const passwordResetRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10, // 10 password reset requests per 15 minutes per IP
+  message: {
+    success: false,
+    message: 'Too many password reset requests. Please try again after 15 minutes.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use(['/api/v1/auth/forgot-password', '/api/auth/forgot-password'], passwordResetRateLimiter);
+app.use(['/api/v1/auth/reset-password', '/api/auth/reset-password'], passwordResetRateLimiter);
+
 // Comprehensive Health check endpoint
 export const healthHandler = (req: express.Request, res: express.Response) => {
   const dbStatus = getDatabaseStatus();

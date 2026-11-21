@@ -9,6 +9,7 @@ import { sendSuccess, sendError } from '../utils/response';
 import { AuditLog } from '../models/AuditLog';
 import { env } from '../config/env';
 import { EmailService } from '../services/emailService';
+import { Logger } from '../utils/logger';
 
 export async function register(req: Request, res: Response): Promise<any> {
   const { email, password, fullName, phone, role } = req.body;
@@ -238,7 +239,7 @@ export async function refreshSession(req: Request, res: Response): Promise<any> 
 }
 
 export async function forgotPassword(req: Request, res: Response): Promise<any> {
-  const { email } = req.body;
+  const email = (req.body.email || '').trim().toLowerCase();
   if (!email) {
     return sendError(res, 'Email address is required', 400);
   }
@@ -257,7 +258,10 @@ export async function forgotPassword(req: Request, res: Response): Promise<any> 
   await user.save();
 
   const resetUrl = `${env.CLIENT_URL}/reset-password?token=${resetToken}`;
-  await EmailService.sendPasswordResetEmail(user.email, resetUrl);
+  const dispatched = await EmailService.sendPasswordResetEmail(user.email, resetUrl);
+  if (!dispatched) {
+    Logger.error('[AuthController] Failed to deliver password reset email to user address.');
+  }
 
   await AuditLog.create({
     actor: user._id,
@@ -276,6 +280,10 @@ export async function resetPassword(req: Request, res: Response): Promise<any> {
   const { token, newPassword } = req.body;
   if (!token || !newPassword) {
     return sendError(res, 'Token and new password are required', 400);
+  }
+
+  if (typeof newPassword !== 'string' || newPassword.length < 16) {
+    return sendError(res, 'Password must be at least 16 characters long', 400);
   }
 
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
