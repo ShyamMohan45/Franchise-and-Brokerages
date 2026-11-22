@@ -15,6 +15,11 @@ export type NotificationType =
   | 'deal'
   | 'task'
   | 'TASK_ASSIGNED'
+  // Introduction & Connection workflow
+  | 'introduction_request'
+  | 'introduction_accepted'
+  | 'introduction_mutually_accepted'
+  | 'introduction_rejected'
   // Milestone 7 notification types
   | 'new_enquiry'
   | 'lead_assigned'
@@ -63,6 +68,11 @@ const notificationSchema = new Schema<INotification>(
         'deal',
         'task',
         'TASK_ASSIGNED',
+        // Introduction & Connection workflow
+        'introduction_request',
+        'introduction_accepted',
+        'introduction_mutually_accepted',
+        'introduction_rejected',
         // Milestone 7 types
         'new_enquiry',
         'lead_assigned',

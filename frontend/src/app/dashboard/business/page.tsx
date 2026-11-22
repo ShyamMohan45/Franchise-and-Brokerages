@@ -73,6 +73,7 @@ export default function BusinessDashboardPage() {
   const [minScoreFilter, setMinScoreFilter] = useState<number>(0);
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
   const [introRequestedIds, setIntroRequestedIds] = useState<Set<string>>(new Set());
+  const [introductions, setIntroductions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [feedbackMessage, setFeedbackMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -186,7 +187,7 @@ export default function BusinessDashboardPage() {
     async function loadDashboardData() {
       try {
         setLoading(true);
-        const [bizRes, oppRes, appRes, sopRes, legalRes, meetRes, outletRes, planRes] = await Promise.all([
+        const [bizRes, oppRes, appRes, sopRes, legalRes, meetRes, outletRes, planRes, introRes] = await Promise.all([
           api.get<{ business: any; assessment: any; profileCompletion?: number }>("/businesses/my"),
           api.get<any[]>("/franchises/my"),
           api.get<any[]>("/applications/business"),
@@ -195,6 +196,7 @@ export default function BusinessDashboardPage() {
           api.get<any[]>("/meetings/my"),
           api.get<any[]>("/expansion/outlets"),
           api.get<any>("/expansion/plan"),
+          api.get<any[]>("/introductions/my"),
         ]);
 
         if (bizRes.success && bizRes.data) {
@@ -242,6 +244,7 @@ export default function BusinessDashboardPage() {
         if (meetRes.success && meetRes.data) setMeetings(meetRes.data);
         if (outletRes.success && outletRes.data) setOutlets(outletRes.data);
         if (planRes.success && planRes.data) setExpansionPlan(planRes.data);
+        if (introRes.success && introRes.data) setIntroductions(introRes.data);
       } catch (err) {
         console.error("Dashboard fetch error:", err);
       } finally {
@@ -251,6 +254,76 @@ export default function BusinessDashboardPage() {
 
     if (user) loadDashboardData();
   }, [user, isLoading, router]);
+
+  const fetchMyIntroductions = async () => {
+    try {
+      const res = await api.get<any[]>("/introductions/my");
+      if (res.success && res.data) {
+        setIntroductions(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch introductions", err);
+    }
+  };
+
+  const handleRequestIntroduction = async (inv: any, franchiseId?: string) => {
+    try {
+      const targetListingId =
+        franchiseId && franchiseId !== "all"
+          ? franchiseId
+          : opportunities.length > 0
+          ? opportunities[0]._id
+          : undefined;
+
+      const res = await api.post<any>("/introductions", {
+        franchiseId: targetListingId,
+        investorProfileId: inv._id,
+        targetCity: inv.city || "India",
+        investmentBudget: inv.investmentBudgetMax,
+      });
+
+      if (res.success && res.data) {
+        setIntroRequestedIds((prev) => new Set(prev).add(inv._id));
+        showFeedback(
+          "success",
+          `Introduction request ${res.data.referenceNumber} dispatched! Ref: ${res.data.referenceNumber}`
+        );
+        fetchMyIntroductions();
+      } else {
+        showFeedback("error", res.message || "Unable to dispatch introduction request.");
+      }
+    } catch (err: any) {
+      showFeedback("error", err.message || "Failed to dispatch introduction request.");
+    }
+  };
+
+  const handleRespondIntro = async (introId: string, action: "ACCEPT" | "REJECT") => {
+    try {
+      const res = await api.post<any>(`/introductions/${introId}/respond`, { action });
+      if (res.success) {
+        showFeedback("success", `Introduction request ${action === "ACCEPT" ? "accepted" : "declined"}.`);
+        fetchMyIntroductions();
+      } else {
+        showFeedback("error", res.message || "Failed to update response.");
+      }
+    } catch (err: any) {
+      showFeedback("error", err.message || "Failed to update response.");
+    }
+  };
+
+  const handleCreateDealRoom = async (introId: string) => {
+    try {
+      const res = await api.post<any>(`/introductions/${introId}/deal-room`, {});
+      if (res.success && res.data?.dealRoom) {
+        showFeedback("success", "Deal Room established! Opening room...");
+        router.push(`/deal-room/${res.data.dealRoom._id}`);
+      } else {
+        showFeedback("error", res.message || "Failed to initialize Deal Room.");
+      }
+    } catch (err: any) {
+      showFeedback("error", err.message || "Failed to initialize Deal Room.");
+    }
+  };
 
   const fetchMatches = async (oppId?: string, minScore?: number) => {
     setMatchingLoading(true);
@@ -1906,13 +1979,7 @@ export default function BusinessDashboardPage() {
                         </button>
 
                         <button
-                          onClick={() => {
-                            setIntroRequestedIds((prev) => new Set(prev).add(inv._id));
-                            showFeedback(
-                              "success",
-                              `Platform introduction request logged for ${inv.anonymizedId}. Our brokerage team will facilitate the authorized introduction.`
-                            );
-                          }}
+                          onClick={() => handleRequestIntroduction(inv, selectedOppFilter)}
                           disabled={isIntroRequested}
                           className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm ${
                             isIntroRequested
@@ -1923,7 +1990,7 @@ export default function BusinessDashboardPage() {
                           {isIntroRequested ? (
                             <>
                               <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-                              <span>Introduction Requested</span>
+                              <span>Introduction Dispatched</span>
                             </>
                           ) : (
                             <>
@@ -2533,13 +2600,191 @@ export default function BusinessDashboardPage() {
         </div>
       )}
 
-      {/* TAB 5: INVESTOR APPLICATIONS */}
+      {/* TAB 5: INVESTOR APPLICATIONS & INTRODUCTIONS */}
       {activeTab === "applications" && (
-        <div className="space-y-6">
+        <div className="space-y-8">
+          {/* Section A: Authorized Introductions & Mutual Consent Pipeline (Milestone 2) */}
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-blue-600" />
+                  Authorized Introductions & Mutual Consent Pipeline
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Introductions between your brand and verified investors. Direct contact details are unlocked once both parties mutually consent.
+                </p>
+              </div>
+              <span className="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-bold rounded-full border border-blue-200 self-start sm:self-auto">
+                {introductions.length} Active Introductions
+              </span>
+            </div>
+
+            {introductions.length === 0 ? (
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center text-xs text-slate-500 space-y-2">
+                <p>No introduction requests initiated yet.</p>
+                <button
+                  onClick={() => setActiveTab("matching")}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all"
+                >
+                  Discover Matching Investors
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {introductions.map((intro) => {
+                  const isMutuallyAccepted =
+                    intro.status === "MUTUALLY_ACCEPTED" || intro.status === "DEAL_ROOM_CREATED";
+                  const awaitsFranchisor =
+                    intro.status === "ACCEPTED_BY_INVESTOR" || (!intro.franchisorConsent?.consented && intro.status === "PENDING");
+
+                  return (
+                    <div
+                      key={intro._id}
+                      className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4 hover:border-slate-300 transition-all"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
+                            {intro.referenceNumber}
+                          </span>
+                          <span className="text-xs font-semibold text-slate-500">
+                            • Territory: <strong className="text-slate-800">{intro.targetCity}</strong>
+                          </span>
+                          <span className="text-xs font-semibold text-slate-500">
+                            • Budget: <strong className="text-slate-800">{formatCurrency(intro.investmentBudget)}</strong>
+                          </span>
+                        </div>
+                        <span
+                          className={`text-xs font-bold px-3 py-1 rounded-full border ${
+                            isMutuallyAccepted
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : intro.status === "REJECTED"
+                              ? "bg-rose-50 text-rose-700 border-rose-200"
+                              : "bg-amber-50 text-amber-700 border-amber-200"
+                          }`}
+                        >
+                          {intro.status?.replace(/_/g, " ")}
+                        </span>
+                      </div>
+
+                      {/* Consent Indicators Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <div
+                          className={`p-3 rounded-xl border flex items-center justify-between ${
+                            intro.franchisorConsent?.consented
+                              ? "bg-emerald-50/50 border-emerald-200 text-emerald-800"
+                              : "bg-slate-50 border-slate-200 text-slate-600"
+                          }`}
+                        >
+                          <span>Franchisor Consent:</span>
+                          <span className="font-bold">
+                            {intro.franchisorConsent?.consented ? "✓ Confirmed" : "— Awaiting Your Consent"}
+                          </span>
+                        </div>
+                        <div
+                          className={`p-3 rounded-xl border flex items-center justify-between ${
+                            intro.investorConsent?.consented
+                              ? "bg-emerald-50/50 border-emerald-200 text-emerald-800"
+                              : "bg-slate-50 border-slate-200 text-slate-600"
+                          }`}
+                        >
+                          <span>Investor Consent:</span>
+                          <span className="font-bold">
+                            {intro.investorConsent?.consented ? "✓ Confirmed" : "— Awaiting Investor Response"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Unlocked Contact Details Box (Mutual Consent Only) */}
+                      {isMutuallyAccepted ? (
+                        <div className="bg-emerald-50/60 border border-emerald-200 rounded-xl p-4 space-y-2 text-xs">
+                          <div className="flex items-center gap-1.5 font-bold text-emerald-900">
+                            <CheckCircle className="w-4 h-4 text-emerald-600" />
+                            <span>Mutual Consent Established — Direct Partner Contact Unlocked</span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-slate-800 pt-1">
+                            <div>
+                              <span className="text-[10px] text-slate-500 block uppercase font-bold">Partner Name</span>
+                              <span className="font-bold">
+                                {intro.investorProfile?.fullName || intro.investorUser?.fullName || "Verified Investor"}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-slate-500 block uppercase font-bold">Direct Phone</span>
+                              <span className="font-bold">
+                                {intro.investorProfile?.phone || intro.investorUser?.phone || "Phone on file"}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-slate-500 block uppercase font-bold">Email Address</span>
+                              <span className="font-bold">
+                                {intro.investorProfile?.email || intro.investorUser?.email || "Email on file"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center gap-2 text-[11px] text-slate-500">
+                          <Lock className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                          <span>
+                            Direct contact information remains confidential under statutory privacy rules until both parties confirm consent.
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Action Buttons Row */}
+                      <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                        {awaitsFranchisor && (
+                          <>
+                            <button
+                              onClick={() => handleRespondIntro(intro._id, "REJECT")}
+                              className="px-3.5 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-bold rounded-xl transition-all"
+                            >
+                              Decline
+                            </button>
+                            <button
+                              onClick={() => handleRespondIntro(intro._id, "ACCEPT")}
+                              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-sm"
+                            >
+                              <CheckCircle className="w-3.5 h-3.5" />
+                              Consent & Reveal Contacts
+                            </button>
+                          </>
+                        )}
+
+                        {intro.status === "MUTUALLY_ACCEPTED" && (
+                          <button
+                            onClick={() => handleCreateDealRoom(intro._id)}
+                            className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-sm"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            Open Expansion Deal Room
+                          </button>
+                        )}
+
+                        {intro.status === "DEAL_ROOM_CREATED" && intro.dealRoom && (
+                          <Link
+                            href={`/deal-room/${intro.dealRoom?._id || intro.dealRoom}`}
+                            className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-sm"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            Enter Active Deal Room
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Section B: Standard Applications */}
           <div>
-            <h3 className="text-lg font-bold text-navy-900">Investor Expansion Applications</h3>
+            <h3 className="text-base font-bold text-slate-900">Direct Franchise Application Submissions</h3>
             <p className="text-xs text-slate-500">
-              Applications submitted by prospective multi-unit operators for your brand
+              Applications submitted through the public franchise listing form
             </p>
           </div>
 

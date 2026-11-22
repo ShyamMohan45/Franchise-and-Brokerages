@@ -28,6 +28,9 @@ import {
   CheckSquare,
   Award,
   Trash2,
+  CheckCircle,
+  Plus,
+  ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "@/providers/AuthProvider";
 import { api, resolveAssetUrl } from "@/lib/api";
@@ -46,6 +49,7 @@ export default function InvestorDashboardPage() {
   const [smartMatches, setSmartMatches] = useState<any[]>([]);
   const [dueDiligenceData, setDueDiligenceData] = useState<any | null>(null);
   const [applications, setApplications] = useState<any[]>([]);
+  const [introductions, setIntroductions] = useState<any[]>([]);
   const [fddPackages, setFddPackages] = useState<any[]>([]);
   const [selectedJurisdiction, setSelectedJurisdiction] = useState<string>("ALL");
   const [savedFranchises, setSavedFranchises] = useState<any[]>([]);
@@ -90,7 +94,7 @@ export default function InvestorDashboardPage() {
     async function loadData() {
       try {
         setLoading(true);
-        const [profRes, recRes, appRes, fddRes, savedRes, meetRes, matchRes] = await Promise.all([
+        const [profRes, recRes, appRes, fddRes, savedRes, meetRes, matchRes, introRes] = await Promise.all([
           api.get<any>("/investors/profile"),
           api.get<any[]>("/investors/recommendations"),
           api.get<any[]>("/applications/my"),
@@ -98,6 +102,7 @@ export default function InvestorDashboardPage() {
           api.get<any[]>("/franchises/saved"),
           api.get<any[]>("/meetings/my"),
           api.get<any[]>("/matching/investor"),
+          api.get<any[]>("/introductions/my"),
         ]);
 
         if (profRes.success && profRes.data) {
@@ -130,6 +135,7 @@ export default function InvestorDashboardPage() {
         if (savedRes.success && savedRes.data) setSavedFranchises(savedRes.data);
         if (meetRes.success && meetRes.data) setMeetings(meetRes.data);
         if (matchRes.success && matchRes.data) setSmartMatches(matchRes.data);
+        if (introRes.success && introRes.data) setIntroductions(introRes.data);
       } catch (err) {
         console.error("Investor dashboard fetch error:", err);
       } finally {
@@ -139,6 +145,48 @@ export default function InvestorDashboardPage() {
 
     if (user) loadData();
   }, [user, isLoading, router]);
+
+  const fetchMyIntroductions = async () => {
+    try {
+      const res = await api.get<any[]>("/introductions/my");
+      if (res.success && res.data) {
+        setIntroductions(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch introductions", err);
+    }
+  };
+
+  const handleRespondIntro = async (introId: string, action: "ACCEPT" | "REJECT") => {
+    try {
+      const res = await api.post<any>(`/introductions/${introId}/respond`, { action });
+      if (res.success) {
+        setFeedback({
+          type: "success",
+          text: `Introduction request ${action === "ACCEPT" ? "accepted" : "declined"}.`,
+        });
+        fetchMyIntroductions();
+      } else {
+        setFeedback({ type: "error", text: res.message || "Failed to update response." });
+      }
+    } catch (err: any) {
+      setFeedback({ type: "error", text: err.message || "Failed to update response." });
+    }
+  };
+
+  const handleCreateDealRoom = async (introId: string) => {
+    try {
+      const res = await api.post<any>(`/introductions/${introId}/deal-room`, {});
+      if (res.success && res.data?.dealRoom) {
+        setFeedback({ type: "success", text: "Deal Room established! Opening room..." });
+        router.push(`/deal-room/${res.data.dealRoom._id}`);
+      } else {
+        setFeedback({ type: "error", text: res.message || "Failed to initialize Deal Room." });
+      }
+    } catch (err: any) {
+      setFeedback({ type: "error", text: err.message || "Failed to initialize Deal Room." });
+    }
+  };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -635,11 +683,193 @@ export default function InvestorDashboardPage() {
         </div>
       )}
 
-      {/* TAB 2: MY APPLICATIONS */}
+      {/* TAB 2: MY APPLICATIONS & INTRODUCTIONS */}
       {activeTab === "applications" && (
-        <div className="space-y-6">
+        <div className="space-y-8">
+          {/* Section A: Authorized Introductions & Mutual Consent Pipeline (Milestone 2) */}
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-blue-600" />
+                  Authorized Introductions & Direct Expansion Pipeline
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Direct introductions between you and verified brand founders. Direct contact details unlock once both parties confirm mutual consent.
+                </p>
+              </div>
+              <span className="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-bold rounded-full border border-blue-200 self-start sm:self-auto">
+                {introductions.length} Active Introductions
+              </span>
+            </div>
+
+            {introductions.length === 0 ? (
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center text-xs text-slate-500 space-y-2">
+                <p>No active introductions initiated yet.</p>
+                <button
+                  onClick={() => setActiveTab("matching")}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all"
+                >
+                  Explore Top Matches & Request Introduction
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {introductions.map((intro) => {
+                  const isMutuallyAccepted =
+                    intro.status === "MUTUALLY_ACCEPTED" || intro.status === "DEAL_ROOM_CREATED";
+                  const awaitsInvestor =
+                    intro.status === "ACCEPTED_BY_FRANCHISOR" ||
+                    (!intro.investorConsent?.consented && intro.status === "PENDING");
+
+                  return (
+                    <div
+                      key={intro._id}
+                      className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4 hover:border-slate-300 transition-all"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
+                            {intro.referenceNumber}
+                          </span>
+                          <span className="text-sm font-bold text-slate-900">
+                            {intro.brandName}
+                          </span>
+                          <span className="text-xs font-semibold text-slate-500">
+                            • Territory: <strong className="text-slate-800">{intro.targetCity}</strong>
+                          </span>
+                          <span className="text-xs font-semibold text-slate-500">
+                            • Budget: <strong className="text-slate-800">{formatCurrency(intro.investmentBudget)}</strong>
+                          </span>
+                        </div>
+                        <span
+                          className={`text-xs font-bold px-3 py-1 rounded-full border ${
+                            isMutuallyAccepted
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : intro.status === "REJECTED"
+                              ? "bg-rose-50 text-rose-700 border-rose-200"
+                              : "bg-amber-50 text-amber-700 border-amber-200"
+                          }`}
+                        >
+                          {intro.status?.replace(/_/g, " ")}
+                        </span>
+                      </div>
+
+                      {/* Consent Indicators Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <div
+                          className={`p-3 rounded-xl border flex items-center justify-between ${
+                            intro.franchisorConsent?.consented
+                              ? "bg-emerald-50/50 border-emerald-200 text-emerald-800"
+                              : "bg-slate-50 border-slate-200 text-slate-600"
+                          }`}
+                        >
+                          <span>Franchisor Consent:</span>
+                          <span className="font-bold">
+                            {intro.franchisorConsent?.consented ? "✓ Confirmed" : "— Awaiting Franchisor Response"}
+                          </span>
+                        </div>
+                        <div
+                          className={`p-3 rounded-xl border flex items-center justify-between ${
+                            intro.investorConsent?.consented
+                              ? "bg-emerald-50/50 border-emerald-200 text-emerald-800"
+                              : "bg-slate-50 border-slate-200 text-slate-600"
+                          }`}
+                        >
+                          <span>Your Consent:</span>
+                          <span className="font-bold">
+                            {intro.investorConsent?.consented ? "✓ Confirmed" : "— Action Required: Awaiting Your Consent"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Unlocked Contact Details Box (Mutual Consent Only) */}
+                      {isMutuallyAccepted ? (
+                        <div className="bg-emerald-50/60 border border-emerald-200 rounded-xl p-4 space-y-2 text-xs">
+                          <div className="flex items-center gap-1.5 font-bold text-emerald-900">
+                            <CheckCircle className="w-4 h-4 text-emerald-600" />
+                            <span>Mutual Consent Established — Franchisor Direct Contact Unlocked</span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-slate-800 pt-1">
+                            <div>
+                              <span className="text-[10px] text-slate-500 block uppercase font-bold">Brand Contact</span>
+                              <span className="font-bold">
+                                {intro.businessOwnerUser?.fullName || intro.business?.founderName || "Brand Founder"}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-slate-500 block uppercase font-bold">Direct Phone</span>
+                              <span className="font-bold">
+                                {intro.businessOwnerUser?.phone || intro.business?.contactPhone || "Phone on file"}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-slate-500 block uppercase font-bold">Official Email</span>
+                              <span className="font-bold">
+                                {intro.businessOwnerUser?.email || intro.business?.contactEmail || "Email on file"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center gap-2 text-[11px] text-slate-500">
+                          <Lock className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                          <span>
+                            Direct founder contact details remain confidential until both parties accept the authorized introduction.
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Action Buttons Row */}
+                      <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                        {awaitsInvestor && (
+                          <>
+                            <button
+                              onClick={() => handleRespondIntro(intro._id, "REJECT")}
+                              className="px-3.5 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-bold rounded-xl transition-all"
+                            >
+                              Decline
+                            </button>
+                            <button
+                              onClick={() => handleRespondIntro(intro._id, "ACCEPT")}
+                              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-sm"
+                            >
+                              <CheckCircle className="w-3.5 h-3.5" />
+                              Accept Introduction & Unlock Contacts
+                            </button>
+                          </>
+                        )}
+
+                        {intro.status === "MUTUALLY_ACCEPTED" && (
+                          <button
+                            onClick={() => handleCreateDealRoom(intro._id)}
+                            className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-sm"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            Open Expansion Deal Room
+                          </button>
+                        )}
+
+                        {intro.status === "DEAL_ROOM_CREATED" && intro.dealRoom && (
+                          <Link
+                            href={`/deal-room/${intro.dealRoom?._id || intro.dealRoom}`}
+                            className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-sm"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            Enter Active Deal Room
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Section B: Standard Application Submissions */}
           <div className="border-b border-slate-100 pb-3">
-            <h3 className="text-lg font-bold text-navy-900">Submitted Franchise Applications</h3>
+            <h3 className="text-base font-bold text-navy-900">Submitted Franchise Applications</h3>
             <p className="text-xs text-slate-500">Track real-time brokerage deal progression and founder reviews</p>
           </div>
 

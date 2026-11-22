@@ -8,3 +8,4 @@ export { DealRoomService } from './dealRoomService';
 export { CommissionService } from './commissionService';
 export { NotificationService } from './notificationService';
 export { AdminService } from './adminService';
+export { IntroductionService } from './introductionService';

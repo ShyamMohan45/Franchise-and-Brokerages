@@ -20,6 +20,7 @@ import notificationRoutes from './notificationRoutes';
 import crmRoutes from './crmRoutes';
 import commissionRoutes from './commissionRoutes';
 import analyticsRoutes from './analyticsRoutes';
+import introductionRoutes from './introductionRoutes';
 
 const router = Router();
 
@@ -39,6 +40,7 @@ router.use('/cost-estimator', costEstimatorRoutes);
 router.use('/due-diligence', dueDiligenceRoutes);
 router.use('/deal-rooms', dealRoomRoutes);
 router.use('/matching', matchingRoutes);
+router.use('/introductions', introductionRoutes);
 router.use('/tasks', taskRoutes);
 router.use('/reviews', reviewRoutes);
 router.use('/notifications', notificationRoutes);

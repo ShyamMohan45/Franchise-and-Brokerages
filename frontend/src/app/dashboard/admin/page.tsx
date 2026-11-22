@@ -19,6 +19,8 @@ import {
   Layers,
   Settings,
   ListOrdered,
+  RefreshCw,
+  ExternalLink,
 } from "lucide-react";
 import { useAuth } from "@/providers/AuthProvider";
 import { api } from "@/lib/api";
@@ -29,15 +31,20 @@ export default function AdminDashboardPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<"metrics" | "pipeline" | "leads" | "businesses" | "users" | "audit" | "settings">("metrics");
+  const [activeTab, setActiveTab] = useState<
+    "metrics" | "pipeline" | "introductions" | "leads" | "businesses" | "users" | "audit" | "settings"
+  >("metrics");
   const [metrics, setMetrics] = useState<any | null>(null);
   const [deals, setDeals] = useState<any[]>([]);
+  const [adminIntroductions, setAdminIntroductions] = useState<any[]>([]);
+  const [mediationNotes, setMediationNotes] = useState<{ [id: string]: string }>({});
   const [leads, setLeads] = useState<any[]>([]);
   const [businesses, setBusinesses] = useState<any[]>([]);
   const [usersList, setUsersList] = useState<any[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [settings, setSettings] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // New Lead Modal state
   const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
@@ -64,7 +71,7 @@ export default function AdminDashboardPage() {
     async function loadAdminData() {
       try {
         setLoading(true);
-        const [metRes, dealRes, leadRes, bizRes, userRes, auditRes, setRes] = await Promise.all([
+        const [metRes, dealRes, leadRes, bizRes, userRes, auditRes, setRes, introRes] = await Promise.all([
           api.get<any>("/admin/dashboard"),
           api.get<any[]>("/admin/deals"),
           api.get<any[]>("/admin/leads"),
@@ -72,6 +79,7 @@ export default function AdminDashboardPage() {
           api.get<any[]>("/admin/users"),
           api.get<any[]>("/admin/audit-logs"),
           api.get<any>("/admin/settings"),
+          api.get<any[]>("/introductions/admin/all"),
         ]);
 
         if (metRes.success && metRes.data) setMetrics(metRes.data);
@@ -81,6 +89,7 @@ export default function AdminDashboardPage() {
         if (userRes.success && userRes.data) setUsersList(userRes.data);
         if (auditRes.success && auditRes.data) setAuditLogs(auditRes.data);
         if (setRes.success && setRes.data) setSettings(setRes.data);
+        if (introRes.success && introRes.data) setAdminIntroductions(introRes.data);
       } catch (err) {
         console.error("Admin data load error:", err);
       } finally {
@@ -145,6 +154,46 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const fetchAdminIntroductions = async () => {
+    try {
+      const res = await api.get<any[]>("/introductions/admin/all");
+      if (res.success && res.data) {
+        setAdminIntroductions(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch admin intros", err);
+    }
+  };
+
+  const handleMediateIntro = async (introId: string, notes?: string, isRec?: boolean) => {
+    try {
+      const res = await api.patch<any>(`/introductions/admin/${introId}/mediate`, {
+        adminMediationNotes: notes || mediationNotes[introId],
+        isRecommendedByAdmin: isRec,
+      });
+      if (res.success) {
+        setFeedback({ type: "success", text: "Mediation notes recorded successfully." });
+        fetchAdminIntroductions();
+      }
+    } catch (err: any) {
+      setFeedback({ type: "error", text: err.message || "Failed to record mediation." });
+    }
+  };
+
+  const handleAdminCreateDealRoom = async (introId: string) => {
+    try {
+      const res = await api.post<any>(`/introductions/${introId}/deal-room`, {});
+      if (res.success && res.data?.dealRoom) {
+        setFeedback({ type: "success", text: "Deal Room initialized by brokerage desk." });
+        router.push(`/deal-room/${res.data.dealRoom._id}`);
+      } else {
+        setFeedback({ type: "error", text: res.message || "Failed to initialize Deal Room." });
+      }
+    } catch (err: any) {
+      setFeedback({ type: "error", text: err.message || "Failed to initialize Deal Room." });
+    }
+  };
+
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-16 text-center space-y-3">
@@ -187,6 +236,7 @@ export default function AdminDashboardPage() {
         {[
           { id: "metrics", label: "Executive Analytics", icon: TrendingUp },
           { id: "pipeline", label: `Deal Pipeline (${deals.length})`, icon: DollarSign },
+          { id: "introductions", label: `Introduction Desk (${adminIntroductions.length})`, icon: ShieldCheck },
           { id: "leads", label: `CRM Leads (${leads.length})`, icon: Briefcase },
           { id: "businesses", label: `Brands Review (${businesses.length})`, icon: Building2 },
           { id: "users", label: `Users & Roles (${usersList.length})`, icon: Users },
@@ -319,6 +369,171 @@ export default function AdminDashboardPage() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* TAB: INTRODUCTION DESK (MILESTONE 2) */}
+      {activeTab === "introductions" && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-3">
+            <div>
+              <h3 className="text-lg font-bold text-navy-900">
+                Brokerage Introduction Desk & Consent Facilitation
+              </h3>
+              <p className="text-xs text-slate-500">
+                Supervise bilateral introductions, enforce mutual privacy consent gates, record brokerage mediation notes, and initialize Deal Rooms.
+              </p>
+            </div>
+            <button
+              onClick={() => fetchAdminIntroductions()}
+              className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 self-start sm:self-auto"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Refresh Introductions
+            </button>
+          </div>
+
+          {/* Metric Highlights */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Total Introductions</span>
+              <p className="text-2xl font-black text-slate-900">{adminIntroductions.length}</p>
+            </div>
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Mutually Accepted</span>
+              <p className="text-2xl font-black text-emerald-600">
+                {adminIntroductions.filter((i) => i.status === "MUTUALLY_ACCEPTED" || i.status === "DEAL_ROOM_CREATED").length}
+              </p>
+            </div>
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Awaiting Consent</span>
+              <p className="text-2xl font-black text-amber-600">
+                {adminIntroductions.filter((i) => i.status === "PENDING" || i.status === "ACCEPTED_BY_FRANCHISOR" || i.status === "ACCEPTED_BY_INVESTOR").length}
+              </p>
+            </div>
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Active Deal Rooms</span>
+              <p className="text-2xl font-black text-blue-600">
+                {adminIntroductions.filter((i) => i.status === "DEAL_ROOM_CREATED").length}
+              </p>
+            </div>
+          </div>
+
+          {/* Introductions List */}
+          {adminIntroductions.length === 0 ? (
+            <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center text-xs text-slate-500 shadow-sm">
+              No introduction requests have been logged in the platform database yet.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {adminIntroductions.map((intro) => {
+                const isMutual = intro.status === "MUTUALLY_ACCEPTED" || intro.status === "DEAL_ROOM_CREATED";
+
+                return (
+                  <div
+                    key={intro._id}
+                    className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4 hover:border-slate-300 transition-all"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
+                          {intro.referenceNumber}
+                        </span>
+                        <h4 className="text-sm font-bold text-slate-900">{intro.brandName}</h4>
+                        <span className="text-xs text-slate-500">• Territory: <strong>{intro.targetCity}</strong></span>
+                        <span className="text-xs text-slate-500">• Budget: <strong>{formatCurrency(intro.investmentBudget)}</strong></span>
+                      </div>
+                      <span
+                        className={`text-xs font-bold px-3 py-1 rounded-full border ${
+                          isMutual
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : intro.status === "REJECTED"
+                            ? "bg-rose-50 text-rose-700 border-rose-200"
+                            : "bg-amber-50 text-amber-700 border-amber-200"
+                        }`}
+                      >
+                        {intro.status?.replace(/_/g, " ")}
+                      </span>
+                    </div>
+
+                    {/* Parties Detail Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1.5">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase">Franchisor Entity</span>
+                        <p className="font-bold text-slate-900">{intro.businessOwnerUser?.fullName || "Brand Owner"}</p>
+                        <p className="text-slate-600">Email: {intro.businessOwnerUser?.email || "N/A"}</p>
+                        <p className="text-slate-600">Phone: {intro.businessOwnerUser?.phone || "N/A"}</p>
+                        <div className="pt-1">
+                          <span className={`inline-flex items-center gap-1 font-bold ${intro.franchisorConsent?.consented ? "text-emerald-700" : "text-amber-700"}`}>
+                            {intro.franchisorConsent?.consented ? "✓ Consent Confirmed" : "— Awaiting Consent"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1.5">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase">Candidate Investor</span>
+                        <p className="font-bold text-slate-900">{intro.investorUser?.fullName || "Registered Investor"}</p>
+                        <p className="text-slate-600">Email: {intro.investorUser?.email || "N/A"}</p>
+                        <p className="text-slate-600">Phone: {intro.investorUser?.phone || "N/A"}</p>
+                        <div className="pt-1">
+                          <span className={`inline-flex items-center gap-1 font-bold ${intro.investorConsent?.consented ? "text-emerald-700" : "text-amber-700"}`}>
+                            {intro.investorConsent?.consented ? "✓ Consent Confirmed" : "— Awaiting Consent"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Admin Mediation Notes Form */}
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2 text-xs">
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase">
+                        Brokerage Mediation Notes & Observations
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          defaultValue={intro.adminMediationNotes || ""}
+                          placeholder="Record mediation notes, scheduled calls, or deal requirements..."
+                          onChange={(e) =>
+                            setMediationNotes((prev) => ({ ...prev, [intro._id]: e.target.value }))
+                          }
+                          className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800"
+                        />
+                        <button
+                          onClick={() => handleMediateIntro(intro._id)}
+                          className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition-all"
+                        >
+                          Save Notes
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
+                      {intro.status === "MUTUALLY_ACCEPTED" && (
+                        <button
+                          onClick={() => handleAdminCreateDealRoom(intro._id)}
+                          className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-sm"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          Initialize Authorized Deal Room
+                        </button>
+                      )}
+
+                      {intro.status === "DEAL_ROOM_CREATED" && intro.dealRoom && (
+                        <Link
+                          href={`/deal-room/${intro.dealRoom?._id || intro.dealRoom}`}
+                          className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-sm"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          View Active Deal Room
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
