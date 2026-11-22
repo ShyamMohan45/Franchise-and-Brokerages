@@ -394,6 +394,48 @@ describe('Milestone 5: Comprehensive Monetization, Subscription, Payment and Com
         PaymentTransaction.findById = originalFindById;
       }
     });
+
+    it('Refuses to refund more than the captured transaction amount', async () => {
+      const originalFindById = PaymentTransaction.findById;
+
+      PaymentTransaction.findById = (() => ({
+        status: 'captured',
+        amount: 9999,
+      })) as any;
+
+      try {
+        await expect(
+          PaymentService.processRefund(new Types.ObjectId().toString(), 'Excessive refund attempt', mockUserId, 15000)
+        ).rejects.toThrow(/Refund amount cannot exceed captured transaction amount/i);
+      } finally {
+        PaymentTransaction.findById = originalFindById;
+      }
+    });
+
+    it('Refund processing is idempotent and returns existing record if already refunded', async () => {
+      const originalFindById = PaymentTransaction.findById;
+
+      const mockRefundedTx = {
+        _id: new Types.ObjectId(),
+        status: 'refunded',
+        amount: 9999,
+        refund: { amount: 9999, refundId: 'rfnd_existing_123' },
+      };
+
+      PaymentTransaction.findById = (() => mockRefundedTx) as any;
+
+      try {
+        const result = await PaymentService.processRefund(
+          mockRefundedTx._id.toString(),
+          'Duplicate refund attempt',
+          mockUserId
+        );
+        expect(result.status).toBe('refunded');
+        expect(result.refund?.refundId).toBe('rfnd_existing_123');
+      } finally {
+        PaymentTransaction.findById = originalFindById;
+      }
+    });
   });
 
   // --------------------------------------------------------------------------
@@ -644,8 +686,12 @@ describe('Milestone 5: Comprehensive Monetization, Subscription, Payment and Com
 
     it('Handles idempotent webhook event processing without duplicate transactions', async () => {
       const originalFindOne = PaymentTransaction.findOne;
+      const originalFindOneAndUpdate = PaymentTransaction.findOneAndUpdate;
 
-      // Mock finding an already captured transaction
+      // Simulate concurrent delivery: findOneAndUpdate fails because transaction is already captured
+      PaymentTransaction.findOneAndUpdate = (() => Promise.resolve(null)) as any;
+
+      // Mock finding the already captured transaction
       PaymentTransaction.findOne = (() => ({
         _id: new Types.ObjectId(),
         status: 'captured',
@@ -671,6 +717,7 @@ describe('Milestone 5: Comprehensive Monetization, Subscription, Payment and Com
         expect(result.invoice?.invoiceNumber).toBe('INV-202611-1001');
       } finally {
         PaymentTransaction.findOne = originalFindOne;
+        PaymentTransaction.findOneAndUpdate = originalFindOneAndUpdate;
         Invoice.findById = originalFindInvoice;
       }
     });

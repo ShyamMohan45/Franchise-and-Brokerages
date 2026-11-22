@@ -382,20 +382,34 @@ export class PaymentService {
     else if (params.transactionReference) query.transactionReference = params.transactionReference;
     else throw new Error('Transaction identifier required to capture payment.');
 
-    const transaction = await PaymentTransaction.findOne(query);
-    if (!transaction) throw new Error('Payment transaction record not found.');
+    // ------------------------------------------------------------------------
+    // Atomic compare-and-swap to guarantee idempotency under concurrent webhook delivery
+    // ------------------------------------------------------------------------
+    const lockedTransaction = await PaymentTransaction.findOneAndUpdate(
+      { ...query, status: { $ne: 'captured' } },
+      {
+        $set: {
+          status: 'captured',
+          gatewayPaymentId: params.gatewayPaymentId,
+          ...(params.gatewaySignature ? { gatewaySignature: params.gatewaySignature } : {}),
+          ...(params.paymentMethod ? { paymentMethod: params.paymentMethod } : {}),
+        },
+      },
+      { new: true }
+    );
 
-    if (transaction.status === 'captured') {
-      // Idempotency: already fulfilled, return existing invoice
-      const existingInvoice = transaction.invoiceId ? await Invoice.findById(transaction.invoiceId) : null;
-      return { transaction, invoice: existingInvoice || undefined };
+    if (!lockedTransaction) {
+      // Either transaction does not exist, or it was ALREADY captured by a concurrent request
+      const existing = await PaymentTransaction.findOne(query);
+      if (!existing) throw new Error('Payment transaction record not found.');
+      if (existing.status === 'captured') {
+        const existingInvoice = existing.invoiceId ? await Invoice.findById(existing.invoiceId) : null;
+        return { transaction: existing, invoice: existingInvoice || undefined };
+      }
+      throw new Error(`Cannot fulfill transaction in state: ${existing.status}`);
     }
 
-    transaction.status = 'captured';
-    transaction.gatewayPaymentId = params.gatewayPaymentId;
-    if (params.gatewaySignature) transaction.gatewaySignature = params.gatewaySignature;
-    if (params.paymentMethod) transaction.paymentMethod = params.paymentMethod;
-
+    const transaction = lockedTransaction;
     const user = await User.findById(transaction.user);
 
     // ------------------------------------------------------------------------
@@ -665,25 +679,51 @@ export class PaymentService {
     adminUserId: string | Types.ObjectId,
     amountINR?: number
   ): Promise<IPaymentTransaction> {
-    const transaction = await PaymentTransaction.findById(transactionId);
-    if (!transaction) throw new Error('Transaction record not found');
-    if (transaction.status !== 'captured') {
-      throw new Error(`Cannot refund transaction with status ${transaction.status}`);
+    const existing = await PaymentTransaction.findById(transactionId);
+    if (!existing) throw new Error('Transaction record not found');
+
+    // Idempotency: if already refunded, return existing record
+    if (existing.status === 'refunded') {
+      return existing;
     }
 
-    const refundAmount = amountINR && amountINR <= transaction.amount ? amountINR : transaction.amount;
+    if (existing.status !== 'captured') {
+      throw new Error(`Cannot refund transaction with status ${existing.status}`);
+    }
 
-    transaction.status = 'refunded';
-    transaction.refund = {
-      refundId: `rfnd_manual_${Date.now()}`,
-      amount: refundAmount,
-      amountPaise: Math.round(refundAmount * 100),
-      reason,
-      refundedAt: new Date(),
-      refundedBy: new Types.ObjectId(adminUserId.toString()),
-    };
+    if (amountINR !== undefined && (amountINR <= 0 || amountINR > existing.amount)) {
+      throw new Error(`Refund amount cannot exceed captured transaction amount of ₹${existing.amount}.`);
+    }
 
-    await transaction.save();
+    const refundAmount = amountINR !== undefined ? amountINR : existing.amount;
+
+    // Atomic compare-and-swap: only transition if status is currently 'captured'
+    const lockedTransaction = await PaymentTransaction.findOneAndUpdate(
+      { _id: transactionId, status: 'captured' },
+      {
+        $set: {
+          status: 'refunded',
+          refund: {
+            refundId: `rfnd_manual_${Date.now()}`,
+            amount: refundAmount,
+            amountPaise: Math.round(refundAmount * 100),
+            reason,
+            refundedAt: new Date(),
+            refundedBy: new Types.ObjectId(adminUserId.toString()),
+          },
+        },
+      },
+      { new: true }
+    );
+
+    if (!lockedTransaction) {
+      // Caught by concurrent refund
+      const recheck = await PaymentTransaction.findById(transactionId);
+      if (recheck && recheck.status === 'refunded') return recheck;
+      throw new Error(`Cannot refund transaction in state: ${recheck?.status}`);
+    }
+
+    const transaction = lockedTransaction;
 
     if (transaction.invoiceId) {
       await Invoice.findByIdAndUpdate(transaction.invoiceId, { status: 'refunded' });
