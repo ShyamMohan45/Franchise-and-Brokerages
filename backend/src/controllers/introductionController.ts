@@ -12,6 +12,8 @@ import { BusinessProfile } from '../models/BusinessProfile';
 import { InvestorProfile } from '../models/InvestorProfile';
 import { User } from '../models/User';
 import { DealRoom } from '../models/DealRoom';
+import { DueDiligenceChecklist } from '../models/DueDiligenceChecklist';
+import { DEFAULT_11_DILIGENCE_ITEMS } from './dealRoomController';
 import { NotificationService } from '../services/notificationService';
 import { EmailService } from '../services/emailService';
 import { sendError, sendSuccess } from '../utils/response';
@@ -603,9 +605,10 @@ export async function createDealRoomFromIntroduction(req: AuthRequest, res: Resp
       roomName,
       targetTerritory: intro.targetCity,
       stage: 'discovery_and_nda',
-      ndaSigned: false,
+      ndaSigned: true,
+      ndaSignedAt: new Date(),
       completionPercentage: 0,
-      outstandingDocumentsCount: 4,
+      outstandingDocumentsCount: 11,
       rejectedOrClarificationCount: 0,
       legalDisclaimer:
         'This Deal Room contains privileged proprietary commercial disclosures. All materials are protected under statutory confidentiality agreements.',
@@ -620,6 +623,22 @@ export async function createDealRoomFromIntroduction(req: AuthRequest, res: Resp
       ],
       dealMilestones: initialMilestones,
     });
+
+    // Initialize the 11-pillar DueDiligenceChecklist
+    const checklist = await DueDiligenceChecklist.create({
+      dealRoom: newDealRoom._id,
+      franchiseListing: intro.franchise?._id || intro.franchise,
+      investor: investorId,
+      businessOwner: franchisorId,
+      assignedBroker: intro.assignedBroker || req.user!._id,
+      items: DEFAULT_11_DILIGENCE_ITEMS,
+      overallStatus: 'PENDING',
+      completionPercentage: 0,
+      riskSummary: 'Due diligence initialized. 11 core statutory, commercial, and operational checks pending review.',
+    });
+
+    newDealRoom.dueDiligenceChecklist = checklist._id as any;
+    await newDealRoom.save();
 
     // Link Deal Room to Introduction and update status
     intro.dealRoom = newDealRoom._id as any;

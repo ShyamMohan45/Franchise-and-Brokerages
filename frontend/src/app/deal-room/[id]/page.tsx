@@ -26,7 +26,23 @@ import {
   RefreshCw,
   AlertTriangle,
   FileCheck,
+  Calendar,
+  Video,
 } from 'lucide-react';
+
+interface DealMeeting {
+  _id: string;
+  title: string;
+  meetingType: string;
+  scheduledStartTime: string;
+  scheduledEndTime: string;
+  meetingUrl?: string;
+  locationDetails?: string;
+  agenda: string;
+  status: string;
+  organizer?: { fullName: string; role: string };
+  participants?: Array<{ fullName: string; role: string }>;
+}
 
 interface DealDoc {
   _id: string;
@@ -121,8 +137,9 @@ export default function DealRoomDetailPage({ params }: { params: Promise<{ id: s
   const [documents, setDocuments] = useState<DealDoc[]>([]);
   const [diligenceItems, setDiligenceItems] = useState<DiligenceItem[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [meetings, setMeetings] = useState<DealMeeting[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'checklist' | 'documents' | 'chat' | 'esign'>('checklist');
+  const [activeTab, setActiveTab] = useState<'checklist' | 'documents' | 'chat' | 'meetings' | 'esign'>('checklist');
 
   // Chat input
   const [chatInput, setChatInput] = useState('');
@@ -136,6 +153,17 @@ export default function DealRoomDetailPage({ params }: { params: Promise<{ id: s
   const [docInternal, setDocInternal] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+
+  // Meeting schedule state
+  const [showMeetingModal, setShowMeetingModal] = useState(false);
+  const [meetingTitle, setMeetingTitle] = useState('');
+  const [meetingType, setMeetingType] = useState('negotiation');
+  const [meetingStartTime, setMeetingStartTime] = useState('');
+  const [meetingEndTime, setMeetingEndTime] = useState('');
+  const [meetingUrl, setMeetingUrl] = useState('');
+  const [meetingAgenda, setMeetingAgenda] = useState('');
+  const [schedulingMeeting, setSchedulingMeeting] = useState(false);
+  const [meetingError, setMeetingError] = useState('');
 
   // Category filter
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -189,6 +217,15 @@ export default function DealRoomDetailPage({ params }: { params: Promise<{ id: s
       const msgData = await msgRes.json();
       if (msgData.success && msgData.data) {
         setMessages(msgData.data);
+      }
+
+      // 5. Fetch Meetings
+      const meetRes = await fetch(`${API_V1_URL}/deal-rooms/${roomId}/meetings`, {
+        headers: authHeaders,
+      });
+      const meetData = await meetRes.json();
+      if (meetData.success && meetData.data) {
+        setMeetings(meetData.data);
       }
     } catch (err) {
       console.error('Error fetching deal room data:', err);
@@ -296,6 +333,73 @@ export default function DealRoomDetailPage({ params }: { params: Promise<{ id: s
       document.body.removeChild(a);
     } catch (e: any) {
       alert(e.message || 'Download error');
+    }
+  };
+
+  const handlePreview = async (docId: string) => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('fb_auth_token') : null;
+    try {
+      const res = await fetch(
+        `${API_V1_URL}/deal-rooms/${roomId}/documents/${docId}/download?preview=true`,
+        {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        }
+      );
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.message || 'Preview forbidden or unavailable.');
+        return;
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, '_blank');
+    } catch (e: any) {
+      alert(e.message || 'Preview error');
+    }
+  };
+
+  const handleScheduleMeeting = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!meetingTitle.trim() || !meetingStartTime || !meetingEndTime || !meetingAgenda.trim()) {
+      setMeetingError('Please complete all required meeting fields.');
+      return;
+    }
+    setSchedulingMeeting(true);
+    setMeetingError('');
+    const token = typeof window !== 'undefined' ? localStorage.getItem('fb_auth_token') : null;
+
+    try {
+      const res = await fetch(`${API_V1_URL}/deal-rooms/${roomId}/meetings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          title: meetingTitle.trim(),
+          meetingType,
+          scheduledStartTime: new Date(meetingStartTime).toISOString(),
+          scheduledEndTime: new Date(meetingEndTime).toISOString(),
+          meetingUrl: meetingUrl.trim(),
+          agenda: meetingAgenda.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setShowMeetingModal(false);
+        setMeetingTitle('');
+        setMeetingStartTime('');
+        setMeetingEndTime('');
+        setMeetingUrl('');
+        setMeetingAgenda('');
+        fetchRoomData();
+      } else {
+        setMeetingError(data.message || 'Failed to schedule meeting.');
+      }
+    } catch (err: any) {
+      setMeetingError(err.message || 'Network error.');
+    } finally {
+      setSchedulingMeeting(false);
     }
   };
 
@@ -530,6 +634,17 @@ export default function DealRoomDetailPage({ params }: { params: Promise<{ id: s
             Deal Room Communication & Notes ({messages.length})
           </button>
           <button
+            onClick={() => setActiveTab('meetings')}
+            className={`pb-3 flex items-center gap-2 border-b-2 transition-colors ${
+              activeTab === 'meetings'
+                ? 'border-[#315EFB] text-[#315EFB]'
+                : 'border-transparent text-[#64748B] hover:text-[#14243A]'
+            }`}
+          >
+            <Calendar className="w-4 h-4" />
+            Negotiation Meetings ({meetings.length})
+          </button>
+          <button
             onClick={() => setActiveTab('esign')}
             className={`pb-3 flex items-center gap-2 border-b-2 transition-colors ${
               activeTab === 'esign'
@@ -718,6 +833,13 @@ export default function DealRoomDetailPage({ params }: { params: Promise<{ id: s
                           {doc.status}
                         </span>
                         <button
+                          onClick={() => handlePreview(doc._id)}
+                          className="btn-secondary py-1.5 px-3 text-xs font-semibold inline-flex items-center gap-1.5 text-slate-700 hover:text-[#315EFB]"
+                          title="Preview document in browser"
+                        >
+                          <Eye className="w-3.5 h-3.5" /> Preview
+                        </button>
+                        <button
                           onClick={() => handleDownload(doc._id, doc.fileName)}
                           className="btn-secondary py-1.5 px-3 text-xs font-semibold inline-flex items-center gap-1.5"
                         >
@@ -843,7 +965,89 @@ export default function DealRoomDetailPage({ params }: { params: Promise<{ id: s
           </div>
         )}
 
-        {/* TAB 4: E-Sign Agreement */}
+        {/* TAB 4: Negotiation Meetings */}
+        {activeTab === 'meetings' && (
+          <div className="surface-card p-6 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-[#E7ECF2]">
+              <div>
+                <h3 className="text-sm font-bold text-[#14243A] flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-[#315EFB]" />
+                  Scheduled Negotiation & Diligence Meetings
+                </h3>
+                <p className="text-xs text-[#64748B]">
+                  Coordinate territory boundaries, unit economics reviews, and agreement terms directly between parties.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowMeetingModal(true)}
+                className="btn-primary py-2 px-4 text-xs font-semibold inline-flex items-center gap-1.5"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Schedule Meeting
+              </button>
+            </div>
+
+            {meetings.length === 0 ? (
+              <div className="p-12 text-center text-xs text-[#64748B] bg-[#F8FAFC] rounded-xl border border-[#E7ECF2] space-y-2">
+                <Calendar className="w-8 h-8 text-[#64748B] mx-auto opacity-50" />
+                <p className="font-semibold text-[#14243A]">No meetings scheduled yet</p>
+                <p>Schedule a discussion with the franchisor and assigned broker to negotiate expansion terms.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {meetings.map((meet) => (
+                  <div
+                    key={meet._id}
+                    className="p-4 rounded-xl bg-white border border-[#E7ECF2] hover:border-[#315EFB] transition-all space-y-2.5 text-xs"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] uppercase font-bold text-[#315EFB] bg-blue-50 px-2 py-0.5 rounded">
+                            {meet.meetingType.replace('_', ' ')}
+                          </span>
+                          <strong className="text-sm text-[#14243A]">{meet.title}</strong>
+                        </div>
+                        <p className="text-[#64748B]">{meet.agenda}</p>
+                      </div>
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-emerald-50 text-emerald-700 border border-emerald-200 self-start sm:self-center">
+                        {meet.status}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-4 text-[11px] text-[#64748B] pt-2 border-t border-slate-100">
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                        {new Date(meet.scheduledStartTime).toLocaleString([], {
+                          dateStyle: 'medium',
+                          timeStyle: 'short',
+                        })}
+                      </span>
+                      {meet.organizer && (
+                        <span>
+                          Organizer: <strong className="text-[#14243A]">{meet.organizer.fullName}</strong>
+                        </span>
+                      )}
+                      {meet.meetingUrl && (
+                        <a
+                          href={meet.meetingUrl.startsWith('http') ? meet.meetingUrl : `https://${meet.meetingUrl}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[#315EFB] font-semibold hover:underline flex items-center gap-1"
+                        >
+                          <Video className="w-3.5 h-3.5" />
+                          Join Video Call
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 5: E-Sign Agreement */}
         {activeTab === 'esign' && (
           <div className="surface-card p-6 space-y-6">
             <div className="flex items-center justify-between pb-3 border-b border-[#E7ECF2]">
@@ -1075,6 +1279,125 @@ export default function DealRoomDetailPage({ params }: { params: Promise<{ id: s
                   {updatingItem ? 'Saving...' : 'Update Status'}
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal: Schedule Negotiation Meeting */}
+        {showMeetingModal && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-xl text-xs">
+              <div className="flex items-center justify-between pb-3 border-b border-[#E7ECF2]">
+                <h3 className="text-sm font-bold text-[#14243A] flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-[#315EFB]" />
+                  Schedule Deal Negotiation Meeting
+                </h3>
+                <button
+                  onClick={() => setShowMeetingModal(false)}
+                  className="text-[#64748B] hover:text-[#14243A] text-lg font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {meetingError && (
+                <div className="bg-rose-50 text-rose-700 p-2.5 rounded-lg text-xs border border-rose-200">
+                  {meetingError}
+                </div>
+              )}
+
+              <form onSubmit={handleScheduleMeeting} className="space-y-3">
+                <div>
+                  <label className="block text-[#64748B] font-semibold mb-1">Meeting Title</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Territory Demarcation & FDD Review"
+                    value={meetingTitle}
+                    onChange={(e) => setMeetingTitle(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-[#E7ECF2] text-[#14243A]"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[#64748B] font-semibold mb-1">Meeting Type</label>
+                    <select
+                      value={meetingType}
+                      onChange={(e) => setMeetingType(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-[#E7ECF2] text-[#14243A]"
+                    >
+                      <option value="negotiation">Commercial Negotiation</option>
+                      <option value="fdd_review">FDD & Audit Review</option>
+                      <option value="sop_consultation">SOP & Operations Review</option>
+                      <option value="deal_closing">Agreement Final Execution</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[#64748B] font-semibold mb-1">Meeting Link (Zoom / Meet)</label>
+                    <input
+                      type="text"
+                      placeholder="https://meet.google.com/..."
+                      value={meetingUrl}
+                      onChange={(e) => setMeetingUrl(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-[#E7ECF2] text-[#14243A]"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[#64748B] font-semibold mb-1">Start Time</label>
+                    <input
+                      type="datetime-local"
+                      value={meetingStartTime}
+                      onChange={(e) => setMeetingStartTime(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-[#E7ECF2] text-[#14243A]"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[#64748B] font-semibold mb-1">End Time</label>
+                    <input
+                      type="datetime-local"
+                      value={meetingEndTime}
+                      onChange={(e) => setMeetingEndTime(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-[#E7ECF2] text-[#14243A]"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[#64748B] font-semibold mb-1">Agenda & Discussion Topics</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Specify key negotiation objectives, commercial questions, and territory boundaries..."
+                    value={meetingAgenda}
+                    onChange={(e) => setMeetingAgenda(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-[#E7ECF2] text-[#14243A]"
+                    required
+                  />
+                </div>
+
+                <div className="pt-4 flex justify-end gap-2 border-t border-[#E7ECF2]">
+                  <button
+                    type="button"
+                    onClick={() => setShowMeetingModal(false)}
+                    className="btn-secondary py-2 px-4 text-xs"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={schedulingMeeting}
+                    className="btn-primary py-2 px-5 text-xs font-semibold inline-flex items-center gap-1.5"
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                    {schedulingMeeting ? 'Scheduling...' : 'Confirm & Invite Parties'}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

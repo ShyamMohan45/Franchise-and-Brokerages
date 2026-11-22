@@ -13,6 +13,8 @@ import {
   getDealRoomMessages,
   postDealRoomMessage,
   signDealRoomDocument,
+  getDealRoomMeetings,
+  scheduleDealRoomMeeting,
 } from '../controllers/dealRoomController';
 import { requireAuth } from '../middleware/auth';
 import { privateDocumentUpload } from '../middleware/privateUpload';
@@ -71,6 +73,10 @@ router.post(
   validate(createDealMessageSchema),
   postDealRoomMessage
 );
+
+// Deal Room Negotiations & Meetings
+router.get('/:id/meetings', requireAuth, getDealRoomMeetings);
+router.post('/:id/meetings', requireAuth, scheduleDealRoomMeeting);
 
 // E-Sign Agreement Execution
 router.post('/:id/sign', requireAuth, signDealRoomDocument);

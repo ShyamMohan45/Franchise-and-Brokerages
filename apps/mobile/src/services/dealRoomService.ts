@@ -269,4 +269,34 @@ export class DealRoomService {
     }
     return response.data;
   }
+
+  /**
+   * 14. Fetch deal room negotiation & diligence meetings
+   */
+  public static async getMeetings(id: string): Promise<any[]> {
+    const response = await apiClient.get<any[]>(`/deal-rooms/${id}/meetings`);
+    return response.data || [];
+  }
+
+  /**
+   * 15. Schedule negotiation meeting
+   */
+  public static async scheduleMeeting(
+    id: string,
+    params: {
+      title: string;
+      meetingType?: string;
+      scheduledStartTime: string;
+      scheduledEndTime: string;
+      meetingUrl?: string;
+      locationDetails?: string;
+      agenda: string;
+    }
+  ): Promise<any> {
+    const response = await apiClient.post<any>(`/deal-rooms/${id}/meetings`, params);
+    if (!response.data) {
+      throw new Error(response.message || 'Failed to schedule meeting');
+    }
+    return response.data;
+  }
 }

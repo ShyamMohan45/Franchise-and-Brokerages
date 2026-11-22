@@ -333,17 +333,53 @@ export const getDealRoomById = async (req: Request, res: Response): Promise<void
       return;
     }
 
+    // Ensure DueDiligenceChecklist is initialized and linked
+    if (!room.dueDiligenceChecklist) {
+      let checklist = await DueDiligenceChecklist.findOne({
+        $or: [{ dealRoom: room._id }, { deal: room.deal || room.dealRef }],
+      });
+      if (!checklist) {
+        checklist = await DueDiligenceChecklist.create({
+          dealRoom: room._id,
+          deal: room.deal || room.dealRef,
+          brokerageDeal: room.deal || room.dealRef,
+          franchiseListing: room.franchiseListing,
+          investor: room.investor,
+          businessOwner: room.franchisor || room.businessOwner,
+          assignedBroker: room.assignedBroker || room.broker,
+          items: DEFAULT_11_DILIGENCE_ITEMS,
+          overallStatus: 'PENDING',
+          completionPercentage: 0,
+        });
+      }
+      room.dueDiligenceChecklist = checklist._id as any;
+      await room.save();
+      const reloaded = await DealRoom.findById(room._id)
+        .populate('franchiseListing')
+        .populate('franchisor', 'fullName email phone role')
+        .populate('businessOwner', 'fullName email phone role')
+        .populate('investor', 'fullName email phone role')
+        .populate('broker', 'fullName email phone role')
+        .populate('assignedBroker', 'fullName email phone role')
+        .populate('deal')
+        .populate('dueDiligenceChecklist');
+      if (reloaded) room = reloaded;
+    }
+
     // Fetch related activities, tasks, meetings
     const dealId = room.deal?._id || room.deal || room.dealRef;
     const [tasks, meetings, documentsCount] = await Promise.all([
       dealId ? Task.find({ relatedDeal: dealId }).sort({ dueDate: 1 }).limit(10) : [],
-      dealId
-        ? Meeting.find({
-            $or: [{ relatedDeal: dealId }, { investor: room.investor?._id || room.investor }],
-          })
-            .sort({ scheduledAt: -1 })
-            .limit(10)
-        : [],
+      Meeting.find({
+        $or: [
+          { dealRoom: room._id },
+          ...(dealId ? [{ relatedDeal: dealId }] : []),
+        ],
+      })
+        .populate('organizer', 'fullName email role')
+        .populate('participants', 'fullName email role')
+        .sort({ scheduledStartTime: -1 })
+        .limit(10),
       DealDocument.countDocuments({ dealRoom: room._id }),
     ]);
 
@@ -818,9 +854,9 @@ export const downloadDealDocument = async (req: Request, res: Response): Promise
 
     const storage = getStorageService();
 
-    // Check if client requested a presigned download URL
+    // Check if client requested a presigned download URL (15-min expiration)
     if (req.query.format === 'presigned' || req.query.presigned === 'true') {
-      if (!env.ALLOW_PRESIGNED_URLS) {
+      if (!env.ALLOW_PRESIGNED_URLS && storage.name !== 's3') {
         res.status(403).json({
           success: false,
           message: 'Presigned download URLs are disabled by security policy. Use direct authenticated download streaming.',
@@ -848,12 +884,15 @@ export const downloadDealDocument = async (req: Request, res: Response): Promise
       return;
     }
 
+    const isPreview = req.query.preview === 'true' || req.query.inline === 'true';
+    const dispositionType = isPreview ? 'inline' : 'attachment';
+
     // S3 Streaming Support: Stream authenticated file directly to client
     if (storage.name === 's3') {
       try {
         const fileData = await storage.getFileStream(doc.storageKey || doc.fileName);
         res.setHeader('Content-Type', fileData.mimeType || doc.mimeType || 'application/octet-stream');
-        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(doc.fileName)}"`);
+        res.setHeader('Content-Disposition', `${dispositionType}; filename="${encodeURIComponent(doc.fileName)}"`);
         if (fileData.size > 0) {
           res.setHeader('Content-Length', fileData.size);
         }
@@ -872,6 +911,13 @@ export const downloadDealDocument = async (req: Request, res: Response): Promise
 
     if (!fs.existsSync(absolutePath)) {
       res.status(404).json({ success: false, message: 'File is not present on physical storage.' });
+      return;
+    }
+
+    if (isPreview) {
+      res.setHeader('Content-Type', doc.mimeType || 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(doc.fileName)}"`);
+      fs.createReadStream(absolutePath).pipe(res);
       return;
     }
 
@@ -1419,5 +1465,156 @@ export const signDealRoomDocument = async (req: Request, res: Response): Promise
     });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * 14. GET /api/v1/deal-rooms/:id/meetings
+ * Retrieve all scheduled negotiation and diligence meetings for this deal room
+ */
+export const getDealRoomMeetings = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const user = req.user!;
+
+    const room = await DealRoom.findById(id);
+    if (!room) {
+      res.status(404).json({ success: false, message: 'Deal room not found' });
+      return;
+    }
+
+    const access = checkDealRoomAccess(user, room);
+    if (!access.allowed) {
+      res.status(403).json({ success: false, message: 'Access denied.' });
+      return;
+    }
+
+    const dealId = room.deal?._id || room.deal || room.dealRef;
+    const meetings = await Meeting.find({
+      $or: [
+        { dealRoom: room._id },
+        ...(dealId ? [{ relatedDeal: dealId }] : []),
+      ],
+    })
+      .populate('organizer', 'fullName email role')
+      .populate('participants', 'fullName email role')
+      .sort({ scheduledStartTime: -1 });
+
+    res.json({
+      success: true,
+      count: meetings.length,
+      data: meetings,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * 15. POST /api/v1/deal-rooms/:id/meetings
+ * Schedule a new negotiation, FDD review, or closing meeting for this deal room
+ */
+export const scheduleDealRoomMeeting = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const user = req.user!;
+    const {
+      title,
+      meetingType,
+      scheduledStartTime,
+      scheduledEndTime,
+      meetingUrl,
+      locationDetails,
+      agenda,
+    } = req.body;
+
+    if (!title || !scheduledStartTime || !scheduledEndTime || !agenda) {
+      res.status(400).json({
+        success: false,
+        message: 'Title, scheduledStartTime, scheduledEndTime, and agenda are required.',
+      });
+      return;
+    }
+
+    const room = await DealRoom.findById(id);
+    if (!room) {
+      res.status(404).json({ success: false, message: 'Deal room not found' });
+      return;
+    }
+
+    const access = checkDealRoomAccess(user, room);
+    if (!access.allowed) {
+      res.status(403).json({
+        success: false,
+        message: 'Unauthorized to schedule meetings in this deal room.',
+      });
+      return;
+    }
+
+    const participants = Array.from(
+      new Set(
+        [
+          user._id.toString(),
+          (room.investor?._id || room.investor)?.toString(),
+          (room.franchisor?._id || room.franchisor || room.businessOwner?._id || room.businessOwner)?.toString(),
+          (room.broker?._id || room.broker || room.assignedBroker?._id || room.assignedBroker)?.toString(),
+        ].filter(Boolean)
+      )
+    );
+
+    const meeting = await Meeting.create({
+      title,
+      meetingType: meetingType || 'negotiation',
+      organizer: user._id,
+      participants,
+      dealRoom: room._id,
+      relatedDeal: room.deal || room.dealRef,
+      relatedFranchise: room.franchiseListing,
+      scheduledStartTime: new Date(scheduledStartTime),
+      scheduledEndTime: new Date(scheduledEndTime),
+      meetingUrl: meetingUrl || '',
+      locationDetails: locationDetails || '',
+      agenda,
+      status: 'scheduled',
+    });
+
+    await meeting.populate('organizer', 'fullName email role');
+    await meeting.populate('participants', 'fullName email role');
+
+    // Notify other participants
+    for (const pid of participants) {
+      if (pid !== user._id.toString()) {
+        await Notification.create({
+          recipient: pid,
+          type: 'deal',
+          title: `Deal Room Meeting Scheduled: ${meeting.title}`,
+          message: `A meeting for ${room.roomName} has been scheduled for ${new Date(meeting.scheduledStartTime).toLocaleString()}.`,
+          actionUrl: `/deal-room/${room._id}`,
+          metadata: { dealRoomId: room._id, meetingId: meeting._id },
+        });
+      }
+    }
+
+    await AuditLog.create({
+      actor: user._id,
+      actorRole: user.role,
+      actorEmail: user.email,
+      action: 'DEAL_ROOM_MEETING_SCHEDULED',
+      entityType: 'Meeting',
+      entityId: meeting._id.toString(),
+      details: {
+        dealRoomId: room._id.toString(),
+        title: meeting.title,
+        scheduledStartTime: meeting.scheduledStartTime,
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Meeting scheduled successfully',
+      data: meeting,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };
