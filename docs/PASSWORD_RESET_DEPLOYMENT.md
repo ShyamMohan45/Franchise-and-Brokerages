@@ -1,6 +1,6 @@
-# FranchiseBridge – Production Password Reset & SMTP Deployment Guide
+# FranchiseBridge – Production Password Reset & Resend API Deployment Guide
 
-This document specifies the configuration and operational deployment steps for the FranchiseBridge Password Recovery and Email Service subsystem across Render (Backend) and Vercel (Frontend).
+This document specifies the configuration and operational deployment steps for the FranchiseBridge Password Recovery subsystem using the **Resend API** (`resend` SDK) across Render (Backend) and Vercel (Frontend).
 
 ---
 
@@ -15,7 +15,8 @@ The FranchiseBridge password reset flow is built with enterprise security contro
 5. **No Account Enumeration**: The `POST /api/auth/forgot-password` endpoint always returns a generic response (`"If that email is registered, a password reset link has been sent."`) regardless of whether the email exists in the database.
 6. **Strict Rate Limiting**: Dedicated rate limiting via `express-rate-limit` (10 requests per 15 minutes per IP address) is applied across both `/api/v1/auth/*` and `/api/auth/*` forgot/reset routes.
 7. **Password Policy**: New passwords must contain **at least 16 characters**, enforced both on the client UI with real-time checklists and on the backend validator.
-8. **Sanitized Logging**: Server logs never record reset tokens, passwords, raw reset URLs, or SMTP authentication credentials.
+8. **Resend API Acceptance**: Outbound emails are accepted via Resend REST API SDK with explicit response verification (`data.id`), 10-second request timeout, and error handling.
+9. **Sanitized Logging**: Server logs never record reset tokens, passwords, raw reset URLs, or Resend API keys.
 
 ---
 
@@ -25,30 +26,39 @@ Configure these variables in your **Render Dashboard** under **Environment**:
 
 | Environment Variable | Recommended Value | Description |
 | :--- | :--- | :--- |
-| `SMTP_HOST` | `smtp.gmail.com` | Gmail SMTP server address |
-| `SMTP_PORT` | `587` | Port 587 uses STARTTLS encryption |
-| `SMTP_SECURE` | `false` | Must be `false` for port 587 (`true` is strictly for port 465 SSL) |
-| `SMTP_USER` | `your-sender@gmail.com` | Your production sender Gmail address |
-| `SMTP_PASS` | `your-16-char-app-password` | Google 16-character App Password (NOT your personal login password) |
-| `FROM_EMAIL` | `your-sender@gmail.com` | Display sender email address |
+| `RESEND_API_KEY` | `re_your_resend_api_key` | Resend API key generated from the Resend console |
+| `FROM_EMAIL` | `onboarding@resend.dev` *(Initial)* or `notifications@franchisebridge.com` *(Production)* | Sender email address. Uses onboarding domain until your custom domain is verified. |
 | `CLIENT_URL` | `https://your-active-vercel-domain.vercel.app` | Production frontend domain used to construct reset link URL |
 
 > [!IMPORTANT]
-> **Never commit real SMTP credentials or App Passwords to Git or `.env` files.**
+> **Never commit real Resend API keys to Git or `.env` files.**
 > Set them exclusively in the secure Render web dashboard.
 
 ---
 
-## 3. How to Generate a Google Gmail App Password
+## 3. Resend Setup & Custom Domain Verification
 
-1. Sign in to your organization's Google Account.
-2. Go to **Google Account Security**: [https://myaccount.google.com/security](https://myaccount.google.com/security).
-3. Ensure **2-Step Verification** is turned **ON**. Google requires 2FA to create app passwords.
-4. In the top search bar within Google Account settings, search for **App passwords**.
-5. Under **App name**, enter a descriptive label: `FranchiseBridge Production`.
-6. Click **Create**.
-7. Google will display a **16-character password** (e.g. `abcd efgh ijkl mnop`).
-8. Copy this code, remove any spaces, and set it as `SMTP_PASS` in your Render Environment settings.
+### A. Initial Testing (Sandbox)
+1. Sign in to your [Resend Dashboard](https://resend.com).
+2. Go to **API Keys** and click **Create API Key**.
+3. Set permission to **Full access** (or Sending access) and name it `FranchiseBridge-Production`.
+4. Copy the key starting with `re_` and set it as `RESEND_API_KEY` on Render.
+5. In sandbox mode, Resend permits sending from `onboarding@resend.dev` to the email associated with your Resend account. Set `FROM_EMAIL=onboarding@resend.dev`.
+
+### B. Production Custom Domain Verification (Sending to all users)
+To send password reset emails to any recipient email address:
+1. In Resend Dashboard, navigate to **Domains** &rarr; click **Add Domain**.
+2. Enter your domain (e.g. `franchisebridge.com` or `mail.franchisebridge.com`).
+3. Select your preferred region (e.g., North America or EU).
+4. Resend will generate required DNS records:
+   - **DKIM** (TXT / CNAME)
+   - **SPF** (TXT)
+   - **MX / Return-Path**
+5. Add these DNS records in your domain registrar / DNS provider (Cloudflare, Namecheap, GoDaddy, etc.).
+6. Click **Verify DNS Records** in Resend.
+7. Once verified, update the Render environment variable:
+   `FROM_EMAIL=notifications@franchisebridge.com`
+   *(or `FranchiseBridge <notifications@franchisebridge.com>`)*. No backend code modifications are needed.
 
 ---
 
@@ -58,6 +68,8 @@ Verify that the following environment variables are configured in **Vercel** und
 
 | Variable Name | Value | Purpose |
 | :--- | :--- | :--- |
+| `NEXT_PUBLIC_API_URL` | `https://franchisebridge-api-u54k.onrender.com/api` | Base API URL used by `@/lib/api` client |
+| `NEXT_PUBLIC_API_HOST` | `https://franchisebridge-api-u54k.onrender.com` | Root API host used for media and health checks |
 | `NEXT_PUBLIC_API_URL` | `https://franchisebridge-api-u54k.onrender.com/api` | Base API URL used by `@/lib/api` client |
 | `NEXT_PUBLIC_API_HOST` | `https://franchisebridge-api-u54k.onrender.com` | Root API host used for media and health checks |
 

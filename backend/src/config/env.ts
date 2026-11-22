@@ -30,7 +30,10 @@ const envSchema = z
       .union([z.boolean(), z.string().transform((v) => v.toLowerCase() === 'true')])
       .default(false),
 
-    // Production SMTP config
+    // Resend Email Provider config
+    RESEND_API_KEY: z.string().optional(),
+
+    // Optional SMTP config
     SMTP_HOST: z.string().optional(),
     SMTP_PORT: z.string().default('587').transform(Number),
     SMTP_USER: z.string().optional(),

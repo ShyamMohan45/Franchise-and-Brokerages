@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { forgotPasswordSchema, resetPasswordSchema } from '../validators/authValidators';
 import { EmailService } from '../services/emailService';
 import { hashPassword, comparePassword } from '../utils/password';
+import { env } from '../config/env';
 
 describe('FranchiseBridge Password Recovery Security Test Suite', () => {
   describe('Password & Token Cryptographic Security', () => {
@@ -134,13 +135,118 @@ describe('FranchiseBridge Password Recovery Security Test Suite', () => {
     });
   });
 
-  describe('EmailService & Template Rendering', () => {
-    it('dispatches password reset email without throwing in mock/dev mode', async () => {
+  describe('Resend EmailService & Acceptance / Failure Handling', () => {
+    it('dispatches password reset email in dev fallback when API key is unset', async () => {
       const result = await EmailService.sendPasswordResetEmail(
         'test.broker@franchisebridge.com',
         'http://localhost:3000/reset-password?token=mocktoken123'
       );
-      expect(typeof result).toBe('boolean');
+      expect(result).toBe(true);
+    });
+
+    it('returns true when Resend API accepts the email dispatch', async () => {
+      const mockSend = vi.fn().mockResolvedValue({
+        data: { id: 're_test_message_id_99999' },
+        error: null,
+      });
+
+      vi.spyOn(EmailService, 'getResendClient').mockReturnValue({
+        emails: { send: mockSend },
+      } as any);
+
+      // Temporarily simulate RESEND_API_KEY being present
+      const origKey = (env as any).RESEND_API_KEY;
+      (env as any).RESEND_API_KEY = 're_mock_api_key_12345';
+
+      try {
+        const result = await EmailService.sendPasswordResetEmail(
+          'franchisee.lead@franchisebridge.com',
+          'https://franchisebridge.com/reset-password?token=token123'
+        );
+
+        expect(result).toBe(true);
+        expect(mockSend).toHaveBeenCalledTimes(1);
+        const callArgs = mockSend.mock.calls[0][0];
+        expect(callArgs.to).toBe('franchisee.lead@franchisebridge.com');
+        expect(callArgs.subject).toBe('FranchiseBridge - Password Reset Request');
+        expect(callArgs.html).toContain('Reset My Password');
+      } finally {
+        (env as any).RESEND_API_KEY = origKey;
+        vi.restoreAllMocks();
+      }
+    });
+
+    it('returns false when Resend API returns an error', async () => {
+      const mockSend = vi.fn().mockResolvedValue({
+        data: null,
+        error: {
+          name: 'validation_error',
+          message: 'The from domain is not verified',
+        },
+      });
+
+      vi.spyOn(EmailService, 'getResendClient').mockReturnValue({
+        emails: { send: mockSend },
+      } as any);
+
+      const origKey = (env as any).RESEND_API_KEY;
+      (env as any).RESEND_API_KEY = 're_mock_api_key_12345';
+
+      try {
+        const result = await EmailService.sendPasswordResetEmail(
+          'user@example.com',
+          'https://franchisebridge.com/reset-password?token=token123'
+        );
+
+        expect(result).toBe(false);
+        expect(mockSend).toHaveBeenCalledTimes(1);
+      } finally {
+        (env as any).RESEND_API_KEY = origKey;
+        vi.restoreAllMocks();
+      }
+    });
+
+    it('returns false when Resend API call throws a network error', async () => {
+      const mockSend = vi.fn().mockRejectedValue(new Error('Resend API connection timeout'));
+
+      vi.spyOn(EmailService, 'getResendClient').mockReturnValue({
+        emails: { send: mockSend },
+      } as any);
+
+      const origKey = (env as any).RESEND_API_KEY;
+      (env as any).RESEND_API_KEY = 're_mock_api_key_12345';
+
+      try {
+        const result = await EmailService.sendPasswordResetEmail(
+          'user@example.com',
+          'https://franchisebridge.com/reset-password?token=token123'
+        );
+
+        expect(result).toBe(false);
+      } finally {
+        (env as any).RESEND_API_KEY = origKey;
+        vi.restoreAllMocks();
+      }
+    });
+
+    it('fails safely and returns false in production if RESEND_API_KEY is missing', async () => {
+      const origKey = (env as any).RESEND_API_KEY;
+      const origProd = (env as any).isProduction;
+
+      (env as any).RESEND_API_KEY = undefined;
+      (env as any).isProduction = true;
+
+      try {
+        const result = await EmailService.sendPasswordResetEmail(
+          'user@example.com',
+          'https://franchisebridge.com/reset-password?token=token123'
+        );
+
+        expect(result).toBe(false);
+      } finally {
+        (env as any).RESEND_API_KEY = origKey;
+        (env as any).isProduction = origProd;
+      }
     });
   });
 });

@@ -1,4 +1,4 @@
-import nodemailer, { Transporter } from 'nodemailer';
+import { Resend } from 'resend';
 import { env } from '../config/env';
 import { Logger } from '../utils/logger';
 
@@ -10,67 +10,84 @@ export interface EmailOptions {
 }
 
 export class EmailService {
-  private static transporter: Transporter | null = null;
+  private static resendClient: Resend | null = null;
 
-  private static getTransporter(): Transporter | null {
-    if (!this.transporter && env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS) {
-      this.transporter = nodemailer.createTransport({
-        host: env.SMTP_HOST,
-        port: env.SMTP_PORT,
-        secure: env.SMTP_SECURE,
-        auth: {
-          user: env.SMTP_USER,
-          pass: env.SMTP_PASS,
-        },
-      });
+  public static getResendClient(): Resend | null {
+    if (!this.resendClient && env.RESEND_API_KEY) {
+      this.resendClient = new Resend(env.RESEND_API_KEY);
     }
-    return this.transporter;
+    return this.resendClient;
   }
 
   public static isConfigured(): boolean {
-    return Boolean(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS);
+    return Boolean(env.RESEND_API_KEY);
   }
 
   public static async verifyConnection(): Promise<boolean> {
     if (!this.isConfigured()) {
-      Logger.info('[EmailService] SMTP not fully configured; operating in secure local logging fallback mode.');
+      Logger.info('[EmailService] Resend API key not configured; operating in local dev/test mock mode.');
       return false;
     }
-    try {
-      const transporter = this.getTransporter();
-      if (transporter) {
-        await transporter.verify();
-        Logger.info('[EmailService] SMTP transport verified successfully.');
-        return true;
-      }
-      return false;
-    } catch (err) {
-      Logger.error('[EmailService] SMTP verification failed:', { error: (err as any)?.message });
-      return false;
-    }
+    Logger.info('[EmailService] Resend API provider initialized with configured API key.');
+    return true;
   }
 
   public static async sendEmail(options: EmailOptions): Promise<boolean> {
-    const fromAddress = env.FROM_EMAIL || env.SMTP_USER || 'notifications@franchisebridge.com';
+    const rawFrom = env.FROM_EMAIL || 'onboarding@resend.dev';
+    const fromAddress = rawFrom.includes('<') ? rawFrom : `FranchiseBridge <${rawFrom}>`;
 
-    if (this.isConfigured()) {
+    if (env.RESEND_API_KEY) {
       try {
-        const transporter = this.getTransporter();
-        if (transporter) {
-          const info = await transporter.sendMail({
-            from: `"FranchiseBridge Enterprise" <${fromAddress}>`,
-            to: options.to,
-            subject: options.subject,
-            text: options.text || options.html.replace(/<[^>]+>/g, ''),
-            html: options.html,
-          });
-          Logger.info(`[EmailService] Live email dispatched: ${info.messageId}`);
-          return true;
+        const resend = this.getResendClient();
+        if (!resend) {
+          Logger.error('[EmailService] Resend client initialization failed.');
+          return false;
+        }
+
+        // 10-second timeout to prevent leaving requests hanging
+        const timeoutMs = 10000;
+        let timeoutId: NodeJS.Timeout;
+
+        const sendPromise = resend.emails.send({
+          from: fromAddress,
+          to: options.to,
+          subject: options.subject,
+          html: options.html,
+          text: options.text || options.html.replace(/<[^>]+>/g, ''),
+        });
+
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timeoutId = setTimeout(() => {
+            reject(new Error('Resend email dispatch timed out after 10 seconds'));
+          }, timeoutMs);
+        });
+
+        try {
+          const response: any = await Promise.race([sendPromise, timeoutPromise]);
+          clearTimeout(timeoutId!);
+
+          if (response?.error) {
+            Logger.error('[EmailService] Resend API rejected email dispatch:', {
+              name: response.error?.name,
+              message: response.error?.message,
+            });
+            return false;
+          }
+
+          if (response?.data?.id) {
+            Logger.info(`[EmailService] Live email accepted by Resend API: ${response.data.id}`);
+            return true;
+          }
+
+          Logger.error('[EmailService] Resend API returned unexpected response without message ID.');
+          return false;
+        } catch (raceErr) {
+          clearTimeout(timeoutId!);
+          throw raceErr;
         }
       } catch (err: any) {
-        Logger.error('[EmailService] SMTP email dispatch failure:', {
-          code: err?.code,
-          command: err?.command,
+        Logger.error('[EmailService] Resend dispatch exception:', {
+          name: err?.name,
           message: err?.message,
         });
         return false;
@@ -78,7 +95,7 @@ export class EmailService {
     }
 
     if (env.isProduction) {
-      Logger.error('[EmailService] Outbound email skipped: SMTP credentials are not configured in production.');
+      Logger.error('[EmailService] Outbound email skipped: RESEND_API_KEY is not configured in production.');
       return false;
     }
 
