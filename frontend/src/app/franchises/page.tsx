@@ -19,6 +19,11 @@ import {
   Scale,
   ArrowRight,
   ShieldCheck,
+  AlertTriangle,
+  AlertCircle,
+  X,
+  ShieldAlert,
+  Info,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
@@ -26,10 +31,164 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { useAuth } from "@/providers/AuthProvider";
 import { Bookmark, BookmarkCheck } from "lucide-react";
 
+export interface MarketplaceListingItem {
+  _id: string;
+  slug: string;
+  brandName: string;
+  status: string;
+  isDemo?: boolean;
+  industry: string;
+  bannerUrl: string;
+  logoUrl: string;
+  opportunityTitle: string;
+  tagline?: string;
+  summary: string;
+  businessModel: string;
+  totalInvestmentMin: number;
+  totalInvestmentMax: number;
+  initialFranchiseFee: number;
+  estimatedRoiMonths: number;
+  targetLocations: string[];
+  commercialSpaceMinSqFt: number;
+  commercialSpaceMaxSqFt: number;
+}
+
+const DEFAULT_MARKETPLACE_LISTINGS: MarketplaceListingItem[] = [
+  {
+    _id: "demo-roastcraft-1",
+    slug: "roastcraft-specialty-coffee",
+    brandName: "RoastCraft Specialty Coffee",
+    status: "demo",
+    isDemo: true,
+    industry: "Food & Beverage",
+    bannerUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=1200&auto=format&fit=crop&q=80",
+    logoUrl: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=200&auto=format&fit=crop&q=80",
+    opportunityTitle: "Flagship High-Volume Cafe & Roastery (Sample Concept)",
+    tagline: "Artisanal single-origin specialty coffee roasters with high store gross margins.",
+    summary: "Proven turnkey cafe concept with comprehensive barista SOPs, proprietary bean supply chain, and exceptional customer retention. [Sample Showcase Content - Inquiries Disabled]",
+    businessModel: "FOFO",
+    totalInvestmentMin: 3500000,
+    totalInvestmentMax: 5500000,
+    initialFranchiseFee: 800000,
+    estimatedRoiMonths: 18,
+    targetLocations: ["Mumbai", "Pune", "Bengaluru"],
+    commercialSpaceMinSqFt: 600,
+    commercialSpaceMaxSqFt: 1200,
+  },
+  {
+    _id: "demo-fitpulse-2",
+    slug: "fitpulse-24-7-smart-gyms",
+    brandName: "FitPulse 24/7 Smart Gyms",
+    status: "demo",
+    isDemo: true,
+    industry: "Health & Wellness",
+    bannerUrl: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1200&auto=format&fit=crop&q=80",
+    logoUrl: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=200&auto=format&fit=crop&q=80",
+    opportunityTitle: "Automated 24/7 Smart Fitness Club (Sample Concept)",
+    tagline: "App-enabled, automated 24/7 fitness hubs with biometric turnstiles and low staff overhead.",
+    summary: "Ultra-efficient fitness model with keyless RFID access, automated membership billing, and certified trainers on demand. [Sample Showcase Content - Inquiries Disabled]",
+    businessModel: "FOCO",
+    totalInvestmentMin: 6000000,
+    totalInvestmentMax: 9000000,
+    initialFranchiseFee: 1200000,
+    estimatedRoiMonths: 22,
+    targetLocations: ["Bengaluru", "Pune", "Hyderabad"],
+    commercialSpaceMinSqFt: 2000,
+    commercialSpaceMaxSqFt: 3500,
+  },
+  {
+    _id: "demo-curryleaf-3",
+    slug: "curry-leaf-express",
+    brandName: "Curry Leaf Express",
+    status: "demo",
+    isDemo: true,
+    industry: "Fast Casual Dining",
+    bannerUrl: "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=1200&auto=format&fit=crop&q=80",
+    logoUrl: "https://images.unsplash.com/photo-1610057099443-fde8c4d50f91?w=200&auto=format&fit=crop&q=80",
+    opportunityTitle: "Express Coastal South Indian Kitchen (Sample Concept)",
+    tagline: "Express South Indian comfort food serving high delivery volumes.",
+    summary: "Compact footprint QSR serving authentic dosas, meal boxes, and filter coffee optimized for both high-density footfall and delivery aggregators. [Sample Showcase Content - Inquiries Disabled]",
+    businessModel: "FOFO",
+    totalInvestmentMin: 2500000,
+    totalInvestmentMax: 4000000,
+    initialFranchiseFee: 600000,
+    estimatedRoiMonths: 15,
+    targetLocations: ["Chennai", "Bengaluru", "Hyderabad"],
+    commercialSpaceMinSqFt: 350,
+    commercialSpaceMaxSqFt: 750,
+  },
+  {
+    _id: "demo-codebloom-4",
+    slug: "codebloom-ai-robotics-labs",
+    brandName: "CodeBloom AI & Robotics Labs",
+    status: "demo",
+    isDemo: true,
+    industry: "Education & EdTech",
+    bannerUrl: "https://images.unsplash.com/photo-1509062522246-3755977927d7?w=1200&auto=format&fit=crop&q=80",
+    logoUrl: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=200&auto=format&fit=crop&q=80",
+    opportunityTitle: "Next-Gen K-12 STEM & AI Learning Hub (Sample Concept)",
+    tagline: "Future-ready experiential coding and robotics academy for school students.",
+    summary: "Accredited syllabus with proprietary learning hardware kits, high recurring term tuition fees, and turnkey classroom architecture. [Sample Showcase Content - Inquiries Disabled]",
+    businessModel: "FOFO",
+    totalInvestmentMin: 2000000,
+    totalInvestmentMax: 3500000,
+    initialFranchiseFee: 500000,
+    estimatedRoiMonths: 14,
+    targetLocations: ["Delhi NCR", "Mumbai", "Pune"],
+    commercialSpaceMinSqFt: 800,
+    commercialSpaceMaxSqFt: 1500,
+  },
+  {
+    _id: "demo-urbanglow-5",
+    slug: "urbanglow-luxury-medspa",
+    brandName: "UrbanGlow Luxury MedSpa",
+    status: "demo",
+    isDemo: true,
+    industry: "Beauty & Salon",
+    bannerUrl: "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=1200&auto=format&fit=crop&q=80",
+    logoUrl: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=200&auto=format&fit=crop&q=80",
+    opportunityTitle: "Dermatology & Aesthetic Wellness Clinic (Sample Concept)",
+    tagline: "Premium non-invasive clinical aesthetics and physician-supervised skin wellness.",
+    summary: "US-FDA approved aesthetic machinery, certified dermatologist protocols, high average ticket size, and recurring client subscriptions. [Sample Showcase Content - Inquiries Disabled]",
+    businessModel: "FOCO",
+    totalInvestmentMin: 4500000,
+    totalInvestmentMax: 7500000,
+    initialFranchiseFee: 1000000,
+    estimatedRoiMonths: 20,
+    targetLocations: ["Mumbai", "Delhi NCR", "Bengaluru"],
+    commercialSpaceMinSqFt: 1000,
+    commercialSpaceMaxSqFt: 1800,
+  },
+  {
+    _id: "demo-quickbite-6",
+    slug: "quickbite-express-kiosks",
+    brandName: "QuickBite Express Kiosks",
+    status: "demo",
+    isDemo: true,
+    industry: "Retail",
+    bannerUrl: "https://images.unsplash.com/photo-1526367790999-0150786686a2?w=1200&auto=format&fit=crop&q=80",
+    logoUrl: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=200&auto=format&fit=crop&q=80",
+    opportunityTitle: "Compact Automated Retail & Beverage Kiosk (Sample Concept)",
+    tagline: "High-density grab-and-go automated retail kiosk for transit and corporate hubs.",
+    summary: "Low space requirement, zero cooking ventilation needed, high-margin beverage and snack assortment with cloud telemetry. [Sample Showcase Content - Inquiries Disabled]",
+    businessModel: "FOFO",
+    totalInvestmentMin: 1500000,
+    totalInvestmentMax: 2500000,
+    initialFranchiseFee: 350000,
+    estimatedRoiMonths: 12,
+    targetLocations: ["Pan-India", "Metro Stations", "Tech Parks"],
+    commercialSpaceMinSqFt: 100,
+    commercialSpaceMaxSqFt: 250,
+  },
+];
+
 export default function FranchisesMarketplacePage() {
   const { user } = useAuth();
-  const [listings, setListings] = useState<any[]>([]);
+  const [listings, setListings] = useState<any[]>(DEFAULT_MARKETPLACE_LISTINGS);
   const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [isUsingShowcase, setIsUsingShowcase] = useState(true);
+  const [demoNoticeModal, setDemoNoticeModal] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [industry, setIndustry] = useState("All");
   const [modelType, setModelType] = useState("All");
@@ -38,7 +197,7 @@ export default function FranchisesMarketplacePage() {
   const [sort, setSort] = useState("recent");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
+  const [totalCount, setTotalCount] = useState(DEFAULT_MARKETPLACE_LISTINGS.length);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [compareIds, setCompareIds] = useState<string[]>([]);
 
@@ -61,6 +220,7 @@ export default function FranchisesMarketplacePage() {
 
   const fetchListings = async () => {
     setLoading(true);
+    setApiError(null);
     try {
       let minInvestment: number | undefined;
       let maxInvestment: number | undefined;
@@ -94,15 +254,59 @@ export default function FranchisesMarketplacePage() {
 
       const res = await api.get<any[]>("/franchises", queryParams);
 
-      if (res.success && res.data) {
+      if (!res.success) {
+        // Distinct API error response
+        setApiError(res.message || "Failed to load listings from the platform service.");
+        setIsUsingShowcase(false);
+        setListings([]);
+        setTotalCount(0);
+        setTotalPages(1);
+        return;
+      }
+
+      // Priority 1: Published database records always take precedence
+      if (res.data && res.data.length > 0) {
+        setIsUsingShowcase(false);
         setListings(res.data);
         if (res.meta) {
           setTotalPages(res.meta.totalPages || 1);
-          setTotalCount(res.meta.total || 0);
+          setTotalCount(res.meta.total || res.data.length);
+        } else {
+          setTotalPages(1);
+          setTotalCount(res.data.length);
+        }
+      } else {
+        // Empty API response (0 published records returned from database)
+        const hasCustomFilters = Boolean(
+          (searchTerm && searchTerm.trim()) ||
+          (industry && industry !== "All") ||
+          (modelType && modelType !== "All") ||
+          (locationFilter && locationFilter !== "All") ||
+          (budgetFilter && budgetFilter !== "All")
+        );
+
+        if (hasCustomFilters) {
+          // Legitimate empty search result when user enters restrictive filters
+          setIsUsingShowcase(false);
+          setListings([]);
+          setTotalCount(0);
+          setTotalPages(1);
+        } else {
+          // Platform currently has 0 approved published listings in database
+          setIsUsingShowcase(true);
+          setListings(DEFAULT_MARKETPLACE_LISTINGS);
+          setTotalPages(1);
+          setTotalCount(DEFAULT_MARKETPLACE_LISTINGS.length);
         }
       }
-    } catch (err) {
-      console.error("Failed to fetch franchises:", err);
+    } catch (err: any) {
+      console.error("API connection error:", err);
+      // Distinctly handle network / server exceptions
+      setApiError(err.message || "Unable to reach the FranchiseBridge listing server. Please check connection.");
+      setIsUsingShowcase(false);
+      setListings([]);
+      setTotalCount(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
@@ -121,6 +325,12 @@ export default function FranchisesMarketplacePage() {
   const handleToggleSave = async (id: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (id.startsWith("demo-")) {
+      setDemoNoticeModal(
+        "Bookmarks are disabled for sample showcase opportunities. Real bookmarks can only be saved for verified, administrator-approved franchises."
+      );
+      return;
+    }
     if (!user) {
       alert("Please login as an investor to bookmark opportunities");
       return;
@@ -138,6 +348,14 @@ export default function FranchisesMarketplacePage() {
     } catch (err: any) {
       alert(err.message || "Failed to toggle bookmark");
     }
+  };
+
+  const handleDemoEnquiryClick = (brandName: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDemoNoticeModal(
+      `"${brandName}" is a demonstration showcase concept provided for platform preview. Real franchise inquiries, capital commitments, NDA execution, and deal rooms cannot be initiated on demo listings.`
+    );
   };
 
   const toggleCompare = (id: string, e: React.MouseEvent) => {
@@ -342,17 +560,67 @@ export default function FranchisesMarketplacePage() {
 
         {/* Directory Count Bar */}
         <div className="flex items-center justify-between text-xs text-[#64748B] font-medium px-1">
-          <span>
-            Showing <strong className="text-[#14243A]">{listings.length}</strong> of{" "}
-            <strong className="text-[#14243A]">{totalCount}</strong> verified franchises
-          </span>
+          {isUsingShowcase ? (
+            <span>
+              Showing <strong className="text-[#14243A]">{listings.length}</strong> sample demonstration concepts{" "}
+              <span className="text-amber-600 font-semibold">(Preview Showcase – Inquiries Disabled)</span>
+            </span>
+          ) : (
+            <span>
+              Showing <strong className="text-[#14243A]">{listings.length}</strong> of{" "}
+              <strong className="text-[#14243A]">{totalCount}</strong> verified franchises
+            </span>
+          )}
           <span>
             Page {page} of {totalPages}
           </span>
         </div>
 
-        {/* Listings Cards Grid */}
-        {loading ? (
+        {/* Demonstration Mode Informational Banner */}
+        {isUsingShowcase && !loading && !apiError && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900 flex items-start gap-3 shadow-xs">
+            <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-bold text-amber-950">
+                Institutional Directory Preview – Demonstration Opportunities
+              </p>
+              <p className="text-amber-800 leading-relaxed">
+                The opportunities displayed below are curated sample concepts designed to demonstrate directory formatting, financials, and space criteria while platform administrators publish new verified brand listings. These sample listings are strictly non-transactional and cannot be used to submit live franchise applications or enter legally binding deal rooms.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Listings Cards Grid / States */}
+        {apiError ? (
+          <div className="surface-card p-12 text-center space-y-4 border border-rose-200 bg-rose-50/50">
+            <AlertTriangle className="w-12 h-12 text-rose-500 mx-auto" />
+            <h3 className="text-xl font-bold text-[#14243A]">Franchise Service Unavailable</h3>
+            <p className="text-xs text-rose-700 max-w-md mx-auto leading-relaxed">
+              {apiError}
+            </p>
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                onClick={() => fetchListings()}
+                className="btn-primary py-2.5 px-6 text-xs font-semibold"
+              >
+                Retry Connection
+              </button>
+              <button
+                onClick={() => {
+                  setApiError(null);
+                  setIsUsingShowcase(true);
+                  setListings(DEFAULT_MARKETPLACE_LISTINGS);
+                  setTotalCount(DEFAULT_MARKETPLACE_LISTINGS.length);
+                  setTotalPages(1);
+                }}
+                className="btn-secondary py-2.5 px-4 text-xs font-semibold"
+              >
+                View Offline Showcase
+              </button>
+            </div>
+          </div>
+        ) : loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 py-4">
             {[1, 2, 3, 4, 5, 6].map((idx) => (
               <div key={idx} className="surface-card p-6 h-96 animate-pulse space-y-4">
@@ -375,6 +643,8 @@ export default function FranchisesMarketplacePage() {
                 setSearchTerm("");
                 setIndustry("All");
                 setModelType("All");
+                setLocationFilter("All");
+                setBudgetFilter("All");
                 setPage(1);
               }}
               className="text-xs font-semibold text-[#315EFB] hover:underline"
@@ -399,6 +669,10 @@ export default function FranchisesMarketplacePage() {
                       }
                       alt={item.brandName}
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src =
+                          "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=1200&auto=format&fit=crop&q=80";
+                      }}
                     />
                     <div className="absolute top-3 left-3">
                       <span className="px-2.5 py-1 rounded-md bg-white/95 backdrop-blur-sm text-[11px] font-bold text-[#14243A] border border-[#E7ECF2]">
@@ -407,10 +681,22 @@ export default function FranchisesMarketplacePage() {
                     </div>
 
                     <div className="absolute top-3 right-3 flex items-center gap-1.5">
-                      <StatusBadge status={item.status} />
+                      {item.isDemo || item._id.startsWith("demo-") ? (
+                        <span className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-amber-500/90 text-slate-950 shadow-sm border border-amber-300">
+                          Sample / Demo
+                        </span>
+                      ) : (
+                        <StatusBadge status={item.status} />
+                      )}
                       <button
                         onClick={(e) => handleToggleSave(item._id, e)}
-                        title={savedIds.has(item._id) ? "Remove from saved" : "Save opportunity"}
+                        title={
+                          item.isDemo || item._id.startsWith("demo-")
+                            ? "Sample concept (Bookmarks disabled)"
+                            : savedIds.has(item._id)
+                            ? "Remove from saved"
+                            : "Save opportunity"
+                        }
                         className={`p-1.5 rounded-lg backdrop-blur-sm transition-all border ${
                           savedIds.has(item._id)
                             ? "bg-amber-400 text-slate-950 border-amber-300 shadow"
@@ -436,6 +722,10 @@ export default function FranchisesMarketplacePage() {
                             }
                             alt={item.brandName}
                             className="w-full h-full object-cover rounded-md"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).src =
+                                "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=200&auto=format&fit=crop&q=80";
+                            }}
                           />
                         </div>
                         <span className="text-white font-bold text-sm drop-shadow-md truncate">
@@ -455,7 +745,11 @@ export default function FranchisesMarketplacePage() {
                     <div>
                       <div className="flex items-center justify-between gap-2">
                         <h3 className="text-base font-bold text-[#14243A] group-hover:text-[#315EFB] transition-colors truncate">
-                          <Link href={`/franchises/${item.slug || item._id}`}>{item.brandName}</Link>
+                          {item.isDemo || item._id.startsWith("demo-") ? (
+                            <span>{item.brandName}</span>
+                          ) : (
+                            <Link href={`/franchises/${item.slug || item._id}`}>{item.brandName}</Link>
+                          )}
                         </h3>
                         <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
                           {item.businessModel || item.franchiseModelType || "FOFO"}
@@ -516,16 +810,83 @@ export default function FranchisesMarketplacePage() {
                   >
                     <Scale className="w-4 h-4" />
                   </button>
-                  <Link
-                    href={`/franchises/${item.slug || item._id}`}
-                    className="btn-primary flex-1 py-2.5 text-xs font-semibold justify-center"
-                  >
-                    View Details & Enquire
-                    <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                  </Link>
+                  {item.isDemo || item._id.startsWith("demo-") ? (
+                    <button
+                      type="button"
+                      onClick={(e) => handleDemoEnquiryClick(item.brandName, e)}
+                      className="btn-secondary flex-1 py-2.5 text-xs font-semibold justify-center text-[#64748B] hover:text-[#14243A] border-dashed hover:border-[#14243A]"
+                    >
+                      Sample Concept (Enquiries Disabled)
+                    </button>
+                  ) : (
+                    <Link
+                      href={`/franchises/${item.slug || item._id}`}
+                      className="btn-primary flex-1 py-2.5 text-xs font-semibold justify-center"
+                    >
+                      View Details & Enquire
+                      <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                    </Link>
+                  )}
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Demo Notice Modal */}
+        {demoNoticeModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+            <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-[#E7ECF2]">
+              <div className="flex items-center justify-between pb-2 border-b border-[#E7ECF2]">
+                <div className="flex items-center gap-2 text-amber-600 font-bold text-sm">
+                  <ShieldAlert className="w-5 h-5" />
+                  <span>Showcase Demonstration Notice</span>
+                </div>
+                <button
+                  onClick={() => setDemoNoticeModal(null)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                {demoNoticeModal}
+              </p>
+              <div className="bg-amber-50 rounded-xl p-3 border border-amber-200 text-[11px] text-amber-900 leading-relaxed">
+                <strong>Governance Policy:</strong> To protect platform integrity, all transactions, investor commitments, and franchise agreements require an administrator-approved brand listing with verified legal documentation.
+              </div>
+              <div className="pt-2">
+                <button
+                  onClick={() => setDemoNoticeModal(null)}
+                  className="btn-primary w-full py-2.5 text-xs font-semibold justify-center"
+                >
+                  Understood
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Pagination Bar */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-3 pt-6">
+            <button
+              onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+              disabled={page === 1}
+              className="p-2.5 rounded-lg border border-[#E7ECF2] bg-white disabled:opacity-40 hover:bg-[#F8FAFC] text-[#14243A] transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="text-xs font-bold text-[#14243A] px-4">
+              Page {page} of {totalPages}
+            </span>
+            <button
+              onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+              disabled={page === totalPages}
+              className="p-2.5 rounded-lg border border-[#E7ECF2] bg-white disabled:opacity-40 hover:bg-[#F8FAFC] text-[#14243A] transition-colors"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
         )}
 

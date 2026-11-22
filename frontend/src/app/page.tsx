@@ -37,9 +37,99 @@ import {
 import { api } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 
+const DEFAULT_BANNER = "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800&auto=format&fit=crop&q=80";
+const DEFAULT_LOGO = "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=200&auto=format&fit=crop&q=80";
+
+const SHOWCASE_LISTINGS: HomepageFranchise[] = [
+  {
+    _id: "demo-roastcraft-1",
+    slug: "roastcraft-specialty-coffee",
+    brandName: "RoastCraft Specialty Coffee",
+    isDemo: true,
+    bannerUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=1200&auto=format&fit=crop&q=80",
+    logoUrl: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=200&auto=format&fit=crop&q=80",
+    industry: "Food & Beverage",
+    tagline: "Artisanal single-origin specialty coffee roasters with high store gross margins and turnkey setup.",
+    totalInvestmentMin: 3500000,
+    totalInvestmentMax: 5500000,
+    readinessScore: 94,
+    business: {
+      businessName: "RoastCraft Hospitality LLP",
+      numberOfOutlets: 12,
+      headquarters: "Mumbai, Maharashtra",
+    },
+  },
+  {
+    _id: "demo-fitpulse-2",
+    slug: "fitpulse-24-7-smart-gyms",
+    brandName: "FitPulse 24/7 Smart Gyms",
+    isDemo: true,
+    coverImage: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1200&auto=format&fit=crop&q=80",
+    logo: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=200&auto=format&fit=crop&q=80",
+    industry: "Health & Wellness",
+    tagline: "App-enabled, automated 24/7 fitness hubs with biometric turnstiles and low staff overhead.",
+    totalInvestmentMin: 6000000,
+    readinessScore: 88,
+    business: {
+      businessName: "FitPulse Fitness Systems Ltd",
+      numberOfOutlets: 8,
+      headquarters: "Bengaluru, Karnataka",
+    },
+  },
+  {
+    _id: "demo-curryleaf-3",
+    slug: "curry-leaf-express",
+    brandName: "Curry Leaf Express",
+    isDemo: true,
+    bannerUrl: "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=1200&auto=format&fit=crop&q=80",
+    logoUrl: "https://images.unsplash.com/photo-1610057099443-fde8c4d50f91?w=200&auto=format&fit=crop&q=80",
+    industry: "Fast Casual Dining",
+    tagline: "Express South Indian comfort food serving high delivery volumes and standardized central kitchen recipes.",
+    totalInvestmentMin: 2500000,
+    totalInvestmentMax: 4000000,
+    readinessScore: 91,
+    business: {
+      businessName: "Curry Leaf Express Foods Pvt Ltd",
+      numberOfOutlets: 15,
+      headquarters: "Chennai, Tamil Nadu",
+    },
+  },
+];
+
+interface HomepageFranchise {
+  _id?: string;
+  id?: string;
+  slug?: string;
+  brandName: string;
+  isDemo?: boolean;
+  bannerUrl?: string;
+  coverImage?: string;
+  logoUrl?: string;
+  logo?: string;
+  industry?: string;
+  readinessScore?: number;
+  tagline?: string;
+  description?: string;
+  totalInvestmentMin?: number;
+  totalInvestmentMax?: number;
+  financials?: {
+    minInvestment?: number;
+    maxInvestment?: number;
+  };
+  unitsCount?: string;
+  business?: {
+    _id?: string;
+    businessName?: string;
+    logoUrl?: string;
+    numberOfOutlets?: number;
+    headquarters?: string;
+    legalBusinessName?: string;
+  };
+}
+
 export default function HomePage() {
   const router = useRouter();
-  const [featuredListings, setFeaturedListings] = useState<any[]>([]);
+  const [featuredListings, setFeaturedListings] = useState<HomepageFranchise[]>(SHOWCASE_LISTINGS);
   const [stats, setStats] = useState({ totalFranchises: 5, totalIndustries: 5, activeExpansionCities: 45 });
   const [loadingListings, setLoadingListings] = useState(true);
 
@@ -55,8 +145,10 @@ export default function HomePage() {
       try {
         setLoadingListings(true);
         const res = await api.get<any[]>("/franchises", { limit: 6, sort: "popular" });
-        if (res.success && res.data) {
+        if (res.success && res.data && res.data.length > 0) {
           setFeaturedListings(res.data);
+        } else {
+          setFeaturedListings(SHOWCASE_LISTINGS);
         }
         const statsRes = await api.get<any>("/public/stats");
         if (statsRes.success && statsRes.data) {
@@ -64,6 +156,7 @@ export default function HomePage() {
         }
       } catch (err) {
         console.error("Failed to load homepage data:", err);
+        setFeaturedListings(SHOWCASE_LISTINGS);
       } finally {
         setLoadingListings(false);
       }
@@ -644,12 +737,17 @@ export default function HomePage() {
                   <div className="relative h-48 w-full bg-slate-100 overflow-hidden">
                     <img
                       src={
+                        franchise.bannerUrl ||
                         franchise.coverImage ||
+                        franchise.logoUrl ||
                         franchise.logo ||
-                        "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800&auto=format&fit=crop&q=80"
+                        DEFAULT_BANNER
                       }
                       alt={franchise.brandName}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = DEFAULT_BANNER;
+                      }}
                     />
                     <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm px-2.5 py-1 rounded-md text-[11px] font-bold text-[#14243A] border border-[#E7ECF2]">
                       {franchise.industry || "Franchise"}
@@ -663,13 +761,36 @@ export default function HomePage() {
 
                   {/* Card Body */}
                   <div className="p-6 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-bold text-[#14243A] group-hover:text-[#315EFB] transition-colors">
-                        {franchise.brandName}
-                      </h3>
-                      <span className="text-xs font-semibold text-[#159D8B] bg-[#E6F7F5] px-2 py-0.5 rounded">
-                        Verified
-                      </span>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-lg border border-[#E7ECF2] bg-white p-0.5 shrink-0 overflow-hidden shadow-xs">
+                          <img
+                            src={
+                              franchise.logoUrl ||
+                              franchise.logo ||
+                              franchise.business?.logoUrl ||
+                              DEFAULT_LOGO
+                            }
+                            alt={`${franchise.brandName} logo`}
+                            className="w-full h-full object-cover rounded-md"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).src = DEFAULT_LOGO;
+                            }}
+                          />
+                        </div>
+                        <h3 className="text-lg font-bold text-[#14243A] group-hover:text-[#315EFB] transition-colors truncate">
+                          {franchise.brandName}
+                        </h3>
+                      </div>
+                      {franchise.isDemo || franchise._id?.startsWith("demo-") ? (
+                        <span className="text-[11px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded shrink-0">
+                          Sample / Demo
+                        </span>
+                      ) : (
+                        <span className="text-xs font-semibold text-[#159D8B] bg-[#E6F7F5] px-2 py-0.5 rounded shrink-0">
+                          Verified
+                        </span>
+                      )}
                     </div>
 
                     <p className="text-xs text-[#64748B] line-clamp-2 leading-relaxed">
@@ -681,7 +802,11 @@ export default function HomePage() {
                       <div>
                         <span className="text-[#64748B] block text-[11px]">Investment Range</span>
                         <span className="font-bold text-[#14243A]">
-                          {franchise.financials?.minInvestment
+                          {franchise.totalInvestmentMin !== undefined && franchise.totalInvestmentMin !== null
+                            ? franchise.totalInvestmentMax
+                              ? `${formatCurrency(franchise.totalInvestmentMin)} - ${formatCurrency(franchise.totalInvestmentMax)}`
+                              : formatCurrency(franchise.totalInvestmentMin)
+                            : franchise.financials?.minInvestment
                             ? formatCurrency(franchise.financials.minInvestment)
                             : "₹25L - 45L"}
                         </span>
@@ -689,7 +814,9 @@ export default function HomePage() {
                       <div>
                         <span className="text-[#64748B] block text-[11px]">Active Outlets</span>
                         <span className="font-bold text-[#14243A]">
-                          {franchise.unitsCount || "5+ Units"}
+                          {franchise.business?.numberOfOutlets !== undefined && franchise.business?.numberOfOutlets !== null
+                            ? `${franchise.business.numberOfOutlets} ${franchise.business.numberOfOutlets === 1 ? "Unit" : "Units"}`
+                            : franchise.unitsCount || "5+ Units"}
                         </span>
                       </div>
                     </div>
@@ -698,13 +825,23 @@ export default function HomePage() {
 
                 {/* Card Action Footer */}
                 <div className="p-6 pt-0">
-                  <Link
-                    href={`/franchises/${franchise.slug || franchise._id}`}
-                    className="btn-secondary w-full py-2.5 text-xs font-semibold justify-center group-hover:border-[#315EFB] group-hover:text-[#315EFB]"
-                  >
-                    View Details & Financials
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </Link>
+                  {franchise.isDemo || franchise._id?.startsWith("demo-") ? (
+                    <Link
+                      href="/franchises"
+                      className="btn-secondary w-full py-2.5 text-xs font-semibold justify-center group-hover:border-[#315EFB] group-hover:text-[#315EFB]"
+                    >
+                      Sample Concept – Explore Directory
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </Link>
+                  ) : (
+                    <Link
+                      href={`/franchises/${franchise.slug || franchise._id}`}
+                      className="btn-secondary w-full py-2.5 text-xs font-semibold justify-center group-hover:border-[#315EFB] group-hover:text-[#315EFB]"
+                    >
+                      View Details & Financials
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </Link>
+                  )}
                 </div>
               </div>
             ))}
