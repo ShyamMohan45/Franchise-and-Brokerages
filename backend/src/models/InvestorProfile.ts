@@ -37,7 +37,10 @@ export interface IInvestorProfile extends Document {
   currentOccupation?: string;
   companyName?: string;
   isVerified: boolean;
+  verificationStatus?: 'unverified' | 'pending' | 'verified' | 'rejected' | 'needs_clarification';
   verificationNotes?: string;
+  verifiedBy?: Types.ObjectId;
+  verifiedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -160,7 +163,15 @@ const investorProfileSchema = new Schema<IInvestorProfile>(
       default: false,
       index: true,
     },
+    verificationStatus: {
+      type: String,
+      enum: ['unverified', 'pending', 'verified', 'rejected', 'needs_clarification'],
+      default: 'unverified',
+      index: true,
+    },
     verificationNotes: { type: String },
+    verifiedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    verifiedAt: { type: Date },
   },
   {
     timestamps: true,

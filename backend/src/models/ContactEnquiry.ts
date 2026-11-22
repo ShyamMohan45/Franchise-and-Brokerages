@@ -6,7 +6,7 @@ export interface IContactEnquiry extends Document {
   phone: string;
   subject: string;
   message: string;
-  interestType: 'expand_business' | 'invest_in_franchise' | 'brokerage_partnership' | 'general';
+  interestType: 'expand_business' | 'invest_in_franchise' | 'brokerage_partnership' | 'general' | 'complaint' | 'support_request';
   status: 'new' | 'reviewed' | 'responded' | 'archived';
   internalNotes?: string;
   handledBy?: Types.ObjectId;
@@ -44,7 +44,7 @@ const contactEnquirySchema = new Schema<IContactEnquiry>(
     },
     interestType: {
       type: String,
-      enum: ['expand_business', 'invest_in_franchise', 'brokerage_partnership', 'general'],
+      enum: ['expand_business', 'invest_in_franchise', 'brokerage_partnership', 'general', 'complaint', 'support_request'],
       default: 'general',
     },
     status: {
