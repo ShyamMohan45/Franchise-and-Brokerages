@@ -34,6 +34,11 @@ import {
   IndianRupee,
   Eye,
   CheckCircle,
+  ChevronDown,
+  ChevronUp,
+  Lock,
+  RefreshCw,
+  Search,
 } from "lucide-react";
 import { useAuth } from "@/providers/AuthProvider";
 import { api, resolveAssetUrl } from "@/lib/api";
@@ -45,7 +50,7 @@ export default function BusinessDashboardPage() {
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<
-    "overview" | "opportunities" | "readiness" | "outlets" | "roadmap" | "sops" | "legal" | "applications" | "meetings"
+    "overview" | "opportunities" | "matching" | "readiness" | "outlets" | "roadmap" | "sops" | "legal" | "applications" | "meetings"
   >("overview");
   const [businessData, setBusinessData] = useState<any | null>(null);
   const [profileCompletion, setProfileCompletion] = useState<number>(0);
@@ -58,6 +63,16 @@ export default function BusinessDashboardPage() {
   const [outlets, setOutlets] = useState<any[]>([]);
   const [expansionPlan, setExpansionPlan] = useState<any | null>(null);
   const [isAddOutletOpen, setIsAddOutletOpen] = useState(false);
+
+  // Investor Matching State (Milestone 1)
+  const [matches, setMatches] = useState<any[]>([]);
+  const [matchingLoading, setMatchingLoading] = useState(false);
+  const [matchingError, setMatchingError] = useState<string | null>(null);
+  const [matchingMeta, setMatchingMeta] = useState<any | null>(null);
+  const [selectedOppFilter, setSelectedOppFilter] = useState<string>("all");
+  const [minScoreFilter, setMinScoreFilter] = useState<number>(0);
+  const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
+  const [introRequestedIds, setIntroRequestedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [feedbackMessage, setFeedbackMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -236,6 +251,39 @@ export default function BusinessDashboardPage() {
 
     if (user) loadDashboardData();
   }, [user, isLoading, router]);
+
+  const fetchMatches = async (oppId?: string, minScore?: number) => {
+    setMatchingLoading(true);
+    setMatchingError(null);
+    try {
+      const params: Record<string, any> = {};
+      const targetOppId = oppId !== undefined ? oppId : selectedOppFilter;
+      const targetMinScore = minScore !== undefined ? minScore : minScoreFilter;
+
+      if (targetOppId && targetOppId !== "all") params.listingId = targetOppId;
+      if (targetMinScore && targetMinScore > 0) params.minScore = targetMinScore;
+
+      const res = await api.get<any[]>("/matching/franchisor", params);
+      if (res.success && res.data) {
+        setMatches(res.data);
+        if (res.meta) {
+          setMatchingMeta(res.meta);
+        }
+      } else {
+        setMatchingError(res.message || "Failed to load investor matches.");
+      }
+    } catch (err: any) {
+      setMatchingError(err.message || "Unable to reach the investor matching engine.");
+    } finally {
+      setMatchingLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "matching" && user) {
+      fetchMatches(selectedOppFilter, minScoreFilter);
+    }
+  }, [activeTab, selectedOppFilter, minScoreFilter, user]);
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -659,7 +707,8 @@ export default function BusinessDashboardPage() {
         {[
           { id: "overview", label: "Executive Overview", icon: TrendingUp },
           { id: "opportunities", label: `Franchise Opportunities (${opportunities.length})`, icon: Briefcase },
-          { id: "readiness", label: "Franchise Readiness Index", icon: Sparkles },
+          { id: "matching", label: `Investor Matches (${matches.length})`, icon: Sparkles },
+          { id: "readiness", label: "Franchise Readiness Index", icon: Layers },
           { id: "outlets", label: `Outlets (${outlets.length})`, icon: Store },
           { id: "roadmap", label: "Expansion Roadmap", icon: Compass },
           { id: "sops", label: `SOP Manuals (${sops.length})`, icon: FileText },
@@ -1445,6 +1494,445 @@ export default function BusinessDashboardPage() {
                           ⏳ Under Compliance Review
                         </span>
                       )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB: INVESTOR MATCHING & DISCOVERY (MILESTONE 1) */}
+      {activeTab === "matching" && (
+        <div className="space-y-6">
+          {/* Header & Controls */}
+          <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="p-2 bg-blue-50 text-blue-600 rounded-xl">
+                    <Sparkles className="w-5 h-5" />
+                  </span>
+                  <h3 className="text-lg font-bold text-slate-900">
+                    AI Investor Match & Territory Discovery
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-500 mt-1 max-w-2xl">
+                  Discover genuine, verified investors evaluated against your franchise capital requirements, target expansion territories, and operating format. All investor profiles are strictly anonymized for privacy.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => fetchMatches()}
+                  disabled={matchingLoading}
+                  className="flex items-center gap-1.5 px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-all disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${matchingLoading ? "animate-spin" : ""}`} />
+                  Refresh Matches
+                </button>
+              </div>
+            </div>
+
+            {/* Filtering Controls */}
+            <div className="mt-6 pt-6 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                  Evaluate Against Opportunity
+                </label>
+                <select
+                  value={selectedOppFilter}
+                  onChange={(e) => setSelectedOppFilter(e.target.value)}
+                  className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">
+                    All Opportunities ({businessData?.brandName || businessData?.businessName || "Primary Brand"})
+                  </option>
+                  {opportunities.map((opp) => (
+                    <option key={opp._id} value={opp._id}>
+                      {opp.opportunityTitle || opp.brandName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                  Compatibility Tier
+                </label>
+                <select
+                  value={minScoreFilter}
+                  onChange={(e) => setMinScoreFilter(Number(e.target.value))}
+                  className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value={0}>All Compatibility Tiers (0% - 100%)</option>
+                  <option value={85}>Priority Introduction (85%+)</option>
+                  <option value={70}>Broker Verified (70%+)</option>
+                  <option value={50}>Recommended (50%+)</option>
+                </select>
+              </div>
+
+              <div className="flex items-end">
+                <div className="w-full bg-slate-50 rounded-xl p-2.5 border border-slate-200 flex items-center justify-between text-xs">
+                  <span className="text-slate-500">Total Audited:</span>
+                  <span className="font-bold text-slate-800">
+                    {matchingMeta?.totalInvestorsAudited !== undefined
+                      ? `${matches.length} matches / ${matchingMeta.totalInvestorsAudited} candidates`
+                      : `${matches.length} investors`}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Error State */}
+          {matchingError && (
+            <div className="bg-rose-50 border border-rose-200 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="w-6 h-6 text-rose-600 flex-shrink-0" />
+                <div>
+                  <h4 className="text-sm font-bold text-rose-900">Unable to Fetch Investor Matches</h4>
+                  <p className="text-xs text-rose-700 mt-0.5">{matchingError}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => fetchMatches()}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-all flex-shrink-0"
+              >
+                Try Again
+              </button>
+            </div>
+          )}
+
+          {/* Loading State Skeleton */}
+          {matchingLoading && (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm animate-pulse space-y-4">
+                  <div className="flex justify-between items-center">
+                    <div className="h-6 w-48 bg-slate-200 rounded-lg" />
+                    <div className="h-6 w-28 bg-slate-200 rounded-full" />
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="h-12 bg-slate-100 rounded-xl" />
+                    <div className="h-12 bg-slate-100 rounded-xl" />
+                    <div className="h-12 bg-slate-100 rounded-xl" />
+                    <div className="h-12 bg-slate-100 rounded-xl" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!matchingLoading && !matchingError && matches.length === 0 && (
+            <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center shadow-sm space-y-4">
+              <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto">
+                <Users className="w-8 h-8" />
+              </div>
+              <div className="max-w-md mx-auto space-y-1">
+                <h4 className="text-base font-bold text-slate-900">
+                  No Matching Investor Profiles Found
+                </h4>
+                <p className="text-xs text-slate-500">
+                  No registered investors currently meet the selected compatibility threshold ({minScoreFilter}%+). Try lowering the compatibility threshold or updating your target expansion territories.
+                </p>
+              </div>
+              {minScoreFilter > 0 && (
+                <button
+                  onClick={() => setMinScoreFilter(0)}
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md transition-all inline-flex items-center gap-1.5"
+                >
+                  Reset Score Threshold
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Match Cards List */}
+          {!matchingLoading && !matchingError && matches.length > 0 && (
+            <div className="space-y-5">
+              {matches.map((item, idx) => {
+                const inv = item.investor;
+                const analysis = item.matchAnalysis;
+                const isExpanded = expandedMatchId === inv._id;
+                const isIntroRequested = introRequestedIds.has(inv._id);
+
+                let tierColor = "bg-amber-50 text-amber-700 border-amber-200";
+                let progressColor = "bg-amber-500";
+                if (analysis.totalScore >= 85) {
+                  tierColor = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                  progressColor = "bg-emerald-500";
+                } else if (analysis.totalScore >= 70) {
+                  tierColor = "bg-blue-50 text-blue-700 border-blue-200";
+                  progressColor = "bg-blue-600";
+                }
+
+                return (
+                  <div
+                    key={inv._id || idx}
+                    className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden transition-all hover:border-slate-300"
+                  >
+                    {/* Card Top Row */}
+                    <div className="p-6 space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center font-bold text-sm tracking-wide">
+                            {inv.anonymizedId?.slice(-3) || "INV"}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-sm font-bold text-slate-900">
+                                {inv.anonymizedId}
+                              </h4>
+                              {inv.isVerified && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                  <ShieldCheck className="w-3 h-3" />
+                                  Verified Investor
+                                </span>
+                              )}
+                              <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider bg-slate-100 px-2 py-0.5 rounded-full">
+                                {inv.investorType || "Individual"}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
+                              <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                              <span>{inv.city}{inv.state ? `, ${inv.state}` : ""}, {inv.country || "India"}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Match Score Badge & Gauge */}
+                        <div className="flex items-center gap-3 self-end sm:self-auto">
+                          <div className="text-right">
+                            <span className="text-2xl font-black text-slate-900">
+                              {analysis.totalScore}%
+                            </span>
+                            <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden mt-1">
+                              <div
+                                className={`h-full ${progressColor}`}
+                                style={{ width: `${Math.min(100, analysis.totalScore)}%` }}
+                              />
+                            </div>
+                          </div>
+                          <span
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold border ${tierColor} whitespace-nowrap`}
+                          >
+                            {analysis.introductionStatus}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Financial & Profile Attributes Grid */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+                        <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100">
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                            Budget Capacity
+                          </p>
+                          <p className="text-xs font-bold text-slate-900 mt-1">
+                            ₹{(inv.investmentBudgetMin / 100000).toFixed(0)}L - ₹{(inv.investmentBudgetMax / 100000).toFixed(0)}L
+                          </p>
+                          {inv.liquidCapital > 0 && (
+                            <p className="text-[10px] text-slate-500">
+                              Liquid: ₹{(inv.liquidCapital / 100000).toFixed(0)}L
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100">
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                            Preferred Locations
+                          </p>
+                          <p className="text-xs font-bold text-slate-900 mt-1 truncate">
+                            {inv.preferredLocations?.length > 0
+                              ? inv.preferredLocations.slice(0, 2).join(", ")
+                              : inv.city}
+                          </p>
+                          <p className="text-[10px] text-slate-500">
+                            {inv.preferredLocations?.length > 2
+                              ? `+${inv.preferredLocations.length - 2} more territories`
+                              : "Primary Geography"}
+                          </p>
+                        </div>
+
+                        <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100">
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                            Commercial Experience
+                          </p>
+                          <p className="text-xs font-bold text-slate-900 mt-1">
+                            {inv.businessExperienceYears} Years
+                          </p>
+                          <p className="text-[10px] text-slate-500">
+                            {inv.pastFranchiseExperience ? "Prior Franchise Operator" : "First-Time Operator"}
+                          </p>
+                        </div>
+
+                        <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100">
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                            Model & Timeline
+                          </p>
+                          <p className="text-xs font-bold text-slate-900 mt-1">
+                            {inv.preferredBusinessModel || "FOFO"}
+                          </p>
+                          <p className="text-[10px] text-slate-500 capitalize">
+                            {inv.investmentTimeline?.replace(/_/g, " ") || "1-3 Months"}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Preferred Industries Tags */}
+                      {inv.preferredIndustries && inv.preferredIndustries.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                          <span className="text-[11px] font-bold text-slate-500 mr-1">Industry Focus:</span>
+                          {inv.preferredIndustries.map((ind: string, i: number) => (
+                            <span
+                              key={i}
+                              className="px-2.5 py-0.5 rounded-lg text-[10px] font-semibold bg-slate-100 text-slate-700"
+                            >
+                              {ind}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Expandable Compatibility Breakdown */}
+                    {isExpanded && (
+                      <div className="bg-slate-50/70 border-t border-slate-200 p-6 space-y-6">
+                        <div>
+                          <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3">
+                            Transparent Scoring Weightage Breakdown
+                          </h5>
+                          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                            <div className="bg-white rounded-xl p-3 border border-slate-200">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase">Budget</span>
+                              <p className="text-sm font-black text-slate-900 mt-0.5">
+                                {analysis.budgetScore}/30
+                              </p>
+                            </div>
+                            <div className="bg-white rounded-xl p-3 border border-slate-200">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase">Territory</span>
+                              <p className="text-sm font-black text-slate-900 mt-0.5">
+                                {analysis.locationScore}/25
+                              </p>
+                            </div>
+                            <div className="bg-white rounded-xl p-3 border border-slate-200">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase">Industry</span>
+                              <p className="text-sm font-black text-slate-900 mt-0.5">
+                                {analysis.industryScore}/20
+                              </p>
+                            </div>
+                            <div className="bg-white rounded-xl p-3 border border-slate-200">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase">Goals & Model</span>
+                              <p className="text-sm font-black text-slate-900 mt-0.5">
+                                {analysis.goalsScore}/15
+                              </p>
+                            </div>
+                            <div className="bg-white rounded-xl p-3 border border-slate-200">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase">Experience</span>
+                              <p className="text-sm font-black text-slate-900 mt-0.5">
+                                {analysis.experienceScore}/10
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Matched Criteria */}
+                          <div className="bg-white rounded-2xl p-4 border border-emerald-200 space-y-2.5">
+                            <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                              <span>Verified Compatibility Drivers ({analysis.matchedCriteria.length})</span>
+                            </div>
+                            <ul className="space-y-1.5 text-xs text-slate-700">
+                              {analysis.matchedCriteria.map((c: string, ci: number) => (
+                                <li key={ci} className="flex items-start gap-2">
+                                  <span className="text-emerald-500 font-bold mt-0.5">✓</span>
+                                  <span>{c}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+
+                          {/* Unmatched / Review Criteria */}
+                          <div className="bg-white rounded-2xl p-4 border border-slate-200 space-y-2.5">
+                            <div className="flex items-center gap-2 text-slate-700 font-bold text-xs">
+                              <Info className="w-4 h-4 text-amber-500" />
+                              <span>Criteria Requiring Discussion ({analysis.unmatchedCriteria.length})</span>
+                            </div>
+                            {analysis.unmatchedCriteria.length === 0 ? (
+                              <p className="text-xs text-slate-500 italic">No incompatible factors identified.</p>
+                            ) : (
+                              <ul className="space-y-1.5 text-xs text-slate-600">
+                                {analysis.unmatchedCriteria.map((u: string, ui: number) => (
+                                  <li key={ui} className="flex items-start gap-2">
+                                    <span className="text-amber-500 font-bold mt-0.5">•</span>
+                                    <span>{u}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Card Footer: Privacy Notice & Actions */}
+                    <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                        <Lock className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                        <span>
+                          Contact details (name, phone, email) remain confidential until an authorized introduction is confirmed.
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2 self-end sm:self-auto">
+                        <button
+                          onClick={() => setExpandedMatchId(isExpanded ? null : inv._id)}
+                          className="px-3.5 py-1.5 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-all flex items-center gap-1"
+                        >
+                          {isExpanded ? (
+                            <>
+                              <span>Hide Details</span>
+                              <ChevronUp className="w-3.5 h-3.5" />
+                            </>
+                          ) : (
+                            <>
+                              <span>Compatibility Factors</span>
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setIntroRequestedIds((prev) => new Set(prev).add(inv._id));
+                            showFeedback(
+                              "success",
+                              `Platform introduction request logged for ${inv.anonymizedId}. Our brokerage team will facilitate the authorized introduction.`
+                            );
+                          }}
+                          disabled={isIntroRequested}
+                          className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm ${
+                            isIntroRequested
+                              ? "bg-emerald-100 text-emerald-800 cursor-default"
+                              : "bg-blue-600 hover:bg-blue-700 text-white"
+                          }`}
+                        >
+                          {isIntroRequested ? (
+                            <>
+                              <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Introduction Requested</span>
+                            </>
+                          ) : (
+                            <>
+                              <Send className="w-3.5 h-3.5" />
+                              <span>Request Introduction</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
