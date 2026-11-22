@@ -9,3 +9,6 @@ export { CommissionService } from './commissionService';
 export { NotificationService } from './notificationService';
 export { AdminService } from './adminService';
 export { IntroductionService } from './introductionService';
+export { SubscriptionService } from './subscriptionService';
+export { PaymentService } from './paymentService';
+export { MatchingService } from './matchingService';

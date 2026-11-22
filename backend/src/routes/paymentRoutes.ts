@@ -30,11 +30,11 @@ router.get('/plans', getSubscriptionPlans);
 // ----------------------------------------------------------------------------
 router.use(requireAuth);
 
-router.post('/order', createPaymentOrder);
+router.post(['/order', '/orders'], createPaymentOrder);
 router.post('/verify', verifyPayment);
 
-router.get('/subscription/current', getCurrentSubscription);
-router.post('/subscription/cancel', cancelSubscription);
+router.get(['/subscription/current', '/current'], getCurrentSubscription);
+router.post(['/subscription/cancel', '/cancel'], cancelSubscription);
 
 router.post('/featured/:id/apply-slot', applyFeaturedSlot);
 

@@ -13,3 +13,4 @@ export { useDealMessages } from './useDealMessages';
 export { useCommissions } from './useCommissions';
 export { useNotifications } from './useNotifications';
 export { useAdmin } from './useAdmin';
+export { useSubscription } from './useSubscription';

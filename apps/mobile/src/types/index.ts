@@ -5,3 +5,6 @@ export * from './dealRoom';
 export * from './commission';
 export * from './notification';
 export * from './admin';
+export * from './subscription';
+export * from './payment';
+export * from './matching';
