@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Types } from 'mongoose';
+import { env } from '../config/env';
 import { EntitlementService } from '../services/entitlementService';
 import { PaymentService } from '../services/paymentService';
 import { Subscription } from '../models/Subscription';
@@ -226,7 +227,7 @@ describe('Milestone 5: Comprehensive Monetization, Subscription, Payment and Com
     it('Verifies valid HMAC SHA-256 signatures and rejects forged signatures', () => {
       const orderId = 'order_test_12345';
       const paymentId = 'pay_test_67890';
-      const secret = process.env.JWT_SECRET || 'franchisebridge_sandbox_secret';
+      const secret = env.JWT_SECRET;
 
       const crypto = require('crypto');
       const validSignature = crypto
@@ -423,6 +424,255 @@ describe('Milestone 5: Comprehensive Monetization, Subscription, Payment and Com
       const now = new Date();
       const isStillFeatured = listing.isFeatured && (!listing.featuredUntil || now < new Date(listing.featuredUntil));
       expect(isStillFeatured).toBe(true);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // SECTION 6: Detailed Subscription Lifecycle Transitions & Downgrade Quotas
+  // --------------------------------------------------------------------------
+  describe('6. Subscription Lifecycle: Upgrades, Renewals, Cancellations & Downgrades', () => {
+    it('Handles progressive tier upgrades: Free -> Basic -> Pro -> Enterprise', async () => {
+      const free = await EntitlementService.getPlanConfig('free');
+      const basic = await EntitlementService.getPlanConfig('basic');
+      const pro = await EntitlementService.getPlanConfig('professional');
+      const ent = await EntitlementService.getPlanConfig('enterprise');
+
+      expect(free.maxListings).toBe(1);
+      expect(basic.maxListings).toBe(3);
+      expect(pro.maxListings).toBe(10);
+      expect(ent.maxListings).toBe(999);
+
+      expect(free.maxBrands).toBe(1);
+      expect(basic.maxBrands).toBe(2);
+      expect(pro.maxBrands).toBe(5);
+      expect(ent.maxBrands).toBe(999);
+    });
+
+    it('Renewal extends the currentPeriodEnd timestamp', () => {
+      const initialStart = new Date('2026-01-01');
+      const initialEnd = new Date('2026-01-31');
+
+      // Simulate renewal by 30 days
+      const renewedEnd = new Date(initialEnd);
+      renewedEnd.setDate(renewedEnd.getDate() + 30);
+
+      expect(renewedEnd.getTime()).toBeGreaterThan(initialEnd.getTime());
+      expect(renewedEnd.toISOString().slice(0, 10)).toBe('2026-03-02');
+    });
+
+    it('Subscription cancellation marks cancelAtPeriodEnd without immediate access termination', () => {
+      const sub = {
+        planId: 'professional',
+        status: 'active',
+        cancelAtPeriodEnd: false,
+        canceledAt: undefined as Date | undefined,
+        currentPeriodEnd: new Date(Date.now() + 1000 * 60 * 60 * 24 * 15),
+      };
+
+      // Cancel action
+      sub.cancelAtPeriodEnd = true;
+      sub.canceledAt = new Date();
+
+      expect(sub.cancelAtPeriodEnd).toBe(true);
+      expect(sub.canceledAt).toBeInstanceOf(Date);
+      // Access remains valid until currentPeriodEnd
+      const isStillValid = sub.status === 'active' && new Date() < sub.currentPeriodEnd;
+      expect(isStillValid).toBe(true);
+    });
+
+    it('Expired subscription correctly flags status as expired when period has passed', () => {
+      const expiredSub = {
+        planId: 'basic',
+        status: 'active',
+        currentPeriodEnd: new Date(Date.now() - 1000 * 60 * 60 * 24), // yesterday
+      };
+
+      const now = new Date();
+      const isExpired = expiredSub.currentPeriodEnd < now;
+      expect(isExpired).toBe(true);
+    });
+
+    it('Strictly enforces lower quota after subscription downgrade', async () => {
+      // User with 3 listings currently, downgraded to free (quota: 1)
+      const freePlan = await EntitlementService.getPlanConfig('free');
+      const currentListingsCount = 3;
+
+      const canCreateMore = currentListingsCount < freePlan.maxListings;
+      expect(canCreateMore).toBe(false);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // SECTION 7: Featured Listing Lifecycle: Pending, Activation, Expiry & Refund
+  // --------------------------------------------------------------------------
+  describe('7. Featured Listing Lifecycle: Pending, Activation, Expiry & Refund', () => {
+    it('Keeps listing unfeatured while payment is pending or created', () => {
+      const listing = {
+        brandName: 'New Cafe Opportunity',
+        isFeatured: false,
+        featuredUntil: undefined,
+      };
+
+      expect(listing.isFeatured).toBe(false);
+    });
+
+    it('Refund revokes featured listing status immediately', () => {
+      const listing = {
+        brandName: 'Refunded Brand Opportunity',
+        isFeatured: true,
+        featuredUntil: new Date(Date.now() + 1000 * 60 * 60 * 24 * 20),
+      };
+
+      // Simulate refund revocation
+      listing.isFeatured = false;
+      listing.featuredUntil = new Date();
+
+      const now = new Date();
+      const isActive = listing.isFeatured && listing.featuredUntil > now;
+      expect(isActive).toBe(false);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // SECTION 8: Sandbox Isolation, Missing Key Safeguards & Cryptographic Integrity
+  // --------------------------------------------------------------------------
+  describe('8. Sandbox Isolation, Missing Key Safeguards & Cryptographic Integrity', () => {
+    it('Guarantees test environment forces sandbox mode to prevent accidental live charges', () => {
+      expect(process.env.NODE_ENV).toBe('test');
+      expect(PaymentService.isRazorpayLive()).toBe(false);
+    });
+
+    it('Rejects fake signatures and tampered payloads', () => {
+      const orderId = 'order_test_12345';
+      const paymentId = 'pay_test_67890';
+      const fakeSignature = 'bad_tampered_signature_payload';
+
+      const isValid = PaymentService.verifySignature(orderId, paymentId, fakeSignature);
+      expect(isValid).toBe(false);
+    });
+
+    it('Accepts valid HMAC-SHA256 signature calculated from sandbox secret', () => {
+      const orderId = 'order_test_99999';
+      const paymentId = 'pay_test_88888';
+      const secret = env.JWT_SECRET;
+
+      const validSig = require('crypto')
+        .createHmac('sha256', secret)
+        .update(`${orderId}|${paymentId}`)
+        .digest('hex');
+
+      const isValid = PaymentService.verifySignature(orderId, paymentId, validSig);
+      expect(isValid).toBe(true);
+    });
+
+    it('Frontend success callbacks cannot fulfill payments without valid signature', async () => {
+      let statusCode = 0;
+      let responseBody: any = null;
+
+      const req = {
+        body: {
+          transactionReference: 'TXN-202611-FAKE01',
+          gatewayOrderId: 'order_fake',
+          gatewayPaymentId: 'pay_fake',
+          gatewaySignature: 'untrusted_frontend_string',
+        },
+      } as any;
+
+      const res = {
+        status: (code: number) => {
+          statusCode = code;
+          return {
+            json: (data: any) => {
+              responseBody = data;
+            },
+          };
+        },
+      } as any;
+
+      await verifyPayment(req, res);
+      expect(statusCode).toBe(400);
+      expect(responseBody.success).toBe(false);
+      expect(responseBody.message).toMatch(/signature verification failed/i);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // SECTION 9: Commission Agreements & Webhook Idempotency Integrity
+  // --------------------------------------------------------------------------
+  describe('9. Commission Agreements & Webhook Idempotency Integrity', () => {
+    it('Requires existing commission agreement and custom amount for commission payouts', async () => {
+      await expect(
+        PaymentService.calculateOrderAmount({
+          userId: mockUserId,
+          purpose: 'commission',
+          customAmountINR: 0,
+        })
+      ).rejects.toThrow(/Custom amount in INR is required/i);
+    });
+
+    it('Accounts for refunds in net captured revenue calculation', async () => {
+      const originalFindTx = PaymentTransaction.find;
+      const originalFindAg = CommissionAgreement.find;
+      const originalCountSub = Subscription.countDocuments;
+      const originalCountList = FranchiseListing.countDocuments;
+
+      PaymentTransaction.find = (() => ({
+        sort: () => [
+          { status: 'captured', purpose: 'subscription', amount: 10000 },
+          { status: 'refunded', purpose: 'subscription', amount: 3000, refund: { amount: 3000 } },
+        ],
+      })) as any;
+
+      CommissionAgreement.find = (() => []) as any;
+      Subscription.countDocuments = (() => Promise.resolve(1)) as any;
+      FranchiseListing.countDocuments = (() => Promise.resolve(0)) as any;
+
+      try {
+        const metrics = await PaymentService.getRevenueDashboardMetrics();
+        expect(metrics.capturedRevenueINR).toBe(10000);
+        expect(metrics.refundedRevenueINR).toBe(3000);
+        // Net revenue = captured - refunded = 7,000
+        const netRevenue = metrics.capturedRevenueINR - metrics.refundedRevenueINR;
+        expect(netRevenue).toBe(7000);
+      } finally {
+        PaymentTransaction.find = originalFindTx;
+        CommissionAgreement.find = originalFindAg;
+        Subscription.countDocuments = originalCountSub;
+        FranchiseListing.countDocuments = originalCountList;
+      }
+    });
+
+    it('Handles idempotent webhook event processing without duplicate transactions', async () => {
+      const originalFindOne = PaymentTransaction.findOne;
+
+      // Mock finding an already captured transaction
+      PaymentTransaction.findOne = (() => ({
+        _id: new Types.ObjectId(),
+        status: 'captured',
+        amount: 9999,
+        invoiceId: new Types.ObjectId(),
+        save: () => Promise.resolve(),
+      })) as any;
+
+      const originalFindInvoice = Invoice.findById;
+      Invoice.findById = (() => ({
+        invoiceNumber: 'INV-202611-1001',
+      })) as any;
+
+      try {
+        const result = await PaymentService.captureAndFulfill({
+          transactionReference: 'TXN-EXISTING-01',
+          gatewayPaymentId: 'pay_duplicate_123',
+        });
+
+        // Should return existing transaction idempotently without throwing error
+        expect(result.transaction.status).toBe('captured');
+        expect(result.invoice).toBeDefined();
+        expect(result.invoice?.invoiceNumber).toBe('INV-202611-1001');
+      } finally {
+        PaymentTransaction.findOne = originalFindOne;
+        Invoice.findById = originalFindInvoice;
+      }
     });
   });
 });

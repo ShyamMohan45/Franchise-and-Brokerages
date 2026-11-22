@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { Types } from 'mongoose';
+import { env } from '../config/env';
 import { PaymentService } from '../services/paymentService';
 import { EntitlementService } from '../services/entitlementService';
 import { PaymentTransaction } from '../models/PaymentTransaction';
@@ -83,7 +84,15 @@ export async function handleWebhook(req: Request, res: Response): Promise<any> {
   const signature = req.headers['x-razorpay-signature'] as string;
   const rawBody = (req as any).rawBody || JSON.stringify(req.body);
 
-  if (signature) {
+  if (env.isProduction || env.RAZORPAY_WEBHOOK_SECRET) {
+    if (!signature) {
+      return sendError(res, 'Missing required X-Razorpay-Signature header.', 401);
+    }
+    const isValid = PaymentService.verifyWebhookSignature(rawBody, signature);
+    if (!isValid) {
+      return sendError(res, 'Invalid webhook signature.', 400);
+    }
+  } else if (signature) {
     const isValid = PaymentService.verifyWebhookSignature(rawBody, signature);
     if (!isValid) {
       return sendError(res, 'Invalid webhook signature.', 400);

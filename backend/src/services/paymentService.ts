@@ -85,9 +85,13 @@ export interface RazorpayWebhookPayload {
 
 export class PaymentService {
   /**
-   * Determine whether live Razorpay credentials are configured
+   * Determine whether live Razorpay credentials are configured.
+   * In test environment, automatically forces sandbox mode to prevent accidental live API calls.
    */
   public static isRazorpayLive(): boolean {
+    if (env.NODE_ENV === 'test') {
+      return false;
+    }
     return Boolean(env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET);
   }
 
@@ -259,7 +263,10 @@ export class PaymentService {
         throw err;
       }
     } else {
-      // Configuration-ready sandbox mode
+      if (env.isProduction) {
+        throw new Error('Payment gateway credentials (RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET) are unconfigured in production.');
+      }
+      // Configuration-ready sandbox mode for development/test
       gatewayOrderId = `order_test_${Date.now()}_${Math.random().toString(36).substring(4, 10)}`;
     }
 
@@ -305,23 +312,37 @@ export class PaymentService {
   public static verifySignature(orderId: string, paymentId: string, signature: string): boolean {
     const isLive = this.isRazorpayLive();
 
-    if (isLive) {
-      const generated = crypto
-        .createHmac('sha256', env.RAZORPAY_KEY_SECRET!)
-        .update(`${orderId}|${paymentId}`)
-        .digest('hex');
-      return crypto.timingSafeEqual(Buffer.from(generated), Buffer.from(signature));
+    if (env.isProduction && !isLive) {
+      // In production, missing credentials cannot verify payments
+      return false;
     }
 
-    // In sandbox test mode, verify signature integrity or sandbox test secret
-    const secret = env.JWT_SECRET || 'franchisebridge_sandbox_secret';
-    const generated = crypto
-      .createHmac('sha256', secret)
-      .update(`${orderId}|${paymentId}`)
-      .digest('hex');
+    if (isLive) {
+      try {
+        const generated = crypto
+          .createHmac('sha256', env.RAZORPAY_KEY_SECRET!)
+          .update(`${orderId}|${paymentId}`)
+          .digest('hex');
+        return crypto.timingSafeEqual(Buffer.from(generated), Buffer.from(signature));
+      } catch {
+        return false;
+      }
+    }
 
-    // Accept either sandbox generated signature or standard test payload
-    return signature === generated || signature.startsWith('sig_test_') || signature.length === 64;
+    // In sandbox test mode, verify deterministic HMAC SHA-256 using sandbox secret
+    try {
+      const secret = env.JWT_SECRET || 'franchisebridge_sandbox_secret';
+      const generated = crypto
+        .createHmac('sha256', secret)
+        .update(`${orderId}|${paymentId}`)
+        .digest('hex');
+
+      if (signature === generated) return true;
+      if (signature.startsWith('sig_test_')) return true;
+      return false;
+    } catch {
+      return false;
+    }
   }
 
   /**
