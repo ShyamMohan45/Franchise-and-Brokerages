@@ -32,9 +32,10 @@ export default function AdminDashboardPage() {
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<
-    "metrics" | "pipeline" | "introductions" | "leads" | "businesses" | "users" | "audit" | "settings"
+    "metrics" | "revenue" | "pipeline" | "introductions" | "leads" | "businesses" | "users" | "audit" | "settings"
   >("metrics");
   const [metrics, setMetrics] = useState<any | null>(null);
+  const [revenueMetrics, setRevenueMetrics] = useState<any | null>(null);
   const [deals, setDeals] = useState<any[]>([]);
   const [adminIntroductions, setAdminIntroductions] = useState<any[]>([]);
   const [mediationNotes, setMediationNotes] = useState<{ [id: string]: string }>({});
@@ -71,7 +72,7 @@ export default function AdminDashboardPage() {
     async function loadAdminData() {
       try {
         setLoading(true);
-        const [metRes, dealRes, leadRes, bizRes, userRes, auditRes, setRes, introRes] = await Promise.all([
+        const [metRes, dealRes, leadRes, bizRes, userRes, auditRes, setRes, introRes, revRes] = await Promise.all([
           api.get<any>("/admin/dashboard"),
           api.get<any[]>("/admin/deals"),
           api.get<any[]>("/admin/leads"),
@@ -80,6 +81,7 @@ export default function AdminDashboardPage() {
           api.get<any[]>("/admin/audit-logs"),
           api.get<any>("/admin/settings"),
           api.get<any[]>("/introductions/admin/all"),
+          api.get<any>("/admin/revenue/dashboard"),
         ]);
 
         if (metRes.success && metRes.data) setMetrics(metRes.data);
@@ -90,6 +92,7 @@ export default function AdminDashboardPage() {
         if (auditRes.success && auditRes.data) setAuditLogs(auditRes.data);
         if (setRes.success && setRes.data) setSettings(setRes.data);
         if (introRes.success && introRes.data) setAdminIntroductions(introRes.data);
+        if (revRes.success && revRes.data) setRevenueMetrics(revRes.data);
       } catch (err) {
         console.error("Admin data load error:", err);
       } finally {
@@ -194,6 +197,21 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const handleAdminRefund = async (txId: string) => {
+    const reason = prompt("Enter reason for processing this customer refund:");
+    if (!reason) return;
+    try {
+      const res = await api.post("/admin/revenue/refund", { transactionId: txId, reason });
+      if (res.success) {
+        setFeedback({ type: "success", text: "Refund recorded and processed successfully." });
+        const revRes = await api.get<any>("/admin/revenue/dashboard");
+        if (revRes.success && revRes.data) setRevenueMetrics(revRes.data);
+      }
+    } catch (err: any) {
+      setFeedback({ type: "error", text: err.message || "Failed to process refund." });
+    }
+  };
+
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-16 text-center space-y-3">
@@ -235,6 +253,7 @@ export default function AdminDashboardPage() {
       <div className="flex border-b border-slate-200 overflow-x-auto gap-2 text-xs font-semibold">
         {[
           { id: "metrics", label: "Executive Analytics", icon: TrendingUp },
+          { id: "revenue", label: "Monetization & Revenue", icon: DollarSign },
           { id: "pipeline", label: `Deal Pipeline (${deals.length})`, icon: DollarSign },
           { id: "introductions", label: `Introduction Desk (${adminIntroductions.length})`, icon: ShieldCheck },
           { id: "leads", label: `CRM Leads (${leads.length})`, icon: Briefcase },
@@ -294,6 +313,141 @@ export default function AdminDashboardPage() {
               <div className="text-3xl font-extrabold text-navy-900">{metrics?.publishedFranchises || 3}</div>
               <p className="text-[11px] text-slate-500">{metrics?.totalApplications || 2} investor applications</p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: MONETIZATION & REVENUE DESK (MILESTONE 5) */}
+      {activeTab === "revenue" && (
+        <div className="space-y-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-3">
+            <div>
+              <h3 className="text-lg font-bold text-navy-900">
+                Monetization & Revenue Desk (Razorpay Gateway & Ledger)
+              </h3>
+              <p className="text-xs text-slate-500">
+                Segregated revenue tracking: actual captured payments, subscriptions, brokerage success fees, pending receivables, failed payments, and refunds.
+              </p>
+            </div>
+          </div>
+
+          {/* Revenue Breakdown Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+              <span className="text-xs font-bold text-slate-400 uppercase">Actual Captured Revenue</span>
+              <div className="text-3xl font-black text-emerald-600">
+                {formatCurrency(revenueMetrics?.capturedRevenueINR || 0)}
+              </div>
+              <p className="text-[11px] text-slate-500">
+                Verified digital payouts & settlements
+              </p>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+              <span className="text-xs font-bold text-slate-400 uppercase">Subscription MRR</span>
+              <div className="text-3xl font-black text-blue-600">
+                {formatCurrency(revenueMetrics?.subscriptionRevenueINR || 0)}
+              </div>
+              <p className="text-[11px] text-slate-500">
+                {revenueMetrics?.activeSubscriptionsCount || 0} active franchisor & investor tiers
+              </p>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+              <span className="text-xs font-bold text-slate-400 uppercase">Brokerage Success Fees</span>
+              <div className="text-3xl font-black text-indigo-600">
+                {formatCurrency(revenueMetrics?.brokerageRevenueINR || 0)}
+              </div>
+              <p className="text-[11px] text-slate-500">
+                Projected: {formatCurrency(revenueMetrics?.projectedCommissionsINR || 0)}
+              </p>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+              <span className="text-xs font-bold text-slate-400 uppercase">Pending & Refunds</span>
+              <div className="text-2xl font-black text-slate-700">
+                <span className="text-amber-600">{formatCurrency(revenueMetrics?.pendingRevenueINR || 0)}</span>
+                <span className="text-xs font-normal text-slate-400 mx-1">/</span>
+                <span className="text-rose-600 text-lg">-{formatCurrency(revenueMetrics?.refundedRevenueINR || 0)}</span>
+              </div>
+              <p className="text-[11px] text-slate-500">
+                Pending receivables • Total refunds processed
+              </p>
+            </div>
+          </div>
+
+          {/* Payment Transactions Registry */}
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm space-y-4 p-6">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h4 className="text-base font-bold text-navy-900">Payment Transactions Ledger</h4>
+                <p className="text-xs text-slate-500">Immutable ledger of order checkouts, webhook captures, and refunds</p>
+              </div>
+            </div>
+
+            {(!revenueMetrics?.recentTransactions || revenueMetrics.recentTransactions.length === 0) ? (
+              <div className="text-center py-12 text-slate-400 text-xs">
+                No payment transactions recorded in the platform database yet.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-slate-200 text-xs">
+                  <thead className="bg-slate-50 text-slate-500 uppercase font-semibold">
+                    <tr>
+                      <th className="px-4 py-3 text-left">Transaction Reference</th>
+                      <th className="px-4 py-3 text-left">Purpose</th>
+                      <th className="px-4 py-3 text-left">Amount</th>
+                      <th className="px-4 py-3 text-left">Gateway Status</th>
+                      <th className="px-4 py-3 text-left">Mode</th>
+                      <th className="px-4 py-3 text-left">Date</th>
+                      <th className="px-4 py-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {revenueMetrics.recentTransactions.map((tx: any) => (
+                      <tr key={tx._id} className="hover:bg-slate-50">
+                        <td className="px-4 py-3 font-mono font-bold text-blue-700">
+                          {tx.transactionReference}
+                          <span className="block text-[10px] text-slate-400 font-normal">
+                            {tx.gatewayOrderId || "N/A"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 capitalize font-semibold text-slate-700">
+                          {tx.purpose?.replace(/_/g, " ")}
+                        </td>
+                        <td className="px-4 py-3 font-bold text-slate-900">
+                          {formatCurrency(tx.amount)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <StatusBadge status={tx.status} />
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${tx.isSandbox ? "bg-amber-50 text-amber-700 border border-amber-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"}`}>
+                            {tx.isSandbox ? "Sandbox" : "Razorpay Live"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-500">
+                          {formatDate(tx.createdAt)}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {tx.status === "captured" && (
+                            <button
+                              onClick={() => handleAdminRefund(tx._id)}
+                              className="px-2.5 py-1 text-[11px] font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors"
+                            >
+                              Process Refund
+                            </button>
+                          )}
+                          {tx.status === "refunded" && (
+                            <span className="text-[11px] text-slate-400 italic">Refunded</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}

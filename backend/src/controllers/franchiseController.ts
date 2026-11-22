@@ -6,6 +6,7 @@ import { User } from '../models/User';
 import { NotificationService } from '../services/notificationService';
 import { sendSuccess, sendError } from '../utils/response';
 import { AuditLog } from '../models/AuditLog';
+import { EntitlementService } from '../services/entitlementService';
 
 function generateSlug(name: string): string {
   return (
@@ -80,6 +81,15 @@ export async function getFranchises(req: Request, res: Response): Promise<any> {
   else if (sort === 'investment_desc') sortOption = { totalInvestmentMin: -1 };
   else if (sort === 'popular') sortOption = { viewsCount: -1 };
 
+  if (req.query.featured === 'true') {
+    filter.isFeatured = true;
+    const now = new Date();
+    filter.$and = filter.$and || [];
+    filter.$and.push({
+      $or: [{ featuredUntil: { $exists: false } }, { featuredUntil: { $gt: now } }],
+    });
+  }
+
   const total = await FranchiseListing.countDocuments(filter);
   const listings = await FranchiseListing.find(filter)
     .populate('business', 'businessName logoUrl headquarters numberOfOutlets legalBusinessName')
@@ -87,7 +97,16 @@ export async function getFranchises(req: Request, res: Response): Promise<any> {
     .skip((page - 1) * limit)
     .limit(limit);
 
-  return sendSuccess(res, listings, 'Franchises fetched successfully', 200, {
+  const now = new Date();
+  const sanitizedListings = listings.map((l) => {
+    const doc = l.toObject();
+    if (doc.isFeatured && doc.featuredUntil && now > new Date(doc.featuredUntil)) {
+      doc.isFeatured = false;
+    }
+    return doc;
+  });
+
+  return sendSuccess(res, sanitizedListings, 'Franchises fetched successfully', 200, {
     page,
     limit,
     total,
@@ -139,6 +158,14 @@ export async function getMyFranchises(req: Request, res: Response): Promise<any>
 }
 
 export async function createFranchiseListing(req: Request, res: Response): Promise<any> {
+  // Milestone 5: Enforce Franchisor Subscription Limits on Backend
+  if (req.user!.role !== 'admin' && req.user!.role !== 'super_admin') {
+    const entitlement = await EntitlementService.canCreateListing(req.user!._id);
+    if (!entitlement.allowed) {
+      return sendError(res, entitlement.reason || 'Plan listing limit reached.', 403);
+    }
+  }
+
   let business = await BusinessProfile.findOne({ user: req.user!._id });
   if (!business) {
     // If brand owner hasn't created a formal business profile yet, create a baseline profile
@@ -206,6 +233,8 @@ export async function createFranchiseListing(req: Request, res: Response): Promi
     entityId: listing._id.toString(),
     details: { status: listing.status, brandName: listing.brandName },
   });
+
+  await EntitlementService.refreshFranchisorUsage(req.user!._id);
 
   return sendSuccess(res, listing, 'Franchise opportunity created successfully', 201);
 }

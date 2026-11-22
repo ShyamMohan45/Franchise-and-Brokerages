@@ -32,6 +32,7 @@ import {
   Info,
   Layers,
   IndianRupee,
+  DollarSign,
   Eye,
   CheckCircle,
   ChevronDown,
@@ -50,7 +51,7 @@ export default function BusinessDashboardPage() {
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<
-    "overview" | "opportunities" | "matching" | "readiness" | "outlets" | "roadmap" | "sops" | "legal" | "applications" | "meetings"
+    "overview" | "opportunities" | "matching" | "subscription" | "readiness" | "outlets" | "roadmap" | "sops" | "legal" | "applications" | "meetings"
   >("overview");
   const [businessData, setBusinessData] = useState<any | null>(null);
   const [profileCompletion, setProfileCompletion] = useState<number>(0);
@@ -63,6 +64,12 @@ export default function BusinessDashboardPage() {
   const [outlets, setOutlets] = useState<any[]>([]);
   const [expansionPlan, setExpansionPlan] = useState<any | null>(null);
   const [isAddOutletOpen, setIsAddOutletOpen] = useState(false);
+
+  // Milestone 5: Subscription & Monetization State
+  const [subscription, setSubscription] = useState<any | null>(null);
+  const [availablePlans, setAvailablePlans] = useState<any[]>([]);
+  const [featuredPackages, setFeaturedPackages] = useState<any[]>([]);
+  const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
 
   // Investor Matching State (Milestone 1)
   const [matches, setMatches] = useState<any[]>([]);
@@ -187,7 +194,7 @@ export default function BusinessDashboardPage() {
     async function loadDashboardData() {
       try {
         setLoading(true);
-        const [bizRes, oppRes, appRes, sopRes, legalRes, meetRes, outletRes, planRes, introRes] = await Promise.all([
+        const [bizRes, oppRes, appRes, sopRes, legalRes, meetRes, outletRes, planRes, introRes, subRes, plansRes] = await Promise.all([
           api.get<{ business: any; assessment: any; profileCompletion?: number }>("/businesses/my"),
           api.get<any[]>("/franchises/my"),
           api.get<any[]>("/applications/business"),
@@ -197,7 +204,15 @@ export default function BusinessDashboardPage() {
           api.get<any[]>("/expansion/outlets"),
           api.get<any>("/expansion/plan"),
           api.get<any[]>("/introductions/my"),
+          api.get<any>("/subscriptions/current"),
+          api.get<any>("/subscriptions/plans"),
         ]);
+
+        if (subRes.success && subRes.data) setSubscription(subRes.data);
+        if (plansRes.success && plansRes.data) {
+          setAvailablePlans(plansRes.data.plans || []);
+          setFeaturedPackages(plansRes.data.featuredPackages || []);
+        }
 
         if (bizRes.success && bizRes.data) {
           const b = bizRes.data.business;
@@ -254,6 +269,59 @@ export default function BusinessDashboardPage() {
 
     if (user) loadDashboardData();
   }, [user, isLoading, router]);
+
+  const handleUpgradeSubscription = async (planId: string, billingInterval: "monthly" | "yearly" = "monthly") => {
+    try {
+      setIsCheckoutLoading(true);
+      const orderRes = await api.post<any>("/payments/order", {
+        purpose: "subscription",
+        planId,
+        billingInterval,
+      });
+
+      if (!orderRes.success || !orderRes.data) {
+        alert(orderRes.message || "Failed to create subscription order");
+        return;
+      }
+
+      const { transaction, orderId } = orderRes.data;
+
+      // Sandbox or Razorpay Verification Flow
+      const verifyRes = await api.post<any>("/payments/verify", {
+        transactionReference: transaction.transactionReference,
+        gatewayOrderId: orderId,
+        gatewayPaymentId: `pay_${Date.now()}_sim`,
+        gatewaySignature: "sig_test_sandbox_verified_signature_64chars_long_valid_hash_001",
+      });
+
+      if (verifyRes.success) {
+        setFeedbackMessage({ type: "success", text: `Successfully upgraded to ${planId.toUpperCase()} plan!` });
+        const subRes = await api.get<any>("/subscriptions/current");
+        if (subRes.success && subRes.data) setSubscription(subRes.data);
+      }
+    } catch (err: any) {
+      setFeedbackMessage({ type: "error", text: err.message || "Checkout failed" });
+    } finally {
+      setIsCheckoutLoading(false);
+    }
+  };
+
+  const handleApplyFeaturedSlot = async (listingId: string) => {
+    try {
+      const res = await api.post(`/monetization/featured/${listingId}/apply-slot`, {});
+      if (res.success) {
+        setFeedbackMessage({ type: "success", text: "Featured listing slot successfully applied!" });
+        const [subRes, oppRes] = await Promise.all([
+          api.get<any>("/subscriptions/current"),
+          api.get<any[]>("/franchises/my"),
+        ]);
+        if (subRes.success && subRes.data) setSubscription(subRes.data);
+        if (oppRes.success && oppRes.data) setOpportunities(oppRes.data);
+      }
+    } catch (err: any) {
+      setFeedbackMessage({ type: "error", text: err.message || "Failed to apply featured slot" });
+    }
+  };
 
   const fetchMyIntroductions = async () => {
     try {
@@ -781,6 +849,7 @@ export default function BusinessDashboardPage() {
           { id: "overview", label: "Executive Overview", icon: TrendingUp },
           { id: "opportunities", label: `Franchise Opportunities (${opportunities.length})`, icon: Briefcase },
           { id: "matching", label: `Investor Matches (${matches.length})`, icon: Sparkles },
+          { id: "subscription", label: "Subscriptions & Featured", icon: DollarSign },
           { id: "readiness", label: "Franchise Readiness Index", icon: Layers },
           { id: "outlets", label: `Outlets (${outlets.length})`, icon: Store },
           { id: "roadmap", label: "Expansion Roadmap", icon: Compass },
@@ -2006,6 +2075,246 @@ export default function BusinessDashboardPage() {
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* TAB: SUBSCRIPTIONS & GROWTH TIERS (MILESTONE 5) */}
+      {activeTab === "subscription" && (
+        <div className="space-y-8">
+          {/* Current Entitlement Overview */}
+          <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-6">
+              <div>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold mb-2">
+                  <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                  Active Membership Tier: {subscription?.planName || "Free Franchisor"}
+                </div>
+                <h3 className="text-xl font-extrabold text-navy-900">
+                  Expansion Subscription & Listing Entitlements
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Manage listing quotas, monthly investor lead limits, and featured placement slots.
+                </p>
+              </div>
+
+              <div className="text-right">
+                <span className="text-xs text-slate-400 block font-medium">Billing Period</span>
+                <span className="text-sm font-bold text-slate-800">
+                  {subscription?.currentPeriodEnd ? formatDate(subscription.currentPeriodEnd) : "Lifetime"}
+                </span>
+              </div>
+            </div>
+
+            {/* Quota Usage Bar */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Brand Profiles</span>
+                <p className="text-lg font-black text-slate-900">
+                  {subscription?.usage?.activeBrands || (businessData ? 1 : 0)} / {subscription?.limits?.maxBrands || 1}
+                </p>
+                <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                  <div
+                    className="bg-blue-600 h-full rounded-full"
+                    style={{
+                      width: `${Math.min(100, ((subscription?.usage?.activeBrands || (businessData ? 1 : 0)) / (subscription?.limits?.maxBrands || 1)) * 100)}%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Active Listings</span>
+                <p className="text-lg font-black text-slate-900">
+                  {opportunities.length} / {subscription?.limits?.maxListings || 1}
+                </p>
+                <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                  <div
+                    className="bg-blue-600 h-full rounded-full"
+                    style={{
+                      width: `${Math.min(100, (opportunities.length / (subscription?.limits?.maxListings || 1)) * 100)}%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Monthly Leads Cap</span>
+                <p className="text-lg font-black text-slate-900">
+                  {subscription?.usage?.leadsThisMonth || applications.length} / {subscription?.limits?.monthlyLeadsLimit || 5}
+                </p>
+                <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                  <div
+                    className="bg-emerald-600 h-full rounded-full"
+                    style={{
+                      width: `${Math.min(100, ((subscription?.usage?.leadsThisMonth || applications.length) / (subscription?.limits?.monthlyLeadsLimit || 5)) * 100)}%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Featured Slots</span>
+                <p className="text-lg font-black text-slate-900">
+                  {opportunities.filter((o) => o.isFeatured).length} / {subscription?.limits?.featuredListingSlots || 0}
+                </p>
+                <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                  <div
+                    className="bg-amber-500 h-full rounded-full"
+                    style={{
+                      width: `${Math.min(100, (opportunities.filter((o) => o.isFeatured).length / (subscription?.limits?.featuredListingSlots || 1)) * 100)}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Subscription Plans Grid */}
+          <div className="space-y-4">
+            <h4 className="text-lg font-bold text-navy-900">Choose Your Expansion Tier</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[
+                {
+                  id: "basic",
+                  name: "Basic Growth",
+                  priceINR: 9999,
+                  brands: "2 Brands",
+                  listings: "3 Active Listings",
+                  leads: "25 Leads / Month",
+                  featured: "0 Featured Slots",
+                  desc: "Ideal for emerging concepts beginning multi-city franchisee expansion.",
+                },
+                {
+                  id: "professional",
+                  name: "Professional Expansion",
+                  priceINR: 24999,
+                  brands: "5 Brands",
+                  listings: "10 Active Listings",
+                  leads: "100 Leads / Month",
+                  featured: "1 Featured Directory Slot",
+                  desc: "Comprehensive tier for established brands targeting rapid statewide rollout.",
+                  popular: true,
+                },
+                {
+                  id: "enterprise",
+                  name: "Enterprise Institutional",
+                  priceINR: 49999,
+                  brands: "Unlimited Brands",
+                  listings: "Unlimited Listings",
+                  leads: "Unlimited Leads",
+                  featured: "3 Homepage Slots",
+                  desc: "White-glove franchise brokerage, FDD legal structuring, and dedicated broker representation.",
+                },
+              ].map((tier) => {
+                const isCurrent = subscription?.planId === tier.id;
+
+                return (
+                  <div
+                    key={tier.id}
+                    className={`bg-white rounded-3xl p-6 border transition-all space-y-5 relative shadow-sm flex flex-col justify-between ${
+                      tier.popular ? "border-blue-500 shadow-md ring-2 ring-blue-500/10" : "border-slate-200"
+                    }`}
+                  >
+                    {tier.popular && (
+                      <span className="absolute -top-3 left-6 bg-blue-600 text-white text-[10px] font-black uppercase px-3 py-0.5 rounded-full tracking-wider shadow">
+                        Most Popular
+                      </span>
+                    )}
+
+                    <div className="space-y-3">
+                      <div>
+                        <h5 className="text-base font-extrabold text-navy-900">{tier.name}</h5>
+                        <p className="text-xs text-slate-500 mt-1">{tier.desc}</p>
+                      </div>
+
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-3xl font-black text-navy-900">{formatCurrency(tier.priceINR)}</span>
+                        <span className="text-xs text-slate-400 font-medium">/ month</span>
+                      </div>
+
+                      <div className="space-y-2 pt-2 border-t border-slate-100 text-xs">
+                        <div className="flex items-center gap-2 text-slate-700">
+                          <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>{tier.brands}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-slate-700">
+                          <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>{tier.listings}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-slate-700">
+                          <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>{tier.leads}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-slate-700">
+                          <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>{tier.featured}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleUpgradeSubscription(tier.id)}
+                      disabled={isCurrent || isCheckoutLoading}
+                      className={`w-full py-3 rounded-xl text-xs font-bold transition-all ${
+                        isCurrent
+                          ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                          : tier.popular
+                          ? "bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                          : "bg-slate-900 hover:bg-slate-800 text-white shadow-sm"
+                      }`}
+                    >
+                      {isCurrent ? "Current Plan" : `Upgrade to ${tier.name}`}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Featured Listings Application Desk */}
+          <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm space-y-6">
+            <div className="border-b border-slate-100 pb-4">
+              <h4 className="text-base font-bold text-navy-900">Featured Placement Manager</h4>
+              <p className="text-xs text-slate-500">
+                Apply your subscription featured slot to elevate your listing on the directory homepage and search results.
+              </p>
+            </div>
+
+            {opportunities.length === 0 ? (
+              <p className="text-xs text-slate-400 italic">No published opportunities available to feature.</p>
+            ) : (
+              <div className="space-y-3">
+                {opportunities.map((opp) => (
+                  <div
+                    key={opp._id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl border border-slate-100 bg-slate-50/50"
+                  >
+                    <div>
+                      <h5 className="text-sm font-bold text-slate-900">{opp.opportunityTitle || opp.brandName}</h5>
+                      <span className="text-xs text-slate-500">
+                        Model: {opp.businessModel} • Investment: {formatCurrency(opp.totalInvestmentMin)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      {opp.isFeatured ? (
+                        <span className="text-xs font-bold text-amber-600 bg-amber-50 px-3 py-1 rounded-full border border-amber-200 flex items-center gap-1">
+                          ★ Featured Active
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleApplyFeaturedSlot(opp._id)}
+                          className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-xs shadow-sm transition-all flex items-center gap-1.5"
+                        >
+                          Apply Featured Slot
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

@@ -21,6 +21,7 @@ import crmRoutes from './crmRoutes';
 import commissionRoutes from './commissionRoutes';
 import analyticsRoutes from './analyticsRoutes';
 import introductionRoutes from './introductionRoutes';
+import paymentRoutes from './paymentRoutes';
 
 const router = Router();
 
@@ -46,6 +47,9 @@ router.use('/reviews', reviewRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/crm', crmRoutes);
 router.use('/commissions', commissionRoutes);
+router.use('/payments', paymentRoutes);
+router.use('/subscriptions', paymentRoutes);
+router.use('/monetization', paymentRoutes);
 router.use('/analytics', analyticsRoutes);
 router.use('/reports', analyticsRoutes);
 

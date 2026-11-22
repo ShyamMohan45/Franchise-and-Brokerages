@@ -28,3 +28,6 @@ export * from './DealMessage';
 export * from './CommissionAgreement';
 export * from './CommissionPayment';
 export * from './NotificationPreference';
+export * from './Subscription';
+export * from './PaymentTransaction';
+export * from './Invoice';

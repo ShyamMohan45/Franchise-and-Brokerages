@@ -33,6 +33,11 @@ const envSchema = z
     // Resend Email Provider config
     RESEND_API_KEY: z.string().optional(),
 
+    // Razorpay Payment Gateway config (INR Indian payments)
+    RAZORPAY_KEY_ID: z.string().optional(),
+    RAZORPAY_KEY_SECRET: z.string().optional(),
+    RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
+
     // Optional SMTP config
     SMTP_HOST: z.string().optional(),
     SMTP_PORT: z.string().default('587').transform(Number),

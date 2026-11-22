@@ -1,6 +1,7 @@
 import { Types } from 'mongoose';
 import { FranchiseListing } from '../models/FranchiseListing';
 import { BrokerageDeal } from '../models/BrokerageDeal';
+import { PaymentService } from './paymentService';
 
 export interface SubscriptionTier {
   id: string;
@@ -109,17 +110,17 @@ export class MonetizationService {
     userId: string;
     metadata?: Record<string, any>;
   }) {
-    // In dev / pre-approval mode, return a structured intent token
-    return {
-      success: true,
-      provider: 'modular_gateway',
-      paymentIntentId: `pi_test_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-      amountINR: params.amountINR,
-      currency: params.currency || 'INR',
-      purpose: params.purpose,
-      status: 'requires_payment_method',
-      createdAt: new Date().toISOString(),
-      note: 'Payment provider adapter ready. Connect live STRIPE_SECRET_KEY or RAZORPAY_KEY_ID in production environment.',
+    const purposeMap: Record<string, any> = {
+      subscription: 'subscription',
+      featured_listing: 'featured_listing',
+      brokerage_retainer: 'commission',
     };
+
+    return await PaymentService.createOrder({
+      userId: params.userId,
+      purpose: purposeMap[params.purpose] || 'advisory_service',
+      customAmountINR: params.amountINR,
+      metadata: params.metadata,
+    });
   }
 }

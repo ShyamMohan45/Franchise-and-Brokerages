@@ -32,6 +32,11 @@ import {
 } from '../controllers/adminController';
 import { requireAuth } from '../middleware/auth';
 import { requireAdmin, requireSuperAdmin } from '../middleware/rbac';
+import {
+  getAdminRevenueDashboard,
+  processAdminRefund,
+  updateRevenueSettings,
+} from '../controllers/paymentController';
 import { validate } from '../middleware/validate';
 import {
   createLeadSchema,
@@ -99,5 +104,10 @@ router.patch('/deals/:id', validate(updateDealSchema), updateDeal);
 router.get('/audit-logs', getAuditLogs);
 router.get('/settings', getPlatformSettings);
 router.patch('/settings', requireSuperAdmin, updatePlatformSettings);
+
+// 14. Revenue, Subscriptions & Monetization Desk (Milestone 5)
+router.get('/revenue/dashboard', getAdminRevenueDashboard);
+router.post('/revenue/refund', processAdminRefund);
+router.patch('/revenue/settings', requireSuperAdmin, updateRevenueSettings);
 
 export default router;

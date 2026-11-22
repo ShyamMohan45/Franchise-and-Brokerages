@@ -84,6 +84,10 @@ export interface IFranchiseListing extends Document {
   }>;
   status: FranchiseListingStatus;
   isFeatured: boolean;
+  featuredPackageId?: string; // '14_days' | '30_days' | '90_days' | 'subscription_slot'
+  featuredUntil?: Date;
+  featuredApprovedBy?: Types.ObjectId;
+  featuredPaymentId?: Types.ObjectId;
   viewsCount: number;
   enquiriesCount: number;
   inquiriesCount?: number;
@@ -302,6 +306,21 @@ const franchiseListingSchema = new Schema<IFranchiseListing>(
       type: Boolean,
       default: false,
       index: true,
+    },
+    featuredPackageId: {
+      type: String,
+    },
+    featuredUntil: {
+      type: Date,
+      index: true,
+    },
+    featuredApprovedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    featuredPaymentId: {
+      type: Schema.Types.ObjectId,
+      ref: 'PaymentTransaction',
     },
     viewsCount: {
       type: Number,
