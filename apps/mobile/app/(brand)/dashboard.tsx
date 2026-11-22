@@ -10,12 +10,14 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius } from '../../src/theme';
-import { Card, Badge, Button, RoleGuard } from '../../src/components';
+import { Card, Badge, Button, RoleGuard, QuotaUsageCard } from '../../src/components';
 import { useAuth } from '../../src/hooks/useAuth';
+import { useSubscription } from '../../src/hooks/useSubscription';
 
 export default function BrandDashboard() {
   const router = useRouter();
   const { user, businessProfile, logout } = useAuth();
+  const { subscription, remainingFeaturedSlots } = useSubscription();
 
   const handleLogout = async () => {
     await logout();
@@ -106,9 +108,79 @@ export default function BrandDashboard() {
             </View>
           </Card>
 
+          {/* Subscription & Quota Status Overview */}
+          <Card style={styles.metricsCard} padding="lg">
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm }}>
+              <View>
+                <Text style={styles.sectionTitle}>Subscription & Quotas</Text>
+                <Text style={styles.roleEmail}>
+                  Tier: <Text style={{ fontWeight: '700', color: colors.primary.DEFAULT }}>{subscription?.planName || 'Free Tier'}</Text>
+                </Text>
+              </View>
+              <Badge
+                label={subscription?.cancelAtPeriodEnd ? 'CANCELING' : subscription?.status?.toUpperCase() || 'ACTIVE'}
+                variant={subscription?.cancelAtPeriodEnd ? 'warning' : 'success'}
+                size="sm"
+              />
+            </View>
+
+            <QuotaUsageCard
+              title="Active Franchise Listings"
+              used={subscription?.usage.activeListingsCount || 0}
+              limit={subscription?.limits.maxListings || 1}
+              icon="pricetags-outline"
+            />
+
+            <QuotaUsageCard
+              title="Monthly Leads"
+              used={subscription?.usage.leadsThisMonth || 0}
+              limit={subscription?.limits.monthlyLeadsLimit || 5}
+              icon="mail-unread-outline"
+            />
+
+            {remainingFeaturedSlots > 0 && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.xs }}>
+                <Ionicons name="sparkles" size={14} color="#EAB308" />
+                <Text style={{ ...typography.caption, color: colors.slate[600], fontSize: 11 }}>
+                  {remainingFeaturedSlots} Featured Placement Slot{remainingFeaturedSlots === 1 ? '' : 's'} Available
+                </Text>
+              </View>
+            )}
+
+            <Button
+              title="Manage Subscriptions & Invoices"
+              onPress={() => router.push('/(brand)/subscription' as any)}
+              variant="outline"
+              size="sm"
+              style={{ marginTop: spacing.md }}
+            />
+          </Card>
+
           {/* Brand Management Modules */}
           <Text style={styles.modulesTitle}>Brand Management</Text>
           <View style={styles.actionGrid}>
+            <Pressable onPress={() => router.push('/(brand)/subscription' as any)}>
+              <Card style={styles.actionCard} padding="md">
+                <View style={styles.actionHeader}>
+                  <Ionicons name="card-outline" size={22} color={colors.primary.DEFAULT} />
+                  <Badge label={subscription?.planName?.toUpperCase() || 'FREE'} variant="primary" size="sm" />
+                </View>
+                <Text style={styles.actionTitle}>Subscriptions & Upgrades</Text>
+                <Text style={styles.actionDesc}>Manage Basic, Pro, Enterprise tiers, invoices & listing quotas</Text>
+              </Card>
+            </Pressable>
+
+            <Pressable onPress={() => router.push('/(brand)/investor-matching' as any)}>
+              <Card style={styles.actionCard} padding="md">
+                <View style={styles.actionHeader}>
+                  <Ionicons name="sparkles-outline" size={22} color="#EAB308" />
+                  <Badge label="AI MATCH" variant="gold" size="sm" />
+                </View>
+                <Text style={styles.actionTitle}>Discover Investors</Text>
+                <Text style={styles.actionDesc}>Explore matching high-net-worth investors by liquid capital & territory</Text>
+              </Card>
+            </Pressable>
+
             <Pressable onPress={() => router.push('/(brand)/listings')}>
               <Card style={styles.actionCard} padding="md">
                 <View style={styles.actionHeader}>
