@@ -22,8 +22,12 @@ import {
   EmptyState,
   PlanCard,
   QuotaUsageCard,
+  RazorpayWebViewModal,
+  CheckoutOrderSummaryModal,
 } from '../../src/components';
 import { useSubscription } from '../../src/hooks/useSubscription';
+import { useCheckout } from '../../src/hooks/useCheckout';
+import { useAuth } from '../../src/hooks/useAuth';
 import { PaymentService } from '../../src/services/paymentService';
 import {
   SubscriptionPlanConfig,
@@ -50,6 +54,21 @@ export default function FranchisorSubscriptionScreen() {
   const [transactions, setTransactions] = useState<PaymentTransactionItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'plans' | 'history'>('overview');
+
+  const { user } = useAuth();
+  const {
+    isProcessing,
+    isVerifying,
+    webViewOptions,
+    isWebViewVisible,
+    startCheckout,
+    cancelWebView,
+    handleWebViewSuccess,
+    handleWebViewError,
+  } = useCheckout();
+
+  const [selectedPlanForCheckout, setSelectedPlanForCheckout] = useState<SubscriptionPlanConfig | null>(null);
+  const [isSummaryModalVisible, setIsSummaryModalVisible] = useState(false);
 
   // Load transactions history
   useEffect(() => {
@@ -101,27 +120,62 @@ export default function FranchisorSubscriptionScreen() {
   };
 
   const handlePlanSelect = (selectedPlan: SubscriptionPlanConfig) => {
-    if (selectedPlan.id === subscription?.planId) {
+    if (selectedPlan.id === subscription?.planId && subscription?.status === 'active') {
       Alert.alert('Current Plan', `You are already enrolled in the ${selectedPlan.name} plan.`);
       return;
     }
 
-    Alert.alert(
-      `Upgrade to ${selectedPlan.name}`,
-      `Ready to activate ${selectedPlan.name} (${billingInterval === 'yearly' ? `₹${selectedPlan.yearlyPrice.toLocaleString('en-IN')}/year` : `₹${selectedPlan.monthlyPrice.toLocaleString('en-IN')}/month`})? Standard Razorpay checkout will be presented in Phase 3.`,
-      [
-        { text: 'Review Plans', style: 'cancel' },
+    if (selectedPlan.id === 'free') {
+      Alert.alert(
+        'Free Tier',
+        'You are already on or can retain the default Free tier without payment.'
+      );
+      return;
+    }
+
+    setSelectedPlanForCheckout(selectedPlan);
+    setIsSummaryModalVisible(true);
+  };
+
+  const handleConfirmCheckout = async (billingDetails: any) => {
+    if (!selectedPlanForCheckout) return;
+    setIsSummaryModalVisible(false);
+
+    try {
+      const result = await startCheckout(
         {
-          text: 'Proceed to Checkout',
-          onPress: () => {
-            Alert.alert(
-              'Checkout Ready',
-              'Razorpay Mobile Checkout module is scheduled for Phase 3. Live payment will be verified by the backend before plan activation.'
-            );
-          },
+          purpose: 'subscription',
+          planId: selectedPlanForCheckout.id,
+          billingInterval,
         },
-      ]
-    );
+        {
+          title: `FranchiseBridge ${selectedPlanForCheckout.name}`,
+          description: `${selectedPlanForCheckout.name} Plan (${billingInterval === 'yearly' ? 'Annual' : 'Monthly'} Subscription)`,
+          billingDetails,
+        }
+      );
+
+      if (result.success) {
+        Alert.alert(
+          '🎉 Subscription Activated!',
+          `Your ${selectedPlanForCheckout.name} tier is now active. Your listing and lead quotas have been refreshed.`,
+          [
+            {
+              text: 'View Quotas',
+              onPress: () => {
+                setActiveTab('overview');
+                refresh();
+              },
+            },
+          ]
+        );
+        refresh();
+      } else if (!result.cancelled && result.error) {
+        Alert.alert('Payment Status', result.error);
+      }
+    } catch (err: any) {
+      Alert.alert('Checkout Error', err?.message || 'Unable to complete transaction.');
+    }
   };
 
   // Filter franchisor plans
@@ -416,6 +470,29 @@ export default function FranchisorSubscriptionScreen() {
             </>
           )}
         </ScrollView>
+
+        {/* Order Summary & Billing Details Confirmation Modal */}
+        <CheckoutOrderSummaryModal
+          visible={isSummaryModalVisible}
+          plan={selectedPlanForCheckout}
+          billingInterval={billingInterval}
+          initialUser={{
+            name: user?.fullName,
+            email: user?.email,
+          }}
+          isLoading={isProcessing || isVerifying}
+          onConfirm={handleConfirmCheckout}
+          onClose={() => setIsSummaryModalVisible(false)}
+        />
+
+        {/* Razorpay Secure WebView Modal (Fallback & Universal Checkout) */}
+        <RazorpayWebViewModal
+          visible={isWebViewVisible}
+          options={webViewOptions}
+          onSuccess={handleWebViewSuccess}
+          onError={handleWebViewError}
+          onCancel={cancelWebView}
+        />
       </SafeAreaView>
     </RoleGuard>
   );

@@ -14,3 +14,5 @@ export * from './commissions';
 export * from './notifications';
 export * from './admin';
 export * from './subscriptions';
+export * from './checkout';
+

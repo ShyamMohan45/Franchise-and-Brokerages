@@ -329,9 +329,9 @@ export class PaymentService {
       }
     }
 
-    // In sandbox test mode, verify deterministic HMAC SHA-256 using sandbox secret
+    // In sandbox test mode, verify deterministic HMAC SHA-256 using sandbox secret or configured key secret
     try {
-      const secret = env.JWT_SECRET || 'franchisebridge_sandbox_secret';
+      const secret = env.RAZORPAY_KEY_SECRET || env.JWT_SECRET || 'franchisebridge_sandbox_secret';
       const generated = crypto
         .createHmac('sha256', secret)
         .update(`${orderId}|${paymentId}`)

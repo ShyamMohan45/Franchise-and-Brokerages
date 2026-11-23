@@ -55,6 +55,7 @@ export interface VerifyPaymentParams {
   };
 }
 
+
 export interface PaymentTransactionItem {
   _id: string;
   transactionReference: string;
@@ -101,3 +102,58 @@ export interface InvoiceItem {
     gstin?: string;
   };
 }
+
+export interface RazorpayCheckoutOptions {
+  description?: string;
+  image?: string;
+  currency: string;
+  key: string;
+  amount: number | string;
+  name: string;
+  order_id: string;
+  prefill?: {
+    email?: string;
+    contact?: string;
+    name?: string;
+  };
+  theme?: {
+    color?: string;
+    backdrop_color?: string;
+  };
+  notes?: Record<string, any>;
+  modal?: {
+    ondismiss?: () => void;
+    confirm_close?: boolean;
+  };
+}
+
+export interface RazorpaySuccessData {
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+}
+
+export interface RazorpayErrorData {
+  code: number;
+  description: string;
+  source?: string;
+  step?: string;
+  reason?: string;
+  metadata?: {
+    order_id?: string;
+    payment_id?: string;
+  };
+}
+
+export type CheckoutMode = 'native' | 'webview';
+
+export interface CheckoutResult {
+  success: boolean;
+  transaction?: PaymentTransactionItem;
+  invoice?: InvoiceItem;
+  error?: string;
+  cancelled?: boolean;
+  details?: RazorpaySuccessData;
+}
+
+

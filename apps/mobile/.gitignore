@@ -11,3 +11,6 @@ npm-debug.*
 *.orig.*
 .env
 .env.local
+.gradle/
+android/local.properties
+android/.gradle/
