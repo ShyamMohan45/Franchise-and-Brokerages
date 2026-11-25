@@ -5,7 +5,13 @@ export type PaymentPurpose =
   | 'investor_premium'
   | 'advisory_service';
 
-export type PaymentStatus = 'created' | 'pending' | 'captured' | 'failed' | 'refunded';
+export type PaymentStatus =
+  | 'created'
+  | 'pending'
+  | 'captured'
+  | 'failed'
+  | 'refunded'
+  | 'partially_refunded';
 
 export interface CreateOrderParams {
   purpose: PaymentPurpose;
@@ -157,7 +163,11 @@ export interface CheckoutResult {
 }
 
 export interface AdminRevenueMetrics {
-  capturedRevenueINR: number;
+  capturedRevenueINR: number; // Gross captured collections
+  grossCapturedCollectionsINR?: number;
+  totalRefundedINR?: number;
+  netCollectedAmountINR?: number;
+  netRevenueINR?: number;
   subscriptionRevenueINR: number;
   investorPremiumRevenueINR: number;
   franchisorSubscriptionRevenueINR: number;

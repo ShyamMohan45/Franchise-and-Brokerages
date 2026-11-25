@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import mongoose, { Types } from 'mongoose';
 import { env } from '../config/env';
-import { PaymentTransaction, IPaymentTransaction, PaymentPurpose, PaymentStatus } from '../models/PaymentTransaction';
+import { PaymentTransaction, IPaymentTransaction, PaymentPurpose, PaymentStatus, IRefundDetail } from '../models/PaymentTransaction';
 import { Subscription, ISubscription } from '../models/Subscription';
 import { Invoice, IInvoice } from '../models/Invoice';
 import { FranchiseListing } from '../models/FranchiseListing';
@@ -655,24 +655,21 @@ export class PaymentService {
     if (event === 'refund.processed') {
       const refundEntity = payload?.refund?.entity;
       const paymentId = refundEntity?.payment_id;
+      const gatewayRefundId = refundEntity?.id;
       if (!paymentId) return false;
 
       const transaction = await PaymentTransaction.findOne({ gatewayPaymentId: paymentId });
       if (transaction) {
         const refundAmount = refundEntity?.amount ? refundEntity.amount / 100 : transaction.amount;
-        transaction.status = 'refunded';
-        transaction.refund = {
-          refundId: refundEntity?.id || 'rfnd_' + Date.now(),
-          amount: refundAmount,
-          amountPaise: Math.round(refundAmount * 100),
-          reason: refundEntity?.notes?.reason || 'Customer refund processed via gateway',
-          refundedAt: new Date(),
-        };
-        await transaction.save();
+        const reason = refundEntity?.notes?.reason || 'Customer refund processed via gateway';
 
-        if (transaction.invoiceId) {
-          await Invoice.findByIdAndUpdate(transaction.invoiceId, { status: 'refunded' });
-        }
+        await this.processRefund(
+          transaction._id,
+          reason,
+          transaction.user,
+          refundAmount,
+          gatewayRefundId
+        );
       }
       return true;
     }
@@ -682,65 +679,120 @@ export class PaymentService {
 
   /**
    * 6. Process Manual / Gateway Refund
+   * Supports multiple partial refunds, tracking cumulative refunded amount, remaining balance,
+   * gateway refund ID deduplication, and conditional entitlement revocation.
    */
   public static async processRefund(
     transactionId: string | Types.ObjectId,
     reason: string,
     adminUserId: string | Types.ObjectId,
-    amountINR?: number
+    amountINR?: number,
+    gatewayRefundId?: string
   ): Promise<IPaymentTransaction> {
     const existing = await PaymentTransaction.findById(transactionId);
     if (!existing) throw new Error('Transaction record not found');
 
-    // Idempotency: if already refunded, return existing record
-    if (existing.status === 'refunded') {
-      return existing;
+    // 1. Idempotency: if this exact gateway refund was already recorded, return immediately
+    if (gatewayRefundId) {
+      if (
+        existing.refunds?.some((r) => r.refundId === gatewayRefundId) ||
+        existing.refund?.refundId === gatewayRefundId
+      ) {
+        return existing;
+      }
     }
 
-    if (existing.status !== 'captured') {
+    // 2. Validate state
+    if ((existing.status as string) === 'refunded') {
+      return existing; // idempotent if already fully refunded
+    }
+
+    if (existing.status !== 'captured' && existing.status !== 'partially_refunded') {
       throw new Error(`Cannot refund transaction with status ${existing.status}`);
     }
 
-    if (amountINR !== undefined && (amountINR <= 0 || amountINR > existing.amount)) {
-      throw new Error(`Refund amount cannot exceed captured transaction amount of ₹${existing.amount}.`);
+    // 3. Calculate current refunded total and remaining balance
+    const currentRefunded =
+      existing.refundedAmount !== undefined && existing.refundedAmount > 0
+        ? existing.refundedAmount
+        : existing.refund?.amount || 0;
+
+    const currentRemaining =
+      existing.remainingAmount !== undefined
+        ? existing.remainingAmount
+        : Math.max(0, existing.amount - currentRefunded);
+
+    if (currentRemaining <= 0) {
+      return existing; // Already fully refunded
     }
 
-    const refundAmount = amountINR !== undefined ? amountINR : existing.amount;
+    if (amountINR !== undefined) {
+      if (amountINR <= 0) {
+        throw new Error('Refund amount must be greater than zero.');
+      }
+      if (amountINR > currentRemaining) {
+        throw new Error(
+          `Refund amount cannot exceed captured transaction amount or remaining refundable balance of ₹${currentRemaining} (Captured: ₹${existing.amount}, Already Refunded: ₹${currentRefunded}).`
+        );
+      }
+    }
 
-    // Atomic compare-and-swap: only transition if status is currently 'captured'
+    const thisRefundAmount = amountINR !== undefined ? amountINR : currentRemaining;
+    const newRefundedAmount = Math.round((currentRefunded + thisRefundAmount) * 100) / 100;
+    const newRemainingAmount = Math.max(0, Math.round((existing.amount - newRefundedAmount) * 100) / 100);
+    const isFullRefund = newRemainingAmount === 0 || newRefundedAmount >= existing.amount;
+    const nextStatus: PaymentStatus = isFullRefund ? 'refunded' : 'partially_refunded';
+
+    const refundId =
+      gatewayRefundId || `rfnd_manual_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+    const refundRecord: IRefundDetail = {
+      refundId,
+      amount: thisRefundAmount,
+      amountPaise: Math.round(thisRefundAmount * 100),
+      reason,
+      refundedAt: new Date(),
+      refundedBy: adminUserId ? new Types.ObjectId(adminUserId.toString()) : undefined,
+    };
+
+    // 4. Atomic compare-and-swap update
     const lockedTransaction = await PaymentTransaction.findOneAndUpdate(
-      { _id: transactionId, status: 'captured' },
+      {
+        _id: transactionId,
+        status: { $in: ['captured', 'partially_refunded'] },
+      },
       {
         $set: {
-          status: 'refunded',
-          refund: {
-            refundId: `rfnd_manual_${Date.now()}`,
-            amount: refundAmount,
-            amountPaise: Math.round(refundAmount * 100),
-            reason,
-            refundedAt: new Date(),
-            refundedBy: new Types.ObjectId(adminUserId.toString()),
-          },
+          status: nextStatus,
+          refundedAmount: newRefundedAmount,
+          remainingAmount: newRemainingAmount,
+          refund: refundRecord,
+        },
+        $push: {
+          refunds: refundRecord,
         },
       },
       { new: true }
     );
 
     if (!lockedTransaction) {
-      // Caught by concurrent refund
       const recheck = await PaymentTransaction.findById(transactionId);
+      if (recheck?.refunds?.some((r) => r.refundId === refundId)) return recheck;
       if (recheck && recheck.status === 'refunded') return recheck;
       throw new Error(`Cannot refund transaction in state: ${recheck?.status}`);
     }
 
     const transaction = lockedTransaction;
 
+    // 5. Update linked invoice status
     if (transaction.invoiceId) {
-      await Invoice.findByIdAndUpdate(transaction.invoiceId, { status: 'refunded' });
+      await Invoice.findByIdAndUpdate(transaction.invoiceId, {
+        status: isFullRefund ? 'refunded' : 'partially_refunded',
+      });
     }
 
-    // Downgrade / expire entitlements if full refund
-    if (refundAmount >= transaction.amount) {
+    // 6. Entitlement Revocation: Full refund revokes entitlements; partial refund preserves them
+    if (isFullRefund) {
       if (transaction.purpose === 'subscription' || transaction.purpose === 'investor_premium') {
         await Subscription.findOneAndUpdate(
           { user: transaction.user, planId: transaction.metadata?.planId },
@@ -754,16 +806,21 @@ export class PaymentService {
       }
     }
 
-    const adminUser = await User.findById(adminUserId);
+    // 7. Audit Log Entry
+    const adminUser = adminUserId ? await User.findById(adminUserId) : null;
     await AuditLog.create({
-      actor: adminUserId,
-      actorRole: adminUser?.role || 'admin',
-      actorEmail: adminUser?.email || '',
-      action: 'PAYMENT_REFUNDED',
+      actor: adminUserId || new Types.ObjectId(),
+      actorRole: adminUser?.role || 'system',
+      actorEmail: adminUser?.email || 'system@franchisebridge.com',
+      action: isFullRefund ? 'PAYMENT_REFUNDED' : 'PAYMENT_PARTIALLY_REFUNDED',
       entityType: 'PaymentTransaction',
       entityId: transaction._id.toString(),
       details: {
-        refundAmount,
+        refundAmount: thisRefundAmount,
+        cumulativeRefunded: newRefundedAmount,
+        remainingRefundable: newRemainingAmount,
+        isFullRefund,
+        refundId,
         reason,
         originalTransactionRef: transaction.transactionReference,
       },
@@ -776,9 +833,19 @@ export class PaymentService {
    * 7. Admin Revenue Ledger Metrics
    * Aggregates actual captured payments, successful subscription revenue, pending payments,
    * failed payments, refunds, brokerage fees, contractual success fees, and projected commissions.
+   *
+   * Invariants:
+   * - A transaction that was captured and later refunded remains part of historical gross collections.
+   * - Refunds are subtracted exactly once when calculating net collections.
+   * - Pending and failed payments are excluded from revenue.
+   * - Projected commissions are never included in captured revenue.
    */
   public static async getRevenueDashboardMetrics(): Promise<{
     capturedRevenueINR: number;
+    grossCapturedCollectionsINR: number;
+    totalRefundedINR: number;
+    netCollectedAmountINR: number;
+    netRevenueINR: number;
     subscriptionRevenueINR: number;
     investorPremiumRevenueINR: number;
     franchisorSubscriptionRevenueINR: number;
@@ -794,7 +861,7 @@ export class PaymentService {
   }> {
     const transactions = await PaymentTransaction.find().sort({ createdAt: -1 });
 
-    let capturedRevenueINR = 0;
+    let grossCapturedCollectionsINR = 0;
     let subscriptionRevenueINR = 0;
     let investorPremiumRevenueINR = 0;
     let franchisorSubscriptionRevenueINR = 0;
@@ -802,11 +869,18 @@ export class PaymentService {
     let featuredListingRevenueINR = 0;
     let pendingRevenueINR = 0;
     let failedRevenueINR = 0;
-    let refundedRevenueINR = 0;
+    let totalRefundedINR = 0;
 
     for (const tx of transactions) {
-      if (tx.status === 'captured') {
-        capturedRevenueINR += tx.amount;
+      const wasCaptured =
+        tx.status === 'captured' ||
+        tx.status === 'partially_refunded' ||
+        tx.status === 'refunded';
+
+      if (wasCaptured) {
+        // Historical gross intake: always includes any captured payment
+        grossCapturedCollectionsINR += tx.amount;
+
         if (tx.purpose === 'investor_premium' || tx.metadata?.planId === 'investor_premium') {
           investorPremiumRevenueINR += tx.amount;
           subscriptionRevenueINR += tx.amount;
@@ -818,14 +892,23 @@ export class PaymentService {
         } else if (tx.purpose === 'featured_listing') {
           featuredListingRevenueINR += tx.amount;
         }
+
+        // Tally refunds for this captured transaction
+        if (tx.refundedAmount && tx.refundedAmount > 0) {
+          totalRefundedINR += tx.refundedAmount;
+        } else if (tx.refund?.amount) {
+          totalRefundedINR += tx.refund.amount;
+        } else if (tx.status === 'refunded') {
+          totalRefundedINR += tx.amount;
+        }
       } else if (tx.status === 'pending' || tx.status === 'created') {
         pendingRevenueINR += tx.amount;
       } else if (tx.status === 'failed') {
         failedRevenueINR += tx.amount;
-      } else if (tx.status === 'refunded') {
-        refundedRevenueINR += tx.refund?.amount || tx.amount;
       }
     }
+
+    const netCollectedAmountINR = Math.max(0, grossCapturedCollectionsINR - totalRefundedINR);
 
     // Commission agreements projected & pending
     const agreements = await CommissionAgreement.find();
@@ -850,7 +933,11 @@ export class PaymentService {
     });
 
     return {
-      capturedRevenueINR,
+      capturedRevenueINR: grossCapturedCollectionsINR,
+      grossCapturedCollectionsINR,
+      totalRefundedINR,
+      netCollectedAmountINR,
+      netRevenueINR: netCollectedAmountINR,
       subscriptionRevenueINR,
       investorPremiumRevenueINR,
       franchisorSubscriptionRevenueINR,
@@ -858,7 +945,7 @@ export class PaymentService {
       featuredListingRevenueINR,
       pendingRevenueINR,
       failedRevenueINR,
-      refundedRevenueINR,
+      refundedRevenueINR: totalRefundedINR,
       projectedCommissionsINR,
       activeSubscriptionsCount,
       activeFeaturedListingsCount,

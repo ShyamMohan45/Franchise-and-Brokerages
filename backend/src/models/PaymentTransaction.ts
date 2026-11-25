@@ -12,7 +12,8 @@ export type PaymentStatus =
   | 'pending'
   | 'captured'
   | 'failed'
-  | 'refunded';
+  | 'refunded'
+  | 'partially_refunded';
 
 export type PaymentGatewayType = 'razorpay' | 'bank_transfer' | 'manual';
 
@@ -44,6 +45,9 @@ export interface IPaymentTransaction extends Document {
   failureCode?: string;
   failureReason?: string;
   refund?: IRefundDetail;
+  refunds?: IRefundDetail[];
+  refundedAmount?: number;
+  remainingAmount?: number;
   metadata?: Record<string, any>;
   isSandbox: boolean;
   invoiceId?: Types.ObjectId;
@@ -108,7 +112,7 @@ const paymentTransactionSchema = new Schema<IPaymentTransaction>(
     },
     status: {
       type: String,
-      enum: ['created', 'pending', 'captured', 'failed', 'refunded'],
+      enum: ['created', 'pending', 'captured', 'failed', 'refunded', 'partially_refunded'],
       default: 'created',
       index: true,
     },
@@ -145,6 +149,19 @@ const paymentTransactionSchema = new Schema<IPaymentTransaction>(
     },
     refund: {
       type: refundDetailSchema,
+    },
+    refunds: {
+      type: [refundDetailSchema],
+      default: [],
+    },
+    refundedAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    remainingAmount: {
+      type: Number,
+      min: 0,
     },
     metadata: {
       type: Schema.Types.Mixed,

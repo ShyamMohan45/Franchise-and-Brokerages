@@ -355,9 +355,14 @@ describe('Milestone 5: Comprehensive Monetization, Subscription, Payment and Com
       try {
         const metrics = await PaymentService.getRevenueDashboardMetrics();
 
-        // Actual captured = 9999 + 8999 + 50000 = 68998
-        expect(metrics.capturedRevenueINR).toBe(68998);
-        expect(metrics.subscriptionRevenueINR).toBe(9999);
+        // Gross captured collections = 9999 + 8999 + 50000 + 4999 (refunded) = 73997
+        expect(metrics.grossCapturedCollectionsINR).toBe(73997);
+        expect(metrics.capturedRevenueINR).toBe(73997);
+        // Total refunds = 4999
+        expect(metrics.totalRefundedINR).toBe(4999);
+        // Net collected amount = 73997 - 4999 = 68998
+        expect(metrics.netCollectedAmountINR).toBe(68998);
+        expect(metrics.subscriptionRevenueINR).toBe(14998); // 9999 + 4999 gross subscription collections
         expect(metrics.featuredListingRevenueINR).toBe(8999);
         expect(metrics.brokerageRevenueINR).toBe(50000);
 
@@ -673,11 +678,11 @@ describe('Milestone 5: Comprehensive Monetization, Subscription, Payment and Com
 
       try {
         const metrics = await PaymentService.getRevenueDashboardMetrics();
-        expect(metrics.capturedRevenueINR).toBe(10000);
-        expect(metrics.refundedRevenueINR).toBe(3000);
-        // Net revenue = captured - refunded = 7,000
-        const netRevenue = metrics.capturedRevenueINR - metrics.refundedRevenueINR;
-        expect(netRevenue).toBe(7000);
+        // Both captured and previously captured refunded transactions remain part of gross
+        expect(metrics.grossCapturedCollectionsINR).toBe(13000);
+        expect(metrics.totalRefundedINR).toBe(3000);
+        // Net revenue = gross captured (13000) - total refunded (3000) = 10000
+        expect(metrics.netCollectedAmountINR).toBe(10000);
       } finally {
         PaymentTransaction.find = originalFindTx;
         CommissionAgreement.find = originalFindAg;
@@ -827,6 +832,9 @@ describe('Milestone 5: Comprehensive Monetization, Subscription, Payment and Com
         _id: new Types.ObjectId(),
         status: 'captured',
         amount: 8999,
+        remainingAmount: 8999,
+        refundedAmount: 0,
+        refunds: [],
         purpose: 'featured_listing',
         entityId: mockListingId,
         user: new Types.ObjectId(),
@@ -838,8 +846,11 @@ describe('Milestone 5: Comprehensive Monetization, Subscription, Payment and Com
       PaymentTransaction.findOneAndUpdate = ((query: any, update: any) => {
         return Promise.resolve({
           ...mockTxCaptured,
-          status: 'refunded',
+          status: update.$set.status,
+          refundedAmount: update.$set.refundedAmount,
+          remainingAmount: update.$set.remainingAmount,
           refund: update.$set.refund,
+          refunds: [...mockTxCaptured.refunds, update.$set.refund],
         });
       }) as any;
 
@@ -853,16 +864,150 @@ describe('Milestone 5: Comprehensive Monetization, Subscription, Payment and Com
 
       try {
         // Partial refund: ₹4,000 out of ₹8,999
-        await PaymentService.processRefund(mockTxCaptured._id, 'Partial satisfaction credit', new Types.ObjectId(), 4000);
+        const partialResult = await PaymentService.processRefund(mockTxCaptured._id, 'Partial satisfaction credit', new Types.ObjectId(), 4000);
         expect(revokedListingId).toBeNull(); // Should NOT be revoked
+        expect(partialResult.status).toBe('partially_refunded');
+        expect(partialResult.refundedAmount).toBe(4000);
+        expect(partialResult.remainingAmount).toBe(4999);
 
         // 2. Full refund: ₹8,999 out of ₹8,999
-        await PaymentService.processRefund(mockTxCaptured._id, 'Full cancellation and chargeback', new Types.ObjectId(), 8999);
+        const fullResult = await PaymentService.processRefund(mockTxCaptured._id, 'Full cancellation and chargeback', new Types.ObjectId(), 8999);
         expect(revokedListingId).toEqual(mockListingId); // Should BE revoked
+        expect(fullResult.status).toBe('refunded');
       } finally {
         PaymentTransaction.findById = originalFindByIdTx;
         PaymentTransaction.findOneAndUpdate = originalFindOneAndUpdateTx;
         FranchiseListing.findByIdAndUpdate = originalUpdateListing;
+        User.findById = originalFindUser;
+        AuditLog.create = originalCreateAudit;
+      }
+    });
+
+    it('Supports sequential partial refunds and prevents exceeding remaining refundable balance', async () => {
+      const originalFindByIdTx = PaymentTransaction.findById;
+      const originalFindOneAndUpdateTx = PaymentTransaction.findOneAndUpdate;
+      const originalFindUser = User.findById;
+      const originalCreateAudit = AuditLog.create;
+      const originalSubFindOneAndUpdate = Subscription.findOneAndUpdate;
+
+      const mockTx: any = {
+        _id: new Types.ObjectId(),
+        status: 'captured',
+        amount: 10000,
+        refundedAmount: 0,
+        remainingAmount: 10000,
+        refunds: [],
+        purpose: 'subscription',
+        user: new Types.ObjectId(),
+        transactionReference: 'TXN-PARTIAL-SEQ',
+      };
+
+      PaymentTransaction.findById = (() => Promise.resolve(mockTx)) as any;
+      PaymentTransaction.findOneAndUpdate = ((query: any, update: any) => {
+        mockTx.status = update.$set.status;
+        mockTx.refundedAmount = update.$set.refundedAmount;
+        mockTx.remainingAmount = update.$set.remainingAmount;
+        mockTx.refund = update.$set.refund;
+        mockTx.refunds.push(update.$set.refund);
+        return Promise.resolve(mockTx);
+      }) as any;
+
+      Subscription.findOneAndUpdate = (() => Promise.resolve({})) as any;
+      User.findById = (() => Promise.resolve({ fullName: 'Admin', role: 'admin' })) as any;
+      AuditLog.create = (() => Promise.resolve({})) as any;
+
+      try {
+        // Refund 1: ₹3,000 (remaining becomes ₹7,000)
+        await PaymentService.processRefund(mockTx._id, 'First partial rebate', new Types.ObjectId(), 3000);
+        expect(mockTx.status).toBe('partially_refunded');
+        expect(mockTx.refundedAmount).toBe(3000);
+        expect(mockTx.remainingAmount).toBe(7000);
+
+        // Refund 2: ₹4,000 (remaining becomes ₹3,000)
+        await PaymentService.processRefund(mockTx._id, 'Second partial adjustment', new Types.ObjectId(), 4000);
+        expect(mockTx.status).toBe('partially_refunded');
+        expect(mockTx.refundedAmount).toBe(7000);
+        expect(mockTx.remainingAmount).toBe(3000);
+
+        // Attempt Refund 3 for ₹5,000 (exceeds remaining balance of ₹3,000) -> Must reject!
+        await expect(
+          PaymentService.processRefund(mockTx._id, 'Excess refund attempt', new Types.ObjectId(), 5000)
+        ).rejects.toThrow(/remaining refundable balance of ₹3000/i);
+
+        // Refund 3: ₹3,000 (exact remaining balance) -> becomes fully refunded!
+        await PaymentService.processRefund(mockTx._id, 'Final settlement', new Types.ObjectId(), 3000);
+        expect(mockTx.status).toBe('refunded');
+        expect(mockTx.refundedAmount).toBe(10000);
+        expect(mockTx.remainingAmount).toBe(0);
+        expect(mockTx.refunds.length).toBe(3);
+      } finally {
+        PaymentTransaction.findById = originalFindByIdTx;
+        PaymentTransaction.findOneAndUpdate = originalFindOneAndUpdateTx;
+        Subscription.findOneAndUpdate = originalSubFindOneAndUpdate;
+        User.findById = originalFindUser;
+        AuditLog.create = originalCreateAudit;
+      }
+    });
+
+    it('Duplicate webhook event delivery does not double-count refunds', async () => {
+      const originalFindOneTx = PaymentTransaction.findOne;
+      const originalFindByIdTx = PaymentTransaction.findById;
+      const originalFindOneAndUpdateTx = PaymentTransaction.findOneAndUpdate;
+      const originalFindUser = User.findById;
+      const originalCreateAudit = AuditLog.create;
+
+      const mockTx: any = {
+        _id: new Types.ObjectId(),
+        status: 'captured',
+        amount: 5000,
+        refundedAmount: 0,
+        remainingAmount: 5000,
+        refunds: [],
+        gatewayPaymentId: 'pay_duplicate_webhook_123',
+      };
+
+      PaymentTransaction.findOne = (() => Promise.resolve(mockTx)) as any;
+      PaymentTransaction.findById = (() => Promise.resolve(mockTx)) as any;
+      PaymentTransaction.findOneAndUpdate = ((query: any, update: any) => {
+        mockTx.status = update.$set.status;
+        mockTx.refundedAmount = update.$set.refundedAmount;
+        mockTx.remainingAmount = update.$set.remainingAmount;
+        mockTx.refund = update.$set.refund;
+        mockTx.refunds.push(update.$set.refund);
+        return Promise.resolve(mockTx);
+      }) as any;
+
+      User.findById = (() => Promise.resolve({ fullName: 'System', role: 'admin' })) as any;
+      AuditLog.create = (() => Promise.resolve({})) as any;
+
+      try {
+        const webhookPayload = {
+          event: 'refund.processed',
+          payload: {
+            refund: {
+              entity: {
+                id: 'rfnd_gateway_unique_999',
+                payment_id: 'pay_duplicate_webhook_123',
+                amount: 250000, // ₹2,500 in paise
+                notes: { reason: 'Gateway dispute resolution' },
+              },
+            },
+          },
+        };
+
+        // First delivery: processes refund
+        await PaymentService.handleWebhookEvent('refund.processed', webhookPayload.payload);
+        expect(mockTx.refundedAmount).toBe(2500);
+        expect(mockTx.refunds.length).toBe(1);
+
+        // Second delivery of same webhook with identical refund ID: must be idempotent
+        await PaymentService.handleWebhookEvent('refund.processed', webhookPayload.payload);
+        expect(mockTx.refundedAmount).toBe(2500); // NOT 5000
+        expect(mockTx.refunds.length).toBe(1); // NOT 2
+      } finally {
+        PaymentTransaction.findOne = originalFindOneTx;
+        PaymentTransaction.findById = originalFindByIdTx;
+        PaymentTransaction.findOneAndUpdate = originalFindOneAndUpdateTx;
         User.findById = originalFindUser;
         AuditLog.create = originalCreateAudit;
       }

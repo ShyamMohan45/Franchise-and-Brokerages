@@ -70,7 +70,8 @@ export default function AdminRevenueDeskScreen() {
 
   const handleOpenRefundModal = (tx: PaymentTransactionItem) => {
     setSelectedTxForRefund(tx);
-    setRefundAmount(String(tx.amount));
+    const maxRefundable = (tx as any).remainingAmount !== undefined ? (tx as any).remainingAmount : tx.amount;
+    setRefundAmount(String(maxRefundable));
     setRefundReason('');
     setRefundModalVisible(true);
   };
@@ -83,9 +84,13 @@ export default function AdminRevenueDeskScreen() {
       return;
     }
 
+    const maxRefundable = (selectedTxForRefund as any).remainingAmount !== undefined
+      ? (selectedTxForRefund as any).remainingAmount
+      : selectedTxForRefund.amount;
+
     const amt = parseFloat(refundAmount);
-    if (isNaN(amt) || amt <= 0 || amt > selectedTxForRefund.amount) {
-      Alert.alert('Invalid Amount', `Refund amount must be between ₹1 and ₹${selectedTxForRefund.amount}.`);
+    if (isNaN(amt) || amt <= 0 || amt > maxRefundable) {
+      Alert.alert('Invalid Amount', `Refund amount must be between ₹1 and remaining refundable balance of ₹${maxRefundable}.`);
       return;
     }
 
@@ -142,8 +147,10 @@ export default function AdminRevenueDeskScreen() {
     switch (status) {
       case 'captured':
         return <Badge label="CAPTURED" variant="success" size="sm" />;
+      case 'partially_refunded':
+        return <Badge label="PARTIALLY REFUNDED" variant="warning" size="sm" />;
       case 'refunded':
-        return <Badge label="REFUNDED" variant="danger" size="sm" />;
+        return <Badge label="FULLY REFUNDED" variant="danger" size="sm" />;
       case 'failed':
         return <Badge label="FAILED" variant="danger" size="sm" />;
       case 'pending':
@@ -197,14 +204,24 @@ export default function AdminRevenueDeskScreen() {
             </Card>
           ) : (
             <>
-              {/* PRIMARY KPI: TOTAL CAPTURED INFLOWS */}
+              {/* PRIMARY KPI: TOTAL NET & GROSS CAPTURED COLLECTIONS */}
               <Card style={styles.totalRevenueCard} padding="lg">
                 <View style={styles.totalRow}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.totalLabel}>TOTAL NET CAPTURED REVENUE</Text>
-                    <Text style={styles.totalValue}>{formatINR(metrics?.capturedRevenueINR)}</Text>
+                    <Text style={styles.totalLabel}>NET COLLECTED REVENUE</Text>
+                    <Text style={styles.totalValue}>
+                      {formatINR(metrics?.netCollectedAmountINR ?? (metrics?.capturedRevenueINR || 0) - (metrics?.refundedRevenueINR || 0))}
+                    </Text>
+                    <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs, marginBottom: spacing.xs }}>
+                      <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: '600' }}>
+                        Gross Collections: {formatINR(metrics?.grossCapturedCollectionsINR ?? metrics?.capturedRevenueINR)}
+                      </Text>
+                      <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: '600' }}>
+                        Total Refunds: {formatINR(metrics?.totalRefundedINR ?? metrics?.refundedRevenueINR)}
+                      </Text>
+                    </View>
                     <Text style={styles.totalNotice}>
-                      Strictly settled and cryptographically confirmed inflows only. Excludes in-flight or projected amounts.
+                      Historical gross collections less reversals. Strictly excludes in-flight payments and projected commissions.
                     </Text>
                   </View>
                   <View style={styles.totalIconCircle}>

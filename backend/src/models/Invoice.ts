@@ -37,7 +37,7 @@ export interface IInvoice extends Document {
   totalAmount: number;
   totalAmountPaise: number;
   currency: string;
-  status: 'draft' | 'issued' | 'paid' | 'void' | 'refunded';
+  status: 'draft' | 'issued' | 'paid' | 'void' | 'refunded' | 'partially_refunded';
   issuedDate: Date;
   paidDate?: Date;
   notes?: string;
@@ -143,7 +143,7 @@ const invoiceSchema = new Schema<IInvoice>(
     },
     status: {
       type: String,
-      enum: ['draft', 'issued', 'paid', 'void', 'refunded'],
+      enum: ['draft', 'issued', 'paid', 'void', 'refunded', 'partially_refunded'],
       default: 'paid',
       index: true,
     },
