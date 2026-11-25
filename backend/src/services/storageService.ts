@@ -256,6 +256,11 @@ export function getStorageService(): IStorageProvider {
     if (env.STORAGE_DRIVER === 's3' && env.AWS_S3_BUCKET) {
       storageInstance = new S3StorageProvider();
     } else {
+      if (env.isProduction) {
+        throw new Error(
+          'Production storage misconfiguration: AWS S3 is required in production (STORAGE_DRIVER=s3 and AWS_S3_BUCKET). Local disk storage is prohibited on ephemeral containers.'
+        );
+      }
       storageInstance = new LocalStorageProvider();
     }
   }

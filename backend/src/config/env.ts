@@ -84,6 +84,20 @@ const envSchema = z
           path: ['COOKIE_SECRET'],
         });
       }
+      if (data.STORAGE_DRIVER !== 's3') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Production requires STORAGE_DRIVER to be set to "s3"',
+          path: ['STORAGE_DRIVER'],
+        });
+      }
+      if (!data.AWS_S3_BUCKET) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Production requires AWS_S3_BUCKET to be configured',
+          path: ['AWS_S3_BUCKET'],
+        });
+      }
     }
   });
 

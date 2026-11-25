@@ -286,6 +286,19 @@ describe('Storage Service Test Suite (Local & AWS S3)', () => {
       setStorageService(customProvider);
       expect(getStorageService().name).toBe('custom');
     });
+
+    it('should throw an error in production if STORAGE_DRIVER is local or bucket is unset', () => {
+      setStorageService(null);
+      const originalIsProduction = env.isProduction;
+      (env as any).isProduction = true;
+      (env as any).STORAGE_DRIVER = 'local';
+      try {
+        expect(() => getStorageService()).toThrow(/Production storage misconfiguration: AWS S3 is required/i);
+      } finally {
+        (env as any).isProduction = originalIsProduction;
+        setStorageService(null);
+      }
+    });
   });
 
   // ---------------------------------------------------------------------------
