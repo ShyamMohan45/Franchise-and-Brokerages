@@ -37,12 +37,13 @@ export const RazorpayWebViewModal: React.FC<RazorpayWebViewModalProps> = ({
 
   if (!visible || !options) return null;
 
-  // Generate secure Razorpay checkout standard HTML
+  // Generate secure Razorpay checkout standard HTML with strict Content-Security-Policy
   const checkoutHtml = `
     <!DOCTYPE html>
     <html>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.razorpay.com https://checkout.razorpay.com https://api.razorpay.com https://lumberjack.razorpay.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://*.razorpay.com; connect-src *; style-src 'self' 'unsafe-inline' https://checkout.razorpay.com; frame-src *; img-src * data:;">
         <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
         <style>
           * { box-sizing: border-box; }
@@ -133,16 +134,81 @@ export const RazorpayWebViewModal: React.FC<RazorpayWebViewModalProps> = ({
 
   const handleMessage = (event: WebViewMessageEvent) => {
     try {
-      const payload = JSON.parse(event.nativeEvent.data);
+      const rawData = event.nativeEvent.data;
+      if (!rawData || typeof rawData !== 'string') return;
+      const payload = JSON.parse(rawData);
+      if (!payload || typeof payload !== 'object') return;
+
       if (payload.type === 'PAYMENT_SUCCESS') {
-        onSuccess(payload.data as RazorpaySuccessData);
+        const data = payload.data;
+        // Strict cryptographic token schema validation
+        if (
+          !data ||
+          typeof data.razorpay_payment_id !== 'string' ||
+          !data.razorpay_payment_id.trim() ||
+          typeof data.razorpay_order_id !== 'string' ||
+          !data.razorpay_order_id.trim() ||
+          typeof data.razorpay_signature !== 'string' ||
+          !data.razorpay_signature.trim()
+        ) {
+          onError({ description: 'Invalid payment signature tokens returned from checkout gateway.' });
+          return;
+        }
+
+        // Verify that returned order_id matches server-issued order ID
+        if (options && data.razorpay_order_id !== options.order_id) {
+          onError({ description: 'Untrusted callback: order ID does not match server checkout order.' });
+          return;
+        }
+
+        onSuccess(data as RazorpaySuccessData);
       } else if (payload.type === 'PAYMENT_CANCELLED') {
         onCancel();
       } else if (payload.type === 'PAYMENT_ERROR') {
-        onError(payload.data);
+        onError(payload.data || { description: 'Payment gateway reported an error.' });
       }
     } catch {
       onError({ description: 'Unable to parse payment gateway response.' });
+    }
+  };
+
+  const handleShouldStartLoadWithRequest = (request: { url: string }): boolean => {
+    const url = request.url || '';
+    if (url === 'about:blank' || url.startsWith('data:')) return true;
+    try {
+      // Allow UPI app intent schemes
+      if (
+        url.startsWith('upi://') ||
+        url.startsWith('tez://') ||
+        url.startsWith('phonepe://') ||
+        url.startsWith('paytmmp://')
+      ) {
+        return true;
+      }
+
+      // Enforce HTTPS
+      if (!url.startsWith('https://') && !url.startsWith('http://localhost')) {
+        return false;
+      }
+
+      // Whitelist trusted payment and banking ACS origins
+      const urlLower = url.toLowerCase();
+      const isTrustedOrigin =
+        urlLower.includes('razorpay.com') ||
+        urlLower.includes('razorpay.in') ||
+        urlLower.includes('cardinalcommerce.com') ||
+        urlLower.includes('bank') ||
+        urlLower.includes('billdesk') ||
+        urlLower.includes('payu') ||
+        urlLower.includes('npci') ||
+        urlLower.includes('visa') ||
+        urlLower.includes('mastercard') ||
+        urlLower.includes('rupay') ||
+        urlLower.includes('localhost');
+
+      return isTrustedOrigin;
+    } catch {
+      return false;
     }
   };
 
@@ -174,11 +240,12 @@ export const RazorpayWebViewModal: React.FC<RazorpayWebViewModalProps> = ({
 
         <WebView
           ref={webViewRef}
-          originWhitelist={['*']}
+          originWhitelist={['https://*.razorpay.com', 'https://*.razorpay.in', 'about:blank', 'data:*']}
           source={{ html: checkoutHtml, baseUrl: 'https://checkout.razorpay.com' }}
           onLoadStart={() => setIsLoading(true)}
           onLoadEnd={() => setIsLoading(false)}
           onMessage={handleMessage}
+          onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
           javaScriptEnabled={true}
           domStorageEnabled={true}
           startInLoadingState={true}
