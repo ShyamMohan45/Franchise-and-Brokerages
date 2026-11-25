@@ -1,45 +1,19 @@
 import { apiClient } from './apiClient';
+import {
+  IntroductionRequestItem,
+  CreateIntroductionPayload,
+  RespondIntroductionPayload,
+} from '../types/introduction';
 
-export interface IntroductionRequestItem {
-  _id: string;
-  referenceNumber: string;
-  brandName: string;
-  franchise: any;
-  business: any;
-  businessOwnerUser: any;
-  investorUser: any;
-  investorProfile: any;
-  initiatedBy: 'investor' | 'franchisor' | 'admin';
-  status:
-    | 'PENDING'
-    | 'ADMIN_REVIEW'
-    | 'ACCEPTED_BY_FRANCHISOR'
-    | 'ACCEPTED_BY_INVESTOR'
-    | 'MUTUALLY_ACCEPTED'
-    | 'REJECTED'
-    | 'CANCELLED'
-    | 'DEAL_ROOM_CREATED';
-  franchisorConsent: { consented: boolean; consentedAt?: string; notes?: string };
-  investorConsent: { consented: boolean; consentedAt?: string; notes?: string };
-  targetCity: string;
-  investmentBudget: number;
-  dealRoom?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+export { IntroductionRequestItem } from '../types/introduction';
 
 export class IntroductionService {
   /**
    * Dispatches an introduction request between an investor and a franchisor
    */
-  public static async createIntroduction(payload: {
-    franchiseId?: string;
-    investorProfileId?: string;
-    targetCity?: string;
-    investmentBudget?: number;
-    initialMessage?: string;
-    compatibilityScore?: number;
-  }): Promise<IntroductionRequestItem> {
+  public static async createIntroduction(
+    payload: CreateIntroductionPayload
+  ): Promise<IntroductionRequestItem> {
     const response = await apiClient.post<IntroductionRequestItem>('/introductions', payload);
     if (!response.data) {
       throw new Error(response.message || 'Failed to dispatch introduction request');
@@ -51,8 +25,17 @@ export class IntroductionService {
    * Retrieves all introductions for the authenticated user
    */
   public static async getMyIntroductions(): Promise<IntroductionRequestItem[]> {
-    const response = await apiClient.get<IntroductionRequestItem[]>('/introductions/my');
-    return response.data || [];
+    const response = await apiClient.get<any>('/introductions/my');
+    if (!response) {
+      return [];
+    }
+    if (Array.isArray(response.data)) {
+      return response.data;
+    }
+    if (response.data && Array.isArray((response.data as any).introductions)) {
+      return (response.data as any).introductions;
+    }
+    return [];
   }
 
   /**
@@ -61,12 +44,14 @@ export class IntroductionService {
   public static async respondToIntroduction(
     id: string,
     action: 'ACCEPT' | 'REJECT' | 'CANCEL',
-    notes?: string
+    notes?: string,
+    asParty?: 'franchisor' | 'investor'
   ): Promise<IntroductionRequestItem> {
-    const response = await apiClient.post<IntroductionRequestItem>(`/introductions/${id}/respond`, {
-      action,
-      notes,
-    });
+    const payload: RespondIntroductionPayload = { action, notes, asParty };
+    const response = await apiClient.post<IntroductionRequestItem>(
+      `/introductions/${id}/respond`,
+      payload
+    );
     if (!response.data) {
       throw new Error(response.message || 'Failed to update introduction response');
     }

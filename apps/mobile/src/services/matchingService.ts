@@ -1,5 +1,10 @@
 import { apiClient } from './apiClient';
-import { InvestorMatch, FranchisorMatchListing } from '../types/matching';
+import {
+  InvestorSmartMatch,
+  FranchisorSmartMatch,
+  FranchisorMatchListing,
+  InvestorMatch,
+} from '../types/matching';
 
 export class MatchingService {
   /**
@@ -7,21 +12,36 @@ export class MatchingService {
    * Role: business_owner, brand_owner, broker, admin
    */
   public static async getFranchisorMatches(franchiseId?: string): Promise<{
-    matches: InvestorMatch[];
+    matches: FranchisorSmartMatch[];
     totalMatches: number;
     criteriaSummary?: any;
   }> {
     const params = franchiseId ? { franchiseId } : undefined;
-    const response = await apiClient.get<{
-      matches: InvestorMatch[];
-      totalMatches: number;
-      criteriaSummary?: any;
-    }>('/matching/franchisor', { params });
+    const response = await apiClient.get<any>('/matching/franchisor', { params });
 
-    if (!response.data) {
+    if (!response) {
       return { matches: [], totalMatches: 0 };
     }
-    return response.data;
+
+    // Backend may return:
+    // { success: true, data: matches, meta: { count: number } }
+    // or { matches: [], totalMatches: 0 }
+    if (Array.isArray(response.data)) {
+      return {
+        matches: response.data,
+        totalMatches: response.data.length,
+      };
+    }
+
+    if (response.data && Array.isArray((response.data as any).matches)) {
+      return {
+        matches: (response.data as any).matches,
+        totalMatches: (response.data as any).totalMatches || (response.data as any).matches.length,
+        criteriaSummary: (response.data as any).criteriaSummary,
+      };
+    }
+
+    return { matches: [], totalMatches: 0 };
   }
 
   /**
@@ -29,17 +49,32 @@ export class MatchingService {
    * Role: investor
    */
   public static async getInvestorMatches(): Promise<{
-    matches: FranchisorMatchListing[];
+    matches: InvestorSmartMatch[];
     totalMatches: number;
   }> {
-    const response = await apiClient.get<{
-      matches: FranchisorMatchListing[];
-      totalMatches: number;
-    }>('/matching/investor');
+    const response = await apiClient.get<any>('/matching/investor');
 
-    if (!response.data) {
+    if (!response) {
       return { matches: [], totalMatches: 0 };
     }
-    return response.data;
+
+    // Backend may return:
+    // { success: true, count: number, data: matches }
+    // where matches is Array<{ listing, matchAnalysis }>
+    if (Array.isArray(response.data)) {
+      return {
+        matches: response.data,
+        totalMatches: response.data.length,
+      };
+    }
+
+    if (response.data && Array.isArray((response.data as any).matches)) {
+      return {
+        matches: (response.data as any).matches,
+        totalMatches: (response.data as any).totalMatches || (response.data as any).matches.length,
+      };
+    }
+
+    return { matches: [], totalMatches: 0 };
   }
 }

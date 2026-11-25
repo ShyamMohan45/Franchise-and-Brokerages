@@ -13,6 +13,9 @@ export default function InvestorLayout() {
     >
       <Stack.Screen name="dashboard" />
       <Stack.Screen name="marketplace" />
+      <Stack.Screen name="matching" />
+      <Stack.Screen name="introductions" />
+      <Stack.Screen name="subscription" />
       <Stack.Screen name="franchise/[id]" />
       <Stack.Screen name="saved" />
       <Stack.Screen name="enquiries" />
