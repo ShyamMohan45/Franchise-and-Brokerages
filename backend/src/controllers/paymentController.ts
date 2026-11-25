@@ -69,6 +69,7 @@ export async function verifyPayment(req: Request, res: Response): Promise<any> {
   try {
     const result = await PaymentService.captureAndFulfill({
       transactionReference,
+      gatewayOrderId,
       gatewayPaymentId,
       gatewaySignature,
       billingDetails,

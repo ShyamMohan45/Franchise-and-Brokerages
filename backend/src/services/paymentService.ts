@@ -372,6 +372,7 @@ export class PaymentService {
   public static async captureAndFulfill(params: {
     transactionId?: string | Types.ObjectId;
     transactionReference?: string;
+    gatewayOrderId?: string;
     gatewayPaymentId: string;
     gatewaySignature?: string;
     paymentMethod?: string;
@@ -381,6 +382,10 @@ export class PaymentService {
     if (params.transactionId) query._id = params.transactionId;
     else if (params.transactionReference) query.transactionReference = params.transactionReference;
     else throw new Error('Transaction identifier required to capture payment.');
+
+    if (params.gatewayOrderId) {
+      query.gatewayOrderId = params.gatewayOrderId;
+    }
 
     // ------------------------------------------------------------------------
     // Atomic compare-and-swap to guarantee idempotency under concurrent webhook delivery

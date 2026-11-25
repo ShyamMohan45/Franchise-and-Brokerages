@@ -43,7 +43,7 @@ export const RazorpayWebViewModal: React.FC<RazorpayWebViewModalProps> = ({
     <html>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.razorpay.com https://checkout.razorpay.com https://api.razorpay.com https://lumberjack.razorpay.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://*.razorpay.com; connect-src *; style-src 'self' 'unsafe-inline' https://checkout.razorpay.com; frame-src *; img-src * data:;">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.razorpay.com https://checkout.razorpay.com https://api.razorpay.com https://lumberjack.razorpay.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://*.razorpay.com; connect-src https://*.razorpay.com https://*.razorpay.in https://api.razorpay.com https://lumberjack.razorpay.com; style-src 'self' 'unsafe-inline' https://checkout.razorpay.com; frame-src https://*.razorpay.com https://*.razorpay.in https://*.cardinalcommerce.com https://*.billdesk.com https://*.billdesk.io https://*.payu.in https://*.npci.org.in; img-src 'self' data: https://*.razorpay.com https://checkout.razorpay.com https://*.rzp.io;">
         <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
         <style>
           * { box-sizing: border-box; }
@@ -172,6 +172,27 @@ export const RazorpayWebViewModal: React.FC<RazorpayWebViewModalProps> = ({
     }
   };
 
+  const isAllowedPaymentHost = (hostname: string): boolean => {
+    const allowedExactOrSuffix = [
+      'razorpay.com',
+      'razorpay.in',
+      'cardinalcommerce.com',
+      'billdesk.com',
+      'billdesk.io',
+      'payu.in',
+      'npci.org.in',
+      'visa.com',
+      'mastercard.com',
+      'mastercard.us',
+      'rupay.co.in',
+      'localhost',
+    ];
+    const host = hostname.toLowerCase();
+    return allowedExactOrSuffix.some(
+      domain => host === domain || host.endsWith('.' + domain)
+    );
+  };
+
   const handleShouldStartLoadWithRequest = (request: { url: string }): boolean => {
     const url = request.url || '';
     if (url === 'about:blank' || url.startsWith('data:')) return true;
@@ -186,27 +207,16 @@ export const RazorpayWebViewModal: React.FC<RazorpayWebViewModalProps> = ({
         return true;
       }
 
-      // Enforce HTTPS
-      if (!url.startsWith('https://') && !url.startsWith('http://localhost')) {
+      // Parse absolute URL to extract exact hostname
+      const parsed = new URL(url);
+
+      // Enforce HTTPS except for local development
+      if (parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && parsed.hostname === 'localhost')) {
         return false;
       }
 
-      // Whitelist trusted payment and banking ACS origins
-      const urlLower = url.toLowerCase();
-      const isTrustedOrigin =
-        urlLower.includes('razorpay.com') ||
-        urlLower.includes('razorpay.in') ||
-        urlLower.includes('cardinalcommerce.com') ||
-        urlLower.includes('bank') ||
-        urlLower.includes('billdesk') ||
-        urlLower.includes('payu') ||
-        urlLower.includes('npci') ||
-        urlLower.includes('visa') ||
-        urlLower.includes('mastercard') ||
-        urlLower.includes('rupay') ||
-        urlLower.includes('localhost');
-
-      return isTrustedOrigin;
+      // Safe domain and subdomain matching against payment and 3DS ACS gateways
+      return isAllowedPaymentHost(parsed.hostname);
     } catch {
       return false;
     }

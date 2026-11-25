@@ -51,6 +51,10 @@ describe('Milestone 6 - Phase 3: Mobile Razorpay Checkout & Cryptographic Lifecy
       }
       return null;
     };
+
+    (PaymentTransaction as any).findOneAndUpdate = async (query: any) => {
+      return null;
+    };
   });
 
   afterAll(() => {
@@ -241,6 +245,61 @@ describe('Milestone 6 - Phase 3: Mobile Razorpay Checkout & Cryptographic Lifecy
       expect(investorPlan.id).toBe('investor_premium');
       expect(investorPlan.monthlyPrice).toBe(4999);
       expect(investorPlan.role).toBe('investor');
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // SUITE 6: Order Matching, Verification & Refund Cap Security Tests
+  // --------------------------------------------------------------------------
+  describe('6. Order Matching, Verification & Refund Cap Security', () => {
+    it('Rejects payment fulfillment when gatewayOrderId does not match transaction record', async () => {
+      await expect(
+        PaymentService.captureAndFulfill({
+          transactionReference: 'TXN-NON-EXISTENT-ORDER',
+          gatewayOrderId: 'order_mismatched_xyz',
+          gatewayPaymentId: 'pay_123',
+        })
+      ).rejects.toThrow('Payment transaction record not found.');
+    });
+
+    it('Rejects refund attempts that exceed the captured amount', async () => {
+      const originalFindById = PaymentTransaction.findById;
+      (PaymentTransaction as any).findById = async () => ({
+        _id: new Types.ObjectId(),
+        amount: 5000,
+        status: 'captured',
+      });
+
+      await expect(
+        PaymentService.processRefund(
+          new Types.ObjectId().toString(),
+          'Customer request',
+          mockUserId,
+          6000 // exceeds ₹5000
+        )
+      ).rejects.toThrow('Refund amount cannot exceed captured transaction amount');
+
+      PaymentTransaction.findById = originalFindById;
+    });
+
+    it('Rejects refund attempts on uncaptured transactions', async () => {
+      const originalFindById = PaymentTransaction.findById;
+      (PaymentTransaction as any).findById = async () => ({
+        _id: new Types.ObjectId(),
+        amount: 5000,
+        status: 'pending',
+      });
+
+      await expect(
+        PaymentService.processRefund(
+          new Types.ObjectId().toString(),
+          'Customer request',
+          mockUserId,
+          5000
+        )
+      ).rejects.toThrow('Cannot refund transaction with status pending');
+
+      PaymentTransaction.findById = originalFindById;
     });
   });
 });
