@@ -13,7 +13,9 @@ export interface IMatchScoreBreakdown {
   goalsScore?: number; // max 15 (for franchisor matching)
   unitsScore?: number; // legacy investor-side
   timelineScore?: number; // legacy investor-side
-  totalScore: number; // max 100
+  rawScore?: number; // raw point sum before normalization
+  maxScore?: number; // maximum possible points in vector
+  totalScore: number; // normalized compatibility score 0 - 100%
   matchedCriteria: string[];
   unmatchedCriteria: string[];
   introductionStatus: 'Recommended' | 'Broker Verified' | 'Priority Introduction' | 'Under Review';
@@ -394,7 +396,9 @@ export const getSmartMatchesForInvestor = async (req: AuthRequest, res: Response
         unmatchedCriteria.push(`Sector [${listing.industry}] differs from target sectors`);
       }
 
-      const totalScore = budgetScore + locationScore + industryScore + experienceScore + unitsScore + timelineScore;
+      const rawScore = budgetScore + locationScore + industryScore + experienceScore + unitsScore + timelineScore;
+      const maxScore = 96; // Maximum possible points in 6-vector investor discovery rubric
+      const totalScore = Math.min(100, Math.round((rawScore / maxScore) * 100));
 
       let introductionStatus: IMatchScoreBreakdown['introductionStatus'] = 'Under Review';
       if (totalScore >= 85) introductionStatus = 'Priority Introduction';
@@ -410,6 +414,8 @@ export const getSmartMatchesForInvestor = async (req: AuthRequest, res: Response
           experienceScore,
           unitsScore,
           timelineScore,
+          rawScore,
+          maxScore,
           totalScore,
           matchedCriteria,
           unmatchedCriteria,

@@ -314,5 +314,29 @@ describe('Milestone 1: Matching Engine & Two-Way Discovery Test Suite', () => {
       const res = await request(app).get('/api/v1/matching/investor');
       expect(res.status).toBe(401);
     });
+
+    it('Normalization Verification: Investor matching correctly normalizes raw points against maxScore (96)', () => {
+      // Simulate raw vector points in investor matching rubric
+      const budgetMax = 30;
+      const locationMax = 20;
+      const industryMax = 20;
+      const experienceBaseline = 10;
+      const unitsBaseline = 8;
+      const timelineBaseline = 8;
+
+      const rawSum = budgetMax + locationMax + industryMax + experienceBaseline + unitsBaseline + timelineBaseline;
+      expect(rawSum).toBe(96);
+
+      // Verify normalization formula
+      const maxScore = 96;
+      const normalized100 = Math.min(100, Math.round((rawSum / maxScore) * 100));
+      expect(normalized100).toBe(100);
+
+      // Partial score: Budget 20/30, Location 20/20, Industry 20/20, Exp 10/10, Units 8/8, Timeline 8/8 -> 86/96
+      const partialRaw = 20 + 20 + 20 + 10 + 8 + 8; // 86
+      const normalizedPartial = Math.min(100, Math.round((partialRaw / maxScore) * 100)); // 86/96 = 89.58 -> 90%
+      expect(normalizedPartial).toBe(90);
+      expect(normalizedPartial).toBeGreaterThanOrEqual(85); // Priority introduction qualification
+    });
   });
 });

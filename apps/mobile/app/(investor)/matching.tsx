@@ -477,6 +477,13 @@ export default function InvestorMatchingScreen() {
                           />
                         </View>
 
+                        <View style={styles.scoreBarRow}>
+                          <Text style={[styles.scoreBarLabel, { color: colors.slate[400] }]}>Overall Normalized Score</Text>
+                          <Text style={[styles.scoreBarVal, { color: colors.primary.DEFAULT }]}>
+                            {analysis.totalScore}% ({analysis.rawScore || (analysis.budgetScore + analysis.locationScore + analysis.industryScore + analysis.experienceScore + (analysis.unitsScore || 8) + (analysis.timelineScore || 8))} / {analysis.maxScore || 96} pts)
+                          </Text>
+                        </View>
+
                         {/* Matched Criteria Highlights */}
                         {analysis.matchedCriteria && analysis.matchedCriteria.length > 0 && (
                           <View style={styles.criteriaBox}>

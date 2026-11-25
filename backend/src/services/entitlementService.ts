@@ -285,6 +285,22 @@ export class EntitlementService {
   }
 
   /**
+   * Backend check: Does an investor have access to deep FDD intelligence & analytics?
+   */
+  public static async canInvestorAccessFddInsights(userId: string | Types.ObjectId): Promise<boolean> {
+    const sub = await this.getOrCreateInvestorSubscription(userId);
+    return Boolean(sub.planId === 'investor_premium' && sub.status === 'active');
+  }
+
+  /**
+   * Backend check: Does an investor have access to unlimited saved searches & alerts?
+   */
+  public static async canInvestorSaveSearches(userId: string | Types.ObjectId): Promise<boolean> {
+    const sub = await this.getOrCreateInvestorSubscription(userId);
+    return Boolean(sub.planId === 'investor_premium' && sub.status === 'active');
+  }
+
+  /**
    * Update usage counters on a franchisor subscription
    */
   public static async refreshFranchisorUsage(userId: string | Types.ObjectId): Promise<void> {

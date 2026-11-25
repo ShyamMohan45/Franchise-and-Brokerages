@@ -6,6 +6,8 @@ export interface MatchScoreBreakdown {
   goalsScore?: number;
   unitsScore?: number;
   timelineScore?: number;
+  rawScore?: number;
+  maxScore?: number;
   totalScore: number;
   matchedCriteria: string[];
   unmatchedCriteria: string[];
