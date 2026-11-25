@@ -13,6 +13,7 @@ export default function BrandLayout() {
     >
       <Stack.Screen name="dashboard" />
       <Stack.Screen name="subscription" />
+      <Stack.Screen name="featured-listings" />
       <Stack.Screen name="investor-matching" />
       <Stack.Screen name="listings" />
       <Stack.Screen name="create-listing" />

@@ -775,6 +775,8 @@ export class PaymentService {
   public static async getRevenueDashboardMetrics(): Promise<{
     capturedRevenueINR: number;
     subscriptionRevenueINR: number;
+    investorPremiumRevenueINR: number;
+    franchisorSubscriptionRevenueINR: number;
     brokerageRevenueINR: number;
     featuredListingRevenueINR: number;
     pendingRevenueINR: number;
@@ -789,6 +791,8 @@ export class PaymentService {
 
     let capturedRevenueINR = 0;
     let subscriptionRevenueINR = 0;
+    let investorPremiumRevenueINR = 0;
+    let franchisorSubscriptionRevenueINR = 0;
     let brokerageRevenueINR = 0;
     let featuredListingRevenueINR = 0;
     let pendingRevenueINR = 0;
@@ -798,7 +802,11 @@ export class PaymentService {
     for (const tx of transactions) {
       if (tx.status === 'captured') {
         capturedRevenueINR += tx.amount;
-        if (tx.purpose === 'subscription' || tx.purpose === 'investor_premium') {
+        if (tx.purpose === 'investor_premium' || tx.metadata?.planId === 'investor_premium') {
+          investorPremiumRevenueINR += tx.amount;
+          subscriptionRevenueINR += tx.amount;
+        } else if (tx.purpose === 'subscription') {
+          franchisorSubscriptionRevenueINR += tx.amount;
           subscriptionRevenueINR += tx.amount;
         } else if (tx.purpose === 'commission') {
           brokerageRevenueINR += tx.amount;
@@ -839,6 +847,8 @@ export class PaymentService {
     return {
       capturedRevenueINR,
       subscriptionRevenueINR,
+      investorPremiumRevenueINR,
+      franchisorSubscriptionRevenueINR,
       brokerageRevenueINR,
       featuredListingRevenueINR,
       pendingRevenueINR,

@@ -170,6 +170,17 @@ export default function BrandDashboard() {
               </Card>
             </Pressable>
 
+            <Pressable onPress={() => router.push('/(brand)/featured-listings' as any)}>
+              <Card style={styles.actionCard} padding="md">
+                <View style={styles.actionHeader}>
+                  <Ionicons name="star-outline" size={22} color="#D97706" />
+                  <Badge label="SHOWCASE" variant="gold" size="sm" />
+                </View>
+                <Text style={styles.actionTitle}>Featured Showcase</Text>
+                <Text style={styles.actionDesc}>Apply complimentary subscription slots or buy 14, 30 & 90 day packages</Text>
+              </Card>
+            </Pressable>
+
             <Pressable onPress={() => router.push('/(brand)/investor-matching' as any)}>
               <Card style={styles.actionCard} padding="md">
                 <View style={styles.actionHeader}>

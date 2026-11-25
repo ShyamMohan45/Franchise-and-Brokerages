@@ -156,4 +156,20 @@ export interface CheckoutResult {
   details?: RazorpaySuccessData;
 }
 
+export interface AdminRevenueMetrics {
+  capturedRevenueINR: number;
+  subscriptionRevenueINR: number;
+  investorPremiumRevenueINR: number;
+  franchisorSubscriptionRevenueINR: number;
+  brokerageRevenueINR: number;
+  featuredListingRevenueINR: number;
+  pendingRevenueINR: number;
+  failedRevenueINR: number;
+  refundedRevenueINR: number;
+  projectedCommissionsINR: number;
+  activeSubscriptionsCount: number;
+  activeFeaturedListingsCount: number;
+  recentTransactions: PaymentTransactionItem[];
+}
+
 

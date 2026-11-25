@@ -168,13 +168,22 @@ export default function BrandListingsScreen() {
           )}
 
           {s === 'PUBLISHED' && (
-            <Button
-              title="View Public Card"
-              onPress={() => router.push(`/(investor)/franchise/${item._id}`)}
-              variant="secondary"
-              size="sm"
-              style={{ flex: 1.3 }}
-            />
+            <>
+              <Button
+                title="Promote"
+                onPress={() => router.push('/(brand)/featured-listings' as any)}
+                variant="primary"
+                size="sm"
+                style={{ flex: 1 }}
+              />
+              <Button
+                title="View Card"
+                onPress={() => router.push(`/(investor)/franchise/${item._id}`)}
+                variant="secondary"
+                size="sm"
+                style={{ flex: 1 }}
+              />
+            </>
           )}
         </View>
       </Card>

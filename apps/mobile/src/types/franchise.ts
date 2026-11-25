@@ -86,6 +86,9 @@ export interface FranchiseListing {
   }>;
   status: FranchiseListingStatus;
   isFeatured?: boolean;
+  featuredUntil?: string | Date;
+  featuredPackageId?: string;
+  featuredPaymentId?: string;
   viewsCount?: number;
   enquiriesCount?: number;
   inquiriesCount?: number;

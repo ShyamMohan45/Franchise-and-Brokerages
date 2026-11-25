@@ -5,6 +5,7 @@ import {
   VerifyPaymentParams,
   PaymentTransactionItem,
   InvoiceItem,
+  AdminRevenueMetrics,
 } from '../types/payment';
 
 export class PaymentService {
@@ -63,6 +64,36 @@ export class PaymentService {
     const response = await apiClient.get<InvoiceItem>(`/payments/invoices/${id}`);
     if (!response.data) {
       throw new Error(response.message || 'Invoice record not found');
+    }
+    return response.data;
+  }
+
+  /**
+   * 6. Fetch Admin Platform Revenue Dashboard metrics (Admin & Super Admin only)
+   */
+  public static async getAdminRevenueMetrics(): Promise<AdminRevenueMetrics> {
+    const response = await apiClient.get<AdminRevenueMetrics>('/payments/admin/dashboard');
+    if (!response.data) {
+      throw new Error(response.message || 'Failed to fetch admin revenue metrics');
+    }
+    return response.data;
+  }
+
+  /**
+   * 7. Issue administrative refund for a transaction (Admin & Super Admin only)
+   */
+  public static async processRefund(
+    transactionId: string,
+    reason: string,
+    amountINR?: number
+  ): Promise<PaymentTransactionItem> {
+    const response = await apiClient.post<PaymentTransactionItem>('/payments/admin/refund', {
+      transactionId,
+      reason,
+      amountINR,
+    });
+    if (!response.data) {
+      throw new Error(response.message || 'Refund processing failed');
     }
     return response.data;
   }

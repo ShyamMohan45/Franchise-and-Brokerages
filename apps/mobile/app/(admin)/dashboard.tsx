@@ -210,6 +210,23 @@ export default function AdminDashboard() {
 
             <TouchableOpacity
               style={styles.controlRow}
+              onPress={() => router.push('/(admin)/revenue' as any)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.controlIcon, { backgroundColor: '#10B98115' }]}>
+                <Ionicons name="cash" size={20} color="#10B981" />
+              </View>
+              <View style={styles.controlInfo}>
+                <Text style={styles.controlTitle}>Revenue & Monetization Desk</Text>
+                <Text style={styles.controlSubtitle}>
+                  Gross inflows, featured packages, refunds & settlement audit
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.controlRow}
               onPress={() => router.push('/(admin)/audit-logs')}
               activeOpacity={0.7}
             >
