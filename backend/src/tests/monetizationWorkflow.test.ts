@@ -10,6 +10,8 @@ import { FranchiseListing } from '../models/FranchiseListing';
 import { BusinessProfile } from '../models/BusinessProfile';
 import { CommissionAgreement } from '../models/CommissionAgreement';
 import { PlatformSettings, DEFAULT_SUBSCRIPTION_PLANS, DEFAULT_FEATURED_PACKAGES } from '../models/PlatformSettings';
+import { User } from '../models/User';
+import { AuditLog } from '../models/AuditLog';
 import { createPaymentOrder, verifyPayment } from '../controllers/paymentController';
 
 describe('Milestone 5: Comprehensive Monetization, Subscription, Payment and Commission Architecture Test Suite', () => {
@@ -719,6 +721,150 @@ describe('Milestone 5: Comprehensive Monetization, Subscription, Payment and Com
         PaymentTransaction.findOne = originalFindOne;
         PaymentTransaction.findOneAndUpdate = originalFindOneAndUpdate;
         Invoice.findById = originalFindInvoice;
+      }
+    });
+
+    it('Renewal extends existing active featured period instead of resetting to now', async () => {
+      const originalFindOneTx = PaymentTransaction.findOne;
+      const originalFindOneAndUpdateTx = PaymentTransaction.findOneAndUpdate;
+      const originalFindListing = FranchiseListing.findById;
+      const originalUpdateListing = FranchiseListing.findByIdAndUpdate;
+      const originalCreateInvoice = Invoice.create;
+      const originalFindUser = User.findById;
+      const originalCreateAudit = AuditLog.create;
+      const originalFindSettings = PlatformSettings.findOne;
+
+      const mockListingId = new Types.ObjectId();
+      // Active featured listing expiring in 10 days
+      const futureExpiry = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
+      let updatedFeaturedUntil: Date | null = null;
+
+      FranchiseListing.findById = ((id: any) => {
+        return Promise.resolve({
+          _id: mockListingId,
+          isFeatured: true,
+          featuredUntil: futureExpiry,
+        });
+      }) as any;
+
+      FranchiseListing.findByIdAndUpdate = ((id: any, update: any) => {
+        updatedFeaturedUntil = update.featuredUntil;
+        return Promise.resolve({
+          _id: mockListingId,
+          ...update,
+        });
+      }) as any;
+
+      PaymentTransaction.findOneAndUpdate = (() => Promise.resolve({
+        _id: new Types.ObjectId(),
+        status: 'captured',
+        purpose: 'featured_listing',
+        entityId: mockListingId,
+        user: new Types.ObjectId(),
+        amount: 8999,
+        amountPaise: 899900,
+        currency: 'INR',
+        metadata: { packageId: '30_days' },
+        save: () => Promise.resolve(),
+      })) as any;
+
+      Invoice.create = (() => Promise.resolve({
+        _id: new Types.ObjectId(),
+        invoiceNumber: 'INV-FEATURED-RENEWAL',
+      })) as any;
+
+      User.findById = (() => Promise.resolve({
+        fullName: 'Franchisor User',
+        email: 'franchisor@example.com',
+        role: 'brand_owner',
+      })) as any;
+
+      AuditLog.create = (() => Promise.resolve({})) as any;
+      PlatformSettings.findOne = (() => Promise.resolve({ featuredListingPackages: DEFAULT_FEATURED_PACKAGES })) as any;
+
+      try {
+        await PaymentService.captureAndFulfill({
+          transactionReference: 'TXN-RENEW-01',
+          gatewayPaymentId: 'pay_renew_123',
+        });
+
+        expect(updatedFeaturedUntil).not.toBeNull();
+        // The new expiry should be roughly futureExpiry + 30 days (40 days from now, not 30)
+        const expectedTime = futureExpiry.getTime() + 30 * 24 * 60 * 60 * 1000;
+        const diff = Math.abs((updatedFeaturedUntil as any).getTime() - expectedTime);
+        expect(diff).toBeLessThan(5000); // within 5 seconds
+      } finally {
+        PaymentTransaction.findOne = originalFindOneTx;
+        PaymentTransaction.findOneAndUpdate = originalFindOneAndUpdateTx;
+        FranchiseListing.findById = originalFindListing;
+        FranchiseListing.findByIdAndUpdate = originalUpdateListing;
+        Invoice.create = originalCreateInvoice;
+        User.findById = originalFindUser;
+        AuditLog.create = originalCreateAudit;
+        PlatformSettings.findOne = originalFindSettings;
+      }
+    });
+
+    it('Process refund correctly revokes entitlements on full refund, but preserves on partial refund', async () => {
+      const originalFindByIdTx = PaymentTransaction.findById;
+      const originalFindOneAndUpdateTx = PaymentTransaction.findOneAndUpdate;
+      const originalUpdateListing = FranchiseListing.findByIdAndUpdate;
+      const originalFindUser = User.findById;
+      const originalCreateAudit = AuditLog.create;
+
+      const mockListingId = new Types.ObjectId();
+      let revokedListingId: any = null;
+
+      FranchiseListing.findByIdAndUpdate = ((id: any, update: any) => {
+        if (update.isFeatured === false) {
+          revokedListingId = id;
+        }
+        return Promise.resolve();
+      }) as any;
+
+      // 1. Partial refund test (50% refunded)
+      const mockTxCaptured: any = {
+        _id: new Types.ObjectId(),
+        status: 'captured',
+        amount: 8999,
+        purpose: 'featured_listing',
+        entityId: mockListingId,
+        user: new Types.ObjectId(),
+        transactionReference: 'TXN-REFUND-01',
+        save: () => Promise.resolve(),
+      };
+
+      PaymentTransaction.findById = (() => Promise.resolve(mockTxCaptured)) as any;
+      PaymentTransaction.findOneAndUpdate = ((query: any, update: any) => {
+        return Promise.resolve({
+          ...mockTxCaptured,
+          status: 'refunded',
+          refund: update.$set.refund,
+        });
+      }) as any;
+
+      User.findById = (() => Promise.resolve({
+        fullName: 'Admin User',
+        email: 'admin@franchisebridge.com',
+        role: 'admin',
+      })) as any;
+
+      AuditLog.create = (() => Promise.resolve({})) as any;
+
+      try {
+        // Partial refund: ₹4,000 out of ₹8,999
+        await PaymentService.processRefund(mockTxCaptured._id, 'Partial satisfaction credit', new Types.ObjectId(), 4000);
+        expect(revokedListingId).toBeNull(); // Should NOT be revoked
+
+        // 2. Full refund: ₹8,999 out of ₹8,999
+        await PaymentService.processRefund(mockTxCaptured._id, 'Full cancellation and chargeback', new Types.ObjectId(), 8999);
+        expect(revokedListingId).toEqual(mockListingId); // Should BE revoked
+      } finally {
+        PaymentTransaction.findById = originalFindByIdTx;
+        PaymentTransaction.findOneAndUpdate = originalFindOneAndUpdateTx;
+        FranchiseListing.findByIdAndUpdate = originalUpdateListing;
+        User.findById = originalFindUser;
+        AuditLog.create = originalCreateAudit;
       }
     });
   });

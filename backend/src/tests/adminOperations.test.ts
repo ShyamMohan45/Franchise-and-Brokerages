@@ -10,6 +10,8 @@ import {
   assignBroker,
   recommendAdminMatch,
 } from '../controllers/adminController';
+import { processAdminRefund, getAdminRevenueDashboard } from '../controllers/paymentController';
+import { PaymentService } from '../services/paymentService';
 import { InvestorProfile } from '../models/InvestorProfile';
 import { BusinessProfile } from '../models/BusinessProfile';
 import { FranchiseListing } from '../models/FranchiseListing';
@@ -354,6 +356,68 @@ describe('Milestone 4: Super Admin Verification & Operational Mediation Desk Tes
       expect(getStatusCode()).toBe(400);
       expect(getResponseData().success).toBe(false);
       expect(getResponseData().message).toMatch(/franchiseId and investorId are required/i);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // SECTION 5: Administrative Revenue Desk & Refund Controls
+  // --------------------------------------------------------------------------
+  describe('Administrative Revenue Desk & Refund Controls', () => {
+    it('Requires mandatory transactionId and reason for admin refund (400)', async () => {
+      // 1. Missing reason
+      const { req: req1, res: res1, getStatusCode: getCode1, getResponseData: getData1 } = createMockReqRes({
+        user: { _id: 'admin-1', role: 'admin' },
+        body: { transactionId: 'tx-123' },
+      });
+      await processAdminRefund(req1, res1);
+      expect(getCode1()).toBe(400);
+      expect(getData1().success).toBe(false);
+      expect(getData1().message).toMatch(/transactionId and reason are required/i);
+
+      // 2. Missing transactionId
+      const { req: req2, res: res2, getStatusCode: getCode2, getResponseData: getData2 } = createMockReqRes({
+        user: { _id: 'admin-1', role: 'admin' },
+        body: { reason: 'Accidental duplicate charge' },
+      });
+      await processAdminRefund(req2, res2);
+      expect(getCode2()).toBe(400);
+      expect(getData2().success).toBe(false);
+      expect(getData2().message).toMatch(/transactionId and reason are required/i);
+    });
+
+    it('Dispatches getAdminRevenueDashboard and returns 200 with segregated metrics', async () => {
+      const { req, res, getStatusCode, getResponseData } = createMockReqRes({
+        user: { _id: 'admin-1', role: 'admin' },
+      });
+
+      const originalGetMetrics = PaymentService.getRevenueDashboardMetrics;
+      PaymentService.getRevenueDashboardMetrics = (() => Promise.resolve({
+        capturedRevenueINR: 50000,
+        subscriptionRevenueINR: 25000,
+        investorPremiumRevenueINR: 5000,
+        franchisorSubscriptionRevenueINR: 20000,
+        brokerageRevenueINR: 15000,
+        featuredListingRevenueINR: 10000,
+        pendingRevenueINR: 4999,
+        failedRevenueINR: 0,
+        refundedRevenueINR: 5000,
+        projectedCommissionsINR: 100000,
+        activeSubscriptionsCount: 4,
+        activeFeaturedListingsCount: 2,
+        recentTransactions: [],
+      })) as any;
+
+      try {
+        await getAdminRevenueDashboard(req, res);
+        expect(getStatusCode()).toBe(200);
+        expect(getResponseData().success).toBe(true);
+        expect(getResponseData().data.capturedRevenueINR).toBe(50000);
+        expect(getResponseData().data.investorPremiumRevenueINR).toBe(5000);
+        expect(getResponseData().data.franchisorSubscriptionRevenueINR).toBe(20000);
+        expect(getResponseData().data.projectedCommissionsINR).toBe(100000);
+      } finally {
+        PaymentService.getRevenueDashboardMetrics = originalGetMetrics;
+      }
     });
   });
 });

@@ -476,7 +476,12 @@ export class PaymentService {
       const pkg = packages.find((p: any) => p.id === packageId) || packages[1]; // default 30 days
 
       const now = new Date();
-      const featuredUntil = new Date(now.getTime() + pkg.durationDays * 24 * 60 * 60 * 1000);
+      const currentListing = await FranchiseListing.findById(transaction.entityId);
+      const currentUntil = currentListing?.featuredUntil ? new Date(currentListing.featuredUntil) : null;
+      const baseTime = (currentListing?.isFeatured && currentUntil && currentUntil.getTime() > now.getTime())
+        ? currentUntil.getTime()
+        : now.getTime();
+      const featuredUntil = new Date(baseTime + pkg.durationDays * 24 * 60 * 60 * 1000);
 
       await FranchiseListing.findByIdAndUpdate(transaction.entityId, {
         isFeatured: true,
